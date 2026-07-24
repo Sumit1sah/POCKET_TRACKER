@@ -1,0 +1,101 @@
+import 'dart:io';
+import 'package:csv/csv.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
+import '../models/transaction_model.dart';
+import '../utils/formatters.dart';
+
+class ReportService {
+  static Future<File> generateCSVReport(List<TransactionModel> transactions) async {
+    final List<List<dynamic>> rows = [
+      ['Transaction ID', 'Type', 'Amount', 'Category', 'Payment Method', 'Date', 'Description'],
+    ];
+
+    for (final t in transactions) {
+      rows.add([
+        t.id,
+        t.type.name,
+        t.amount,
+        t.category,
+        t.paymentMethod,
+        Formatters.formatDate(t.date),
+        t.description,
+      ]);
+    }
+
+    final csvData = const ListToCsvConverter().convert(rows);
+    final directory = await getApplicationDocumentsDirectory();
+    final file = File('${directory.path}/Pocketify_Report_${DateTime.now().millisecondsSinceEpoch}.csv');
+    await file.writeAsString(csvData);
+    return file;
+  }
+
+  static Future<void> printPDFReport(List<TransactionModel> transactions, String currencySymbol) async {
+    final pdf = pw.Document();
+
+    final incomeTotal = transactions
+        .where((t) => t.type == TransactionType.income)
+        .fold(0.0, (sum, t) => sum + t.amount);
+
+    final expenseTotal = transactions
+        .where((t) => t.type == TransactionType.expense)
+        .fold(0.0, (sum, t) => sum + t.amount);
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        build: (pw.Context context) => [
+          pw.Header(
+            level: 0,
+            child: pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Text('Pocketify Financial Report', style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold)),
+                pw.Text(Formatters.formatDate(DateTime.now()), style: const pw.TextStyle(fontSize: 12)),
+              ],
+            ),
+          ),
+          pw.SizedBox(height: 16),
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
+            children: [
+              pw.Column(children: [
+                pw.Text('Total Income', style: const pw.TextStyle(fontSize: 12)),
+                pw.Text(Formatters.formatCurrency(incomeTotal, symbol: currencySymbol),
+                    style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, color: PdfColors.green)),
+              ]),
+              pw.Column(children: [
+                pw.Text('Total Expense', style: const pw.TextStyle(fontSize: 12)),
+                pw.Text(Formatters.formatCurrency(expenseTotal, symbol: currencySymbol),
+                    style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, color: PdfColors.red)),
+              ]),
+              pw.Column(children: [
+                pw.Text('Net Savings', style: const pw.TextStyle(fontSize: 12)),
+                pw.Text(Formatters.formatCurrency(incomeTotal - expenseTotal, symbol: currencySymbol),
+                    style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, color: PdfColors.blue)),
+              ]),
+            ],
+          ),
+          pw.SizedBox(height: 20),
+          pw.TableHelper.fromTextArray(
+            headers: ['Date', 'Type', 'Category', 'Payment', 'Amount', 'Notes'],
+            data: transactions.map((t) => [
+              Formatters.formatShortDate(t.date),
+              t.type.name.toUpperCase(),
+              t.category,
+              t.paymentMethod,
+              Formatters.formatCurrency(t.amount, symbol: currencySymbol),
+              t.description,
+            ]).toList(),
+          ),
+        ],
+      ),
+    );
+
+    await Printing.layoutPdf(
+      onLayout: (PdfPageFormat format) async => pdf.save(),
+    );
+  }
+}

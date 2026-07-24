@@ -1,0 +1,91 @@
+
+
+enum TransactionType { expense, income }
+
+class TransactionModel {
+  final String id;
+  final String uid;
+  final TransactionType type;
+  final double amount;
+  final String category;
+  final String paymentMethod;
+  final String description;
+  final String? receiptPath;
+  final DateTime date;
+  final bool isRecurring;
+  final DateTime createdAt;
+
+  TransactionModel({
+    required this.id,
+    required this.uid,
+    required this.type,
+    required this.amount,
+    required this.category,
+    required this.paymentMethod,
+    required this.description,
+    this.receiptPath,
+    required this.date,
+    this.isRecurring = false,
+    DateTime? createdAt,
+  }) : createdAt = createdAt ?? DateTime.now();
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'uid': uid,
+      'type': type.name,
+      'amount': amount,
+      'category': category,
+      'paymentMethod': paymentMethod,
+      'description': description,
+      'receiptPath': receiptPath,
+      'date': date.toIso8601String(),
+      'isRecurring': isRecurring,
+      'createdAt': createdAt.toIso8601String(),
+    };
+  }
+
+  factory TransactionModel.fromMap(Map<dynamic, dynamic> map) {
+    return TransactionModel(
+      id: map['id'] ?? '',
+      uid: map['uid'] ?? 'local_user',
+      type: map['type'] == 'income' ? TransactionType.income : TransactionType.expense,
+      amount: (map['amount'] as num).toDouble(),
+      category: map['category'] ?? 'General',
+      paymentMethod: map['paymentMethod'] ?? 'Cash',
+      description: map['description'] ?? '',
+      receiptPath: map['receiptPath'],
+      date: DateTime.parse(map['date']),
+      isRecurring: map['isRecurring'] ?? false,
+      createdAt: map['createdAt'] != null ? DateTime.parse(map['createdAt']) : DateTime.now(),
+    );
+  }
+
+  TransactionModel copyWith({
+    String? id,
+    String? uid,
+    TransactionType? type,
+    double? amount,
+    String? category,
+    String? paymentMethod,
+    String? description,
+    String? receiptPath,
+    DateTime? date,
+    bool? isRecurring,
+    DateTime? createdAt,
+  }) {
+    return TransactionModel(
+      id: id ?? this.id,
+      uid: uid ?? this.uid,
+      type: type ?? this.type,
+      amount: amount ?? this.amount,
+      category: category ?? this.category,
+      paymentMethod: paymentMethod ?? this.paymentMethod,
+      description: description ?? this.description,
+      receiptPath: receiptPath ?? this.receiptPath,
+      date: date ?? this.date,
+      isRecurring: isRecurring ?? this.isRecurring,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+}
