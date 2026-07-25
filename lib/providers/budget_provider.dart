@@ -48,6 +48,7 @@ class BudgetProvider extends ChangeNotifier {
     final now = DateTime.now();
     final currentMonthExpenses = transactions.where((t) =>
         t.type == TransactionType.expense &&
+        t.category.toLowerCase() != 'debt / repayment' &&
         t.date.year == now.year &&
         t.date.month == now.month).toList();
 
@@ -86,6 +87,7 @@ class BudgetProvider extends ChangeNotifier {
     final now = DateTime.now();
     final currentMonthExpenses = transactions.where((t) =>
         t.type == TransactionType.expense &&
+        t.category.toLowerCase() != 'debt / repayment' &&
         t.date.year == now.year &&
         t.date.month == now.month).toList();
 

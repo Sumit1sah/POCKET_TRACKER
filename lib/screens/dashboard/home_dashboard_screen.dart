@@ -1,63 +1,175 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../providers/transaction_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/theme_currency_provider.dart';
 import '../../widgets/balance_summary_card.dart';
 import '../../widgets/ai_insight_card.dart';
 import '../../widgets/transaction_tile.dart';
+import '../../widgets/transaction_notification.dart';
 import '../authentication/login_screen.dart';
+import '../profile/profile_screen.dart';
 
-class HomeDashboardScreen extends StatelessWidget {
-  const HomeDashboardScreen({super.key});
+class HomeDashboardScreen extends StatefulWidget {
+  final VoidCallback? onSeeAll;
+  const HomeDashboardScreen({super.key, this.onSeeAll});
+
+  @override
+  State<HomeDashboardScreen> createState() => _HomeDashboardScreenState();
+}
+
+class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
+  late Timer _timer;
+  late DateTime _now;
+
+  @override
+  void initState() {
+    super.initState();
+    _now = DateTime.now();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) {
+        setState(() {
+          _now = DateTime.now();
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
     final txProvider = Provider.of<TransactionProvider>(context);
     final recentTransactions = txProvider.transactions.take(5).toList();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final timeString = DateFormat('hh:mm:ss a').format(_now);
 
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 60),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // User Greeting Header
+              // User Greeting Header with Time & Notifications
               Row(
                 children: [
-                  CircleAvatar(
-                    radius: 22,
-                    backgroundColor: Theme.of(context).primaryColor.withValues(alpha: 0.2),
-                    child: Text(
-                      authProvider.currentUser?.name.characters.first.toUpperCase() ?? 'P',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).primaryColor,
-                      ),
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const ProfileScreen()),
+                      );
+                    },
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF6C5CE7), Color(0xFF8E7CFE)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.3),
+                              width: 1.5,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF6C5CE7).withValues(alpha: 0.35),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Center(
+                            child: Text(
+                              authProvider.currentUser?.name.characters.first.toUpperCase() ?? 'P',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Welcome back,',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                                color: Theme.of(context).brightness == Brightness.dark
+                                    ? Colors.white70
+                                    : Colors.grey.shade600,
+                              ),
+                            ),
+                            Text(
+                              authProvider.currentUser?.name ?? 'User',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Theme.of(context).brightness == Brightness.dark
+                                    ? Colors.white
+                                    : Colors.black87,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Welcome back,',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Theme.of(context).textTheme.bodySmall?.color,
-                        ),
-                      ),
-                      Text(
-                        authProvider.currentUser?.name ?? 'User',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
                   const Spacer(),
+
+                  // Real-Time Local Device Clock Badge (Time only)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? const Color(0xFF6C5CE7).withValues(alpha: 0.2)
+                          : const Color(0xFF6C5CE7).withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: const Color(0xFF6C5CE7).withValues(alpha: 0.25),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.access_time_filled_rounded,
+                          size: 13,
+                          color: Color(0xFF6C5CE7),
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          timeString,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF6C5CE7),
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+
                   IconButton(
                     icon: const Icon(Icons.notifications_none_rounded),
                     onPressed: () {
@@ -129,7 +241,9 @@ class HomeDashboardScreen extends StatelessWidget {
                   ),
                   TextButton(
                     onPressed: () {
-                      // Switch to transactions tab or navigate
+                      if (widget.onSeeAll != null) {
+                        widget.onSeeAll!();
+                      }
                     },
                     child: const Text('See All'),
                   ),
@@ -157,7 +271,22 @@ class HomeDashboardScreen extends StatelessWidget {
                   (t) => TransactionTile(
                     transaction: t,
                     onDelete: () {
+                      final currency = Provider.of<ThemeCurrencyProvider>(
+                        context,
+                        listen: false,
+                      ).currency;
+                      final catName = t.category;
+                      final amt = t.amount.toStringAsFixed(0);
                       txProvider.deleteTransaction(t.id);
+                      TransactionNotification.show(
+                        context,
+                        title: 'Transaction Deleted',
+                        amount: amt,
+                        category: catName,
+                        currency: currency,
+                        type: TransactionNotificationType.deleted,
+                        description: t.description.isNotEmpty ? t.description : t.paymentMethod,
+                      );
                     },
                   ),
                 ),

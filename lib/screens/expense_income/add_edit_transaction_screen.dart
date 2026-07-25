@@ -6,9 +6,11 @@ import '../../providers/transaction_provider.dart';
 import '../../providers/category_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/theme_currency_provider.dart';
+import '../../services/local_storage_service.dart';
 import '../../services/sms_parser_service.dart';
 import '../../utils/constants.dart';
 import '../../utils/formatters.dart';
+import '../../widgets/transaction_notification.dart';
 
 class AddEditTransactionScreen extends StatefulWidget {
   final bool isExpense;
@@ -33,6 +35,7 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
 
   String _selectedCategory = 'Food';
   String _selectedPaymentMethod = 'UPI';
+  String? _selectedCardLast4;
   DateTime _selectedDate = DateTime.now();
   String? _receiptPath;
   bool _isRecurring = false;
@@ -241,6 +244,16 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
           ? _selectedCategory
           : (filteredCategories.isNotEmpty ? filteredCategories.first.name : 'Food');
 
+      final rawDesc = _descriptionController.text.trim();
+      String finalDesc = rawDesc;
+
+      // If Credit Card was chosen and user picked a card, append card last4 tag
+      if (_selectedPaymentMethod == 'Credit Card' && _selectedCardLast4 != null && _selectedCardLast4!.isNotEmpty) {
+        if (!finalDesc.contains('••')) {
+          finalDesc = finalDesc.isEmpty ? 'Credit Card ••$_selectedCardLast4' : '$finalDesc (Card ••$_selectedCardLast4)';
+        }
+      }
+
       final transaction = TransactionModel(
         id: widget.transactionToEdit?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
         uid: widget.transactionToEdit?.uid ?? activeUid,
@@ -248,35 +261,46 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
         amount: amount,
         category: saveCategory,
         paymentMethod: _selectedPaymentMethod,
-        description: _descriptionController.text.trim(),
+        description: finalDesc,
         receiptPath: _receiptPath,
         date: _selectedDate,
         isRecurring: _isRecurring,
       );
 
-      // Await the save so that notifyListeners() fires BEFORE we pop back,
-      // ensuring Analytics, Dashboard, and all Provider listeners get fresh data.
+      // Save the transaction — the Hive box watcher in TransactionProvider
+      // automatically triggers loadTransactions() + notifyListeners() on every
+      // write, so all screens (Dashboard, Analytics, Budget) refresh in real-time.
       if (widget.transactionToEdit == null) {
         await txProvider.addTransaction(transaction);
       } else {
         await txProvider.updateTransaction(transaction);
       }
 
-      // Explicitly reload to guarantee all screens (Analytics, Budget, etc.) refresh.
-      txProvider.loadTransactions();
-
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(_isExpense
-              ? 'Expense of ₹${amount.toStringAsFixed(0)} saved successfully!'
-              : 'Income of ₹${amount.toStringAsFixed(0)} saved successfully!'),
-          backgroundColor: _isExpense ? const Color(0xFFFF7675) : const Color(0xFF00B894),
-        ),
-      );
-
+      // Pop back first so the notification appears over the home/list screen.
       Navigator.pop(context);
+
+      // Show the premium floating notification on the parent screen.
+      if (context.mounted) {
+        final currency = Provider.of<ThemeCurrencyProvider>(context, listen: false).currency;
+        final isEditing = widget.transactionToEdit != null;
+        TransactionNotification.show(
+          context,
+          title: isEditing
+              ? (_isExpense ? 'Expense Updated' : 'Income Updated')
+              : (_isExpense ? 'Expense Added' : 'Income Added'),
+          amount: amount.toStringAsFixed(0),
+          category: saveCategory,
+          currency: currency,
+          type: _isExpense
+              ? TransactionNotificationType.expense
+              : TransactionNotificationType.income,
+          description: _descriptionController.text.trim().isNotEmpty
+              ? _descriptionController.text.trim()
+              : _selectedPaymentMethod,
+        );
+      }
     }
   }
 
@@ -444,6 +468,12 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
               ),
               const SizedBox(height: 20),
 
+              // Specific Credit Card Picker (if paymentMethod == 'Credit Card')
+              if (_selectedPaymentMethod == 'Credit Card') ...[
+                _buildCreditCardPicker(),
+                const SizedBox(height: 20),
+              ],
+
               // Date & Time Picker Tile
               InkWell(
                 onTap: _pickDateTime,
@@ -509,6 +539,53 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  /// Builds a credit card selector dropdown populated with user's saved cards.
+  Widget _buildCreditCardPicker() {
+    final rawCards = LocalStorageService.getCreditCards();
+    if (rawCards.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF6C5CE7).withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFF6C5CE7).withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          children: const [
+            Icon(Icons.info_outline_rounded, color: Color(0xFF6C5CE7), size: 18),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'No credit cards registered. Tap Add Card on home dashboard to track limits.',
+                style: TextStyle(fontSize: 11, color: Color(0xFF6C5CE7)),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return DropdownButtonFormField<String>(
+      value: _selectedCardLast4 ?? rawCards.first['last4'] as String?,
+      decoration: InputDecoration(
+        labelText: 'Select Credit Card',
+        prefixIcon: const Icon(Icons.credit_card_rounded, color: Color(0xFF6C5CE7)),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+      items: rawCards.map((c) {
+        final cardName = c['cardName'] as String? ?? 'Card';
+        final last4 = c['last4'] as String? ?? '0000';
+        return DropdownMenuItem<String>(
+          value: last4,
+          child: Text('$cardName (••$last4)'),
+        );
+      }).toList(),
+      onChanged: (val) {
+        if (val != null) setState(() => _selectedCardLast4 = val);
+      },
     );
   }
 }

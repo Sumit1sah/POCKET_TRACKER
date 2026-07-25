@@ -41,7 +41,8 @@ class BudgetScreen extends StatelessWidget {
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+        padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 90),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -90,8 +91,10 @@ class BudgetScreen extends StatelessWidget {
                     Expanded(
                       child: Text(
                         'Attention: $warningCount category budget(s) reached 80%+ capacity.',
-                        style: const TextStyle(
-                          color: Color(0xFFD35400),
+                        style: TextStyle(
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? const Color(0xFFFDCB6E)
+                              : const Color(0xFFD35400),
                           fontWeight: FontWeight.bold,
                           fontSize: 12,
                         ),

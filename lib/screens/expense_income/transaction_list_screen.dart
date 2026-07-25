@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/transaction_model.dart';
 import '../../providers/transaction_provider.dart';
+import '../../providers/theme_currency_provider.dart';
 import '../../widgets/transaction_tile.dart';
+import '../../widgets/transaction_notification.dart';
 import 'add_edit_transaction_screen.dart';
 
 class TransactionListScreen extends StatelessWidget {
@@ -54,7 +56,8 @@ class TransactionListScreen extends StatelessWidget {
                     ),
                   )
                 : ListView.builder(
-                    padding: const EdgeInsets.all(16),
+                    physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+                    padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 90),
                     itemCount: transactions.length,
                     itemBuilder: (context, index) {
                       final t = transactions[index];
@@ -71,7 +74,24 @@ class TransactionListScreen extends StatelessWidget {
                             ),
                           );
                         },
-                        onDelete: () => txProvider.deleteTransaction(t.id),
+                        onDelete: () {
+                          final currency = Provider.of<ThemeCurrencyProvider>(
+                            context,
+                            listen: false,
+                          ).currency;
+                          final catName = t.category;
+                          final amt = t.amount.toStringAsFixed(0);
+                          txProvider.deleteTransaction(t.id);
+                          TransactionNotification.show(
+                            context,
+                            title: 'Transaction Deleted',
+                            amount: amt,
+                            category: catName,
+                            currency: currency,
+                            type: TransactionNotificationType.deleted,
+                            description: t.description.isNotEmpty ? t.description : t.paymentMethod,
+                          );
+                        },
                       );
                     },
                   ),

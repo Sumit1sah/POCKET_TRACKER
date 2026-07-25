@@ -21,10 +21,12 @@ class LocalStorageService {
     await Hive.openBox(savingsBoxName);
     await Hive.openBox(settingsBoxName);
 
-    // Initialize default categories if empty
+    // Always upsert system default categories by their fixed IDs.
+    // This ensures newly added defaults (e.g., new income categories) appear
+    // on existing installs without wiping user-created custom categories.
     final categoriesBox = Hive.box(categoriesBoxName);
-    if (categoriesBox.isEmpty) {
-      for (final cat in AppConstants.defaultCategories) {
+    for (final cat in AppConstants.defaultCategories) {
+      if (!categoriesBox.containsKey(cat.id)) {
         await categoriesBox.put(cat.id, cat.toMap());
       }
     }
@@ -252,5 +254,54 @@ class LocalStorageService {
   static Future<void> setDarkMode(bool isDark) async {
     final box = Hive.box(settingsBoxName);
     await box.put('isDarkMode', isDark);
+  }
+
+  // --- Credit Cards ---
+  static List<Map<String, dynamic>> getCreditCards() {
+    final box = Hive.box(settingsBoxName);
+    final raw = box.get('credit_cards');
+    if (raw == null) return [];
+    return List<Map<String, dynamic>>.from(
+      (raw as List).map((e) => Map<String, dynamic>.from(e)),
+    );
+  }
+
+  static Future<void> saveCreditCard(Map<String, dynamic> card) async {
+    final box = Hive.box(settingsBoxName);
+    final cards = getCreditCards();
+    final idx = cards.indexWhere((c) => c['id'] == card['id']);
+    if (idx >= 0) {
+      cards[idx] = card;
+    } else {
+      cards.add(card);
+    }
+    await box.put('credit_cards', cards);
+  }
+
+  static Future<void> deleteCreditCard(String id) async {
+    final box = Hive.box(settingsBoxName);
+    final cards = getCreditCards();
+    cards.removeWhere((c) => c['id'] == id);
+    await box.put('credit_cards', cards);
+  }
+
+  // --- Credit Card Preference (onboarding question) ---
+
+  /// Returns true if user said they have a CC, false if they said no,
+  /// and null if the question hasn't been asked yet.
+  static bool? getCCPreference() {
+    final box = Hive.box(settingsBoxName);
+    final raw = box.get('cc_preference');
+    if (raw == null) return null;
+    return raw as bool;
+  }
+
+  /// Whether the "do you have a credit card?" question has been shown.
+  static bool isCCPreferenceSet() => getCCPreference() != null;
+
+  /// Save the user's answer. true = has CC, false = no CC.
+  static Future<void> setCCPreference(bool hasCreditCard) async {
+    final box = Hive.box(settingsBoxName);
+    await box.put('cc_preference', hasCreditCard);
   }
 }

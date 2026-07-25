@@ -138,7 +138,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
     return Scaffold(
       backgroundColor: bgColor,
       body: CustomScrollView(
-        physics: const BouncingScrollPhysics(),
+        physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
         slivers: [
           // ── Sticky Header ─────────────────────────────────────────────────
           SliverToBoxAdapter(

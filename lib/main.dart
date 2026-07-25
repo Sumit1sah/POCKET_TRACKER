@@ -12,8 +12,6 @@ import 'providers/savings_provider.dart';
 import 'providers/theme_currency_provider.dart';
 import 'utils/app_theme.dart';
 import 'screens/splash/splash_screen.dart';
-import 'screens/authentication/login_screen.dart';
-import 'screens/dashboard/main_navigation_screen.dart';
 
 /// Native Android platform channel for SMS interception
 const _smsChannel = MethodChannel('com.example.expense_tracker/sms');
@@ -77,6 +75,7 @@ class PocketifyApp extends StatelessWidget {
             theme: AppTheme.lightTheme,
             darkTheme: AppTheme.darkTheme,
             themeMode: themeProvider.themeMode,
+            scrollBehavior: const SmoothScrollBehavior(),
             home: const SplashScreen(),
           );
         },

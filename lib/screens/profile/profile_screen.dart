@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/theme_currency_provider.dart';
+import '../../services/local_storage_service.dart';
 import '../../utils/constants.dart';
 import '../reports/reports_screen.dart';
 import '../categories/categories_screen.dart';
@@ -375,6 +376,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       setState(() => _notificationsEnabled = val);
                     },
                   ),
+                  const Divider(height: 1),
+                  SwitchListTile(
+                    secondary: const Icon(Icons.credit_card_outlined, color: Color(0xFF6C5CE7)),
+                    title: const Text('Credit Card Tracking'),
+                    subtitle: const Text('Show credit card limits & balance on dashboard'),
+                    value: LocalStorageService.getCCPreference() ?? false,
+                    onChanged: (val) async {
+                      await LocalStorageService.setCCPreference(val);
+                      setState(() {});
+                    },
+                  ),
                 ],
               ),
             ),
@@ -409,18 +421,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () {
                       Navigator.push(context, MaterialPageRoute(builder: (context) => const ReportsScreen()));
-                    },
-                  ),
-                  const Divider(height: 1),
-                  ListTile(
-                    leading: const Icon(Icons.cloud_upload_outlined, color: Color(0xFFFD79A8)),
-                    title: const Text('Cloud Backup & Sync'),
-                    subtitle: const Text('Sync data to Cloud Firestore'),
-                    trailing: const Icon(Icons.sync),
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Cloud backup synchronized successfully!')),
-                      );
                     },
                   ),
                 ],

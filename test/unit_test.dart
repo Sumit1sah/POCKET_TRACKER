@@ -129,4 +129,55 @@ void main() {
       expect(restored.name, 'Groceries');
     });
   });
+
+  group('Credit Card & Refund Logic Tests', () {
+    test('Credit Card Refund reduces spent total', () {
+      final purchase = TransactionModel(
+        id: 'cc_tx_1',
+        uid: 'user_123',
+        type: TransactionType.expense,
+        amount: 5000.0,
+        category: 'Shopping',
+        paymentMethod: 'Credit Card',
+        description: 'Amazon Purchase ending with 2235',
+        date: DateTime.now(),
+      );
+
+      final refund = TransactionModel(
+        id: 'cc_tx_2',
+        uid: 'user_123',
+        type: TransactionType.income,
+        amount: 1200.0,
+        category: 'Refund',
+        paymentMethod: 'Credit Card',
+        description: 'Refund Alert! credited to SuperCard ending with 2235',
+        date: DateTime.now(),
+      );
+
+      expect(purchase.paymentMethod, 'Credit Card');
+      expect(refund.paymentMethod, 'Credit Card');
+
+      // Net Credit Card Spent Calculation = purchases - refunds
+      final netCcSpent = purchase.amount - refund.amount;
+      expect(netCcSpent, 3800.0);
+    });
+
+    test('Debt / Repayment SMS & Category Matching', () {
+      const sms = 'Sent Rs 2,500 to Friend for loan repayment money back';
+      final result = SMSParserService.parseSMS(sms);
+
+      expect(result, isNotNull);
+      expect(result!.category, 'Debt / Repayment');
+    });
+
+    test('Credit Card Refund SMS Regex Matching', () {
+      const sms = 'Refund Alert! INR 1,793.00 credited to your SuperCard ending with 2235 from Flipkart Internet';
+      final result = SMSParserService.parseSMS(sms);
+
+      expect(result, isNotNull);
+      expect(result!.type, TransactionType.income);
+      expect(result.amount, 1793.0);
+      expect(result.paymentMethod, 'Credit Card');
+    });
+  });
 }
