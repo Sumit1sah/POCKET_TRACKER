@@ -132,55 +132,71 @@ class TransactionTile extends StatelessWidget {
 
                       // Bottom Metadata Pill Bar
                       Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          // Payment Method Badge
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: transaction.paymentMethod == 'Credit Card'
-                                  ? const Color(0xFF6C5CE7).withValues(alpha: 0.15)
-                                  : (Theme.of(context).brightness == Brightness.dark
-                                      ? Colors.white.withValues(alpha: 0.08)
-                                      : Colors.grey.shade200),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
+                          Flexible(
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(
-                                  transaction.paymentMethod == 'Credit Card'
-                                      ? Icons.credit_card_rounded
-                                      : transaction.paymentMethod == 'UPI'
-                                          ? Icons.qr_code_scanner_rounded
-                                          : Icons.account_balance_wallet_outlined,
-                                  size: 11,
-                                  color: transaction.paymentMethod == 'Credit Card'
-                                      ? const Color(0xFF6C5CE7)
-                                      : Theme.of(context).textTheme.bodySmall?.color,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  transaction.paymentMethod,
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w600,
-                                    color: transaction.paymentMethod == 'Credit Card'
-                                        ? const Color(0xFF6C5CE7)
-                                        : Theme.of(context).textTheme.bodySmall?.color,
+                                // Payment Method Badge
+                                Flexible(
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      color: transaction.paymentMethod == 'Credit Card'
+                                          ? const Color(0xFF6C5CE7).withValues(alpha: 0.15)
+                                          : (Theme.of(context).brightness == Brightness.dark
+                                              ? Colors.white.withValues(alpha: 0.08)
+                                              : Colors.grey.shade200),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          transaction.paymentMethod == 'Credit Card'
+                                              ? Icons.credit_card_rounded
+                                              : transaction.paymentMethod == 'UPI'
+                                                  ? Icons.qr_code_scanner_rounded
+                                                  : Icons.account_balance_wallet_outlined,
+                                          size: 11,
+                                          color: transaction.paymentMethod == 'Credit Card'
+                                              ? const Color(0xFF6C5CE7)
+                                              : Theme.of(context).textTheme.bodySmall?.color,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Flexible(
+                                          child: Text(
+                                            transaction.paymentMethod,
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w600,
+                                              color: transaction.paymentMethod == 'Credit Card'
+                                                  ? const Color(0xFF6C5CE7)
+                                                  : Theme.of(context).textTheme.bodySmall?.color,
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                            maxLines: 1,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
+                                ),
+                                const SizedBox(width: 6),
+
+                                // Bank / Card Badge
+                                Flexible(
+                                  child: _buildBankBadge(transaction),
                                 ),
                               ],
                             ),
                           ),
                           const SizedBox(width: 6),
 
-                          // Bank / Card Badge
-                          _buildBankBadge(transaction),
-
-                          const Spacer(),
-
                           // Time Stamp
                           Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(
                                 Icons.access_time_rounded,
@@ -208,9 +224,9 @@ class TransactionTile extends StatelessWidget {
                 if (onDelete != null) ...[
                   const SizedBox(width: 6),
                   IconButton(
-                    icon: Icon(Icons.delete_outline_rounded,
-                        color: Colors.grey.shade400, size: 18),
+                    icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red),
                     onPressed: onDelete,
+                    tooltip: 'Delete Transaction',
                   ),
                 ],
               ],
@@ -264,12 +280,16 @@ class TransactionTile extends StatelessWidget {
         children: [
           const Icon(Icons.account_balance_rounded, size: 10, color: Color(0xFF00B894)),
           const SizedBox(width: 3),
-          Text(
-            displayText,
-            style: const TextStyle(
-              fontSize: 9,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF00838F),
+          Flexible(
+            child: Text(
+              displayText,
+              style: const TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF00838F),
+              ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
             ),
           ),
         ],

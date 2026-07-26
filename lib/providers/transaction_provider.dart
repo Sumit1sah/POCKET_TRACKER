@@ -61,7 +61,16 @@ class TransactionProvider extends ChangeNotifier {
         .fold(0.0, (sum, t) => sum + t.amount);
   }
 
-  double get netBalance => totalIncome - totalExpense;
+  /// Total Credit Limit across registered credit cards as explicitly set by the user.
+  double get totalCreditLimit {
+    final cards = LocalStorageService.getCreditCards();
+    return cards.fold(0.0, (sum, c) => sum + (c['limit'] as num? ?? 0.0).toDouble());
+  }
+
+  /// Total Net Balance = Income + Total Credit Limit - Total Expense.
+  /// Adding total credit limit ensures credit card debits transparently deduct
+  /// from the overall net balance while accurately representing total financial capacity.
+  double get netBalance => totalIncome + totalCreditLimit - totalExpense;
 
   // ── Credit Card Analytics ────────────────────────────────────────────────
 

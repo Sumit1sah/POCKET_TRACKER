@@ -30,106 +30,6 @@ class LocalStorageService {
         await categoriesBox.put(cat.id, cat.toMap());
       }
     }
-
-    // Pre-seed sample transactions if empty for instant analytics & dashboard demo
-    final txBox = Hive.box(transactionsBoxName);
-    if (txBox.isEmpty) {
-      final now = DateTime.now();
-      final sampleTx = [
-        TransactionModel(
-          id: 'tx_sample_1',
-          uid: 'demo_user_1',
-          type: TransactionType.income,
-          amount: 45000.0,
-          category: 'Salary',
-          paymentMethod: 'Bank Transfer',
-          description: 'Monthly Salary Credit',
-          date: now.subtract(const Duration(days: 15)),
-        ),
-        TransactionModel(
-          id: 'tx_sample_2',
-          uid: 'demo_user_1',
-          type: TransactionType.expense,
-          amount: 3200.0,
-          category: 'Food',
-          paymentMethod: 'UPI',
-          description: 'Restaurant Dinner & Swiggy',
-          date: now.subtract(const Duration(days: 12)),
-        ),
-        TransactionModel(
-          id: 'tx_sample_3',
-          uid: 'demo_user_1',
-          type: TransactionType.expense,
-          amount: 4800.0,
-          category: 'Shopping',
-          paymentMethod: 'Credit Card',
-          description: 'Clothing & Footwear',
-          date: now.subtract(const Duration(days: 8)),
-        ),
-        TransactionModel(
-          id: 'tx_sample_4',
-          uid: 'demo_user_1',
-          type: TransactionType.expense,
-          amount: 2500.0,
-          category: 'Grocery',
-          paymentMethod: 'UPI',
-          description: 'Weekly Supermarket Grocery',
-          date: now.subtract(const Duration(days: 5)),
-        ),
-        TransactionModel(
-          id: 'tx_sample_5',
-          uid: 'demo_user_1',
-          type: TransactionType.expense,
-          amount: 1800.0,
-          category: 'Fuel',
-          paymentMethod: 'Cash',
-          description: 'Petrol Refill',
-          date: now.subtract(const Duration(days: 2)),
-        ),
-        TransactionModel(
-          id: 'tx_sample_6',
-          uid: 'demo_user_1',
-          type: TransactionType.expense,
-          amount: 1200.0,
-          category: 'Entertainment',
-          paymentMethod: 'UPI',
-          description: 'Movie Tickets & Streaming',
-          date: now,
-        ),
-      ];
-
-      for (final tx in sampleTx) {
-        await txBox.put(tx.id, tx.toMap());
-      }
-    }
-
-    // Pre-seed default budgets if empty
-    final budgetsBox = Hive.box(budgetsBoxName);
-    if (budgetsBox.isEmpty) {
-      final sampleBudgets = [
-        BudgetModel(id: 'b_overall', uid: 'demo_user_1', category: 'Overall', monthlyLimit: 25000.0),
-        BudgetModel(id: 'b_food', uid: 'demo_user_1', category: 'Food', monthlyLimit: 8000.0),
-        BudgetModel(id: 'b_shopping', uid: 'demo_user_1', category: 'Shopping', monthlyLimit: 5000.0),
-        BudgetModel(id: 'b_travel', uid: 'demo_user_1', category: 'Travel', monthlyLimit: 3000.0),
-      ];
-      for (final b in sampleBudgets) {
-        await budgetsBox.put(b.id, b.toMap());
-      }
-    }
-
-    // Pre-seed default savings goals if empty
-    final savingsBox = Hive.box(savingsBoxName);
-    if (savingsBox.isEmpty) {
-      final sampleGoal = SavingsGoalModel(
-        id: 'g_laptop',
-        uid: 'demo_user_1',
-        title: 'New Laptop',
-        targetAmount: 70000.0,
-        savedAmount: 28000.0,
-        deadline: DateTime.now().add(const Duration(days: 90)),
-      );
-      await savingsBox.put(sampleGoal.id, sampleGoal.toMap());
-    }
   }
 
   // --- User-Scoped Transactions ---
@@ -140,7 +40,7 @@ class LocalStorageService {
         .toList();
 
     if (uid == null || uid.isEmpty || uid == 'all') return all;
-    return all.where((t) => t.uid == uid || t.uid == 'local_user' || t.uid == 'demo_user_1').toList();
+    return all.where((t) => t.uid == uid || t.uid == 'local_user').toList();
   }
 
   static Future<void> saveTransaction(TransactionModel transaction) async {
@@ -261,9 +161,11 @@ class LocalStorageService {
     final box = Hive.box(settingsBoxName);
     final raw = box.get('credit_cards');
     if (raw == null) return [];
-    return List<Map<String, dynamic>>.from(
+    final list = List<Map<String, dynamic>>.from(
       (raw as List).map((e) => Map<String, dynamic>.from(e)),
     );
+    // Strict rule: One user can have ONLY ONE credit card
+    return list.take(1).toList();
   }
 
   static Future<void> saveCreditCard(Map<String, dynamic> card) async {
@@ -273,7 +175,12 @@ class LocalStorageService {
     if (idx >= 0) {
       cards[idx] = card;
     } else {
-      cards.add(card);
+      // One user can add ONE credit card only. Replace existing card if present.
+      if (cards.isNotEmpty) {
+        cards[0] = card;
+      } else {
+        cards.add(card);
+      }
     }
     await box.put('credit_cards', cards);
   }

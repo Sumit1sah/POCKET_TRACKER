@@ -14,7 +14,7 @@ import 'utils/app_theme.dart';
 import 'screens/splash/splash_screen.dart';
 
 /// Native Android platform channel for SMS interception
-const _smsChannel = MethodChannel('com.example.expense_tracker/sms');
+const _smsChannel = MethodChannel('com.pocketify.expensetracker/sms');
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

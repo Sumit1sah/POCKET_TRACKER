@@ -98,7 +98,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
 
     final totalExpense = expenses.fold(0.0, (s, t) => s + t.amount);
     final totalIncome = incomes.fold(0.0, (s, t) => s + t.amount);
-    final netBalance = totalIncome - totalExpense;
+    final totalCreditLimit = txProvider.totalCreditLimit;
+    final netBalance = totalIncome + totalCreditLimit - totalExpense;
     final savingsRate =
         totalIncome > 0 ? (netBalance / totalIncome * 100) : 0.0;
 

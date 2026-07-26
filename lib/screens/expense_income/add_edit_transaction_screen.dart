@@ -247,10 +247,12 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
       final rawDesc = _descriptionController.text.trim();
       String finalDesc = rawDesc;
 
-      // If Credit Card was chosen and user picked a card, append card last4 tag
-      if (_selectedPaymentMethod == 'Credit Card' && _selectedCardLast4 != null && _selectedCardLast4!.isNotEmpty) {
-        if (!finalDesc.contains('••')) {
-          finalDesc = finalDesc.isEmpty ? 'Credit Card ••$_selectedCardLast4' : '$finalDesc (Card ••$_selectedCardLast4)';
+      // If Credit Card was chosen and user picked a card (or cards exist), append card last4 tag
+      if (_selectedPaymentMethod == 'Credit Card') {
+        final rawCards = LocalStorageService.getCreditCards();
+        final effectiveLast4 = _selectedCardLast4 ?? (rawCards.isNotEmpty ? (rawCards.first['last4'] as String?) : null);
+        if (effectiveLast4 != null && effectiveLast4.isNotEmpty && !finalDesc.contains('••')) {
+          finalDesc = finalDesc.isEmpty ? 'Credit Card ••$effectiveLast4' : '$finalDesc (Card ••$effectiveLast4)';
         }
       }
 

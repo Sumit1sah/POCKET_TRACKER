@@ -60,11 +60,17 @@ class _CreditCardSummaryWidgetState extends State<CreditCardSummaryWidget> {
   Future<void> _saveCard(CreditCardData card) async {
     await LocalStorageService.saveCreditCard(card.toMap());
     _loadCards();
+    if (mounted) {
+      Provider.of<TransactionProvider>(context, listen: false).loadTransactions();
+    }
   }
 
   Future<void> _deleteCard(String id) async {
     await LocalStorageService.deleteCreditCard(id);
     _loadCards();
+    if (mounted) {
+      Provider.of<TransactionProvider>(context, listen: false).loadTransactions();
+    }
   }
 
   Future<void> _showAddEditDialog({CreditCardData? existing}) async {
@@ -261,7 +267,7 @@ class _CreditCardSummaryWidgetState extends State<CreditCardSummaryWidget> {
             const Spacer(),
             // Add card button
             GestureDetector(
-              onTap: () => _showAddEditDialog(),
+              onTap: () => _showAddEditDialog(existing: _cards.isNotEmpty ? _cards.first : null),
               child: Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -273,11 +279,11 @@ class _CreditCardSummaryWidgetState extends State<CreditCardSummaryWidget> {
                   ),
                 ),
                 child: Row(
-                  children: const [
-                    Icon(Icons.add, size: 14, color: Color(0xFF2D3436)),
-                    SizedBox(width: 4),
-                    Text('Add Card',
-                        style: TextStyle(
+                  children: [
+                    Icon(_cards.isNotEmpty ? Icons.edit_outlined : Icons.add, size: 14, color: const Color(0xFF2D3436)),
+                    const SizedBox(width: 4),
+                    Text(_cards.isNotEmpty ? 'Edit Card' : 'Add Card',
+                        style: const TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
                             color: Color(0xFF2D3436))),

@@ -1,4 +1,4 @@
-package com.example.expense_tracker
+package com.pocketify.expensetracker
 
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -14,7 +14,7 @@ import io.flutter.embedding.engine.loader.FlutterLoader
 class SmsReceiver : BroadcastReceiver() {
 
     companion object {
-        const val CHANNEL = "com.example.expense_tracker/sms"
+        const val CHANNEL = "com.pocketify.expensetracker/sms"
         const val ENGINE_ID = "sms_engine"
     }
 

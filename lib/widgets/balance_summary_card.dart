@@ -36,11 +36,17 @@ class _BalanceSummaryCardState extends State<BalanceSummaryCard> {
   Future<void> _saveCard(CreditCardData card) async {
     await LocalStorageService.saveCreditCard(card.toMap());
     _loadCards();
+    if (mounted) {
+      Provider.of<TransactionProvider>(context, listen: false).loadTransactions();
+    }
   }
 
   Future<void> _deleteCard(String id) async {
     await LocalStorageService.deleteCreditCard(id);
     _loadCards();
+    if (mounted) {
+      Provider.of<TransactionProvider>(context, listen: false).loadTransactions();
+    }
   }
 
   Future<void> _showCardDialog({CreditCardData? existing}) async {
@@ -257,6 +263,17 @@ class _BalanceSummaryCardState extends State<BalanceSummaryCard> {
               letterSpacing: 0.3,
             ),
           ),
+          if (txProvider.totalCreditLimit > 0) ...[
+            const SizedBox(height: 2),
+            Text(
+              'Includes ${Formatters.formatCurrency(txProvider.totalCreditLimit, symbol: currency)} total credit limit',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.7),
+                fontSize: 10,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
           const SizedBox(height: 10),
 
           // Income & Expense compact tiles
@@ -392,7 +409,7 @@ class _BalanceSummaryCardState extends State<BalanceSummaryCard> {
                   ),
                 ]),
                 GestureDetector(
-                  onTap: () => _showCardDialog(),
+                  onTap: () => _showCardDialog(existing: _cards.isNotEmpty ? _cards.first : null),
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 7, vertical: 2),
@@ -401,10 +418,10 @@ class _BalanceSummaryCardState extends State<BalanceSummaryCard> {
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Row(children: [
-                      const Icon(Icons.add, color: Colors.white, size: 11),
+                      Icon(_cards.isNotEmpty ? Icons.edit_outlined : Icons.add, color: Colors.white, size: 11),
                       const SizedBox(width: 2),
                       Text(
-                        'Add Card',
+                        _cards.isNotEmpty ? 'Edit Card' : 'Add Card',
                         style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.9),
                             fontSize: 9,

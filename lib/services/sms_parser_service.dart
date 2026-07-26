@@ -8,6 +8,7 @@ class SMSParseResult {
   final String paymentMethod;
   final String originalMessage;
   final String detectedApp;
+  final String? cardLast4;
 
   SMSParseResult({
     required this.amount,
@@ -17,6 +18,7 @@ class SMSParseResult {
     required this.paymentMethod,
     required this.originalMessage,
     required this.detectedApp,
+    this.cardLast4,
   });
 }
 
@@ -73,7 +75,7 @@ class SMSParserService {
     // Full-word debit verbs
     'debited', 'deducted', 'spent', 'paid', 'payment done',
     'payment of', 'purchase of', 'withdrawn', 'transferred to',
-    'sent to', 'charged', 'auto debited',
+    'sent to', 'sent', 'charged', 'auto debited',
     // Full-word credit verbs
     'credited', 'received', 'deposited', 'salary credited',
     'refund of', 'refunded', 'amount added', 'money added',
@@ -400,6 +402,7 @@ class SMSParserService {
       paymentMethod: paymentMethod,
       originalMessage: message,
       detectedApp: detectedApp,
+      cardLast4: cardLast4,
     );
   }
 }
