@@ -5,7 +5,9 @@ import '../expense_income/transaction_list_screen.dart';
 import '../analytics/analytics_screen.dart';
 import '../budget/budget_screen.dart';
 import '../expense_income/add_edit_transaction_screen.dart';
+import '../reports/monthly_report_modal.dart';
 import '../../services/local_storage_service.dart';
+import '../../utils/formatters.dart';
 
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});
@@ -20,12 +22,12 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   @override
   void initState() {
     super.initState();
-    // Show the CC onboarding question once — right after first login.
-    if (!LocalStorageService.isCCPreferenceSet()) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _showCCOnboardingDialog();
-      });
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!LocalStorageService.isCCPreferenceSet()) {
+        await _showCCOnboardingDialog();
+      }
+      await _checkAndShowNewMonthBudgetDialog();
+    });
   }
 
   /// Beautiful one-time dialog: "Do you have a credit card?"
@@ -421,6 +423,169 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Future<void> _checkAndShowNewMonthBudgetDialog() async {
+    if (!mounted) return;
+
+    final now = DateTime.now();
+    final currentMonthKey = '${now.year}-${now.month.toString().padLeft(2, '0')}';
+    final lastPromptedMonth = LocalStorageService.getLastBudgetPromptMonth();
+
+    if (lastPromptedMonth != currentMonthKey) {
+      final monthName = Formatters.formatMonthYear(now);
+      await _showNewMonthBudgetDialog(currentMonthKey, monthName);
+    }
+  }
+
+  Future<void> _showNewMonthBudgetDialog(String monthKey, String monthName) async {
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Theme.of(context).scaffoldBackgroundColor,
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.18),
+                blurRadius: 30,
+                offset: const Offset(0, 12),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header Icon Badge
+              Container(
+                width: 68,
+                height: 68,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF00B894), Color(0xFF6C5CE7)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF00B894).withValues(alpha: 0.35),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: const Icon(Icons.published_with_changes_rounded, color: Colors.white, size: 34),
+              ),
+              const SizedBox(height: 20),
+
+              // Title
+              const Text(
+                'New Month Started! 🎉',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+
+              // Subtitle
+              Text(
+                'Welcome to $monthName! Your monthly spending has automatically reset to ₹0. Would you like to set or review your budget targets for $monthName?',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Theme.of(context).textTheme.bodySmall?.color,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // Button 1: Set New Budget (Switches to Budget Tab)
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF6C5CE7),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
+                  onPressed: () async {
+                    await LocalStorageService.setLastBudgetPromptMonth(monthKey);
+                    if (ctx.mounted) Navigator.pop(ctx);
+                    setState(() {
+                      _currentIndex = 3; // Switch to Budget Tab
+                    });
+                  },
+                  icon: const Icon(Icons.account_balance_wallet_rounded, size: 18),
+                  label: const Text('Set New Month Budget', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                ),
+              ),
+              const SizedBox(height: 10),
+
+              // Button 2: Keep Existing Limits
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
+                  onPressed: () async {
+                    await LocalStorageService.setLastBudgetPromptMonth(monthKey);
+                    if (ctx.mounted) Navigator.pop(ctx);
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Budget targets renewed for $monthName!')),
+                      );
+                    }
+                  },
+                  icon: const Icon(Icons.refresh_rounded, size: 18),
+                  label: const Text('Keep Previous Limits'),
+                ),
+              ),
+              const SizedBox(height: 10),
+
+              // Button 3: View Last Month's Report
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF6C5CE7),
+                    side: BorderSide(color: const Color(0xFF6C5CE7).withValues(alpha: 0.5)),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
+                  onPressed: () async {
+                    await LocalStorageService.setLastBudgetPromptMonth(monthKey);
+                    if (ctx.mounted) Navigator.pop(ctx);
+                    if (mounted) {
+                      final lastMonth = DateTime(DateTime.now().year, DateTime.now().month - 1, 1);
+                      MonthlyReportModal.show(context, month: lastMonth);
+                    }
+                  },
+                  icon: const Icon(Icons.analytics_rounded, size: 18),
+                  label: const Text('View Last Month\'s Report'),
+                ),
+              ),
+              const SizedBox(height: 6),
+
+              // Link: Dismiss
+              TextButton(
+                onPressed: () async {
+                  await LocalStorageService.setLastBudgetPromptMonth(monthKey);
+                  if (ctx.mounted) Navigator.pop(ctx);
+                },
+                child: const Text('Dismiss', style: TextStyle(color: Colors.grey, fontSize: 12)),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -8,7 +8,7 @@ import '../models/transaction_model.dart';
 import '../utils/formatters.dart';
 
 class ReportService {
-  static Future<File> generateCSVReport(List<TransactionModel> transactions) async {
+  static Future<File> generateCSVReport(List<TransactionModel> transactions, {String? monthTitle}) async {
     final List<List<dynamic>> rows = [
       ['Transaction ID', 'Type', 'Amount', 'Category', 'Payment Method', 'Date', 'Description'],
     ];
@@ -27,12 +27,13 @@ class ReportService {
 
     final csvData = const ListToCsvConverter().convert(rows);
     final directory = await getApplicationDocumentsDirectory();
-    final file = File('${directory.path}/Pocketify_Report_${DateTime.now().millisecondsSinceEpoch}.csv');
+    final prefix = monthTitle != null ? 'Pocketify_Report_${monthTitle.replaceAll(' ', '_')}' : 'Pocketify_Report';
+    final file = File('${directory.path}/${prefix}_${DateTime.now().millisecondsSinceEpoch}.csv');
     await file.writeAsString(csvData);
     return file;
   }
 
-  static Future<void> printPDFReport(List<TransactionModel> transactions, String currencySymbol) async {
+  static Future<void> printPDFReport(List<TransactionModel> transactions, String currencySymbol, {String? monthTitle}) async {
     final pdf = pw.Document();
 
     final incomeTotal = transactions
@@ -43,6 +44,8 @@ class ReportService {
         .where((t) => t.type == TransactionType.expense)
         .fold(0.0, (sum, t) => sum + t.amount);
 
+    final titleText = monthTitle != null ? 'Pocketify Monthly Financial Statement - $monthTitle' : 'Pocketify Financial Report';
+
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
@@ -52,7 +55,9 @@ class ReportService {
             child: pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [
-                pw.Text('Pocketify Financial Report', style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold)),
+                pw.Expanded(
+                  child: pw.Text(titleText, style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
+                ),
                 pw.Text(Formatters.formatDate(DateTime.now()), style: const pw.TextStyle(fontSize: 12)),
               ],
             ),

@@ -20,7 +20,17 @@ class AnalyticsScreen extends StatefulWidget {
 class _AnalyticsScreenState extends State<AnalyticsScreen>
     with TickerProviderStateMixin {
   String _selectedPeriod = 'This Month';
-  final List<String> _periods = ['This Week', 'This Month', 'This Year', 'All Time'];
+  DateTime? _selectedSingleDate;
+  DateTimeRange? _selectedCustomRange;
+
+  final List<String> _periods = [
+    'This Week',
+    'This Month',
+    'This Year',
+    'Single Date',
+    'Custom Range',
+    'All Time'
+  ];
 
   late AnimationController _heroController;
   late AnimationController _barController;
@@ -62,6 +72,48 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
 
   void _changePeriod(String period) {
     setState(() => _selectedPeriod = period);
+    _resetAndAnimate();
+  }
+
+  Future<void> _onPeriodTap(String period) async {
+    if (period == 'Single Date') {
+      final picked = await showDatePicker(
+        context: context,
+        initialDate: _selectedSingleDate ?? DateTime.now(),
+        firstDate: DateTime(2020),
+        lastDate: DateTime(2030),
+      );
+      if (picked != null) {
+        setState(() {
+          _selectedSingleDate = picked;
+          _selectedPeriod = period;
+        });
+        _resetAndAnimate();
+      }
+    } else if (period == 'Custom Range') {
+      final picked = await showDateRangePicker(
+        context: context,
+        initialDateRange: _selectedCustomRange ??
+            DateTimeRange(
+              start: DateTime.now().subtract(const Duration(days: 7)),
+              end: DateTime.now(),
+            ),
+        firstDate: DateTime(2020),
+        lastDate: DateTime(2030),
+      );
+      if (picked != null) {
+        setState(() {
+          _selectedCustomRange = picked;
+          _selectedPeriod = period;
+        });
+        _resetAndAnimate();
+      }
+    } else {
+      _changePeriod(period);
+    }
+  }
+
+  void _resetAndAnimate() {
     _barController.reset();
     _pieController.reset();
     _barController.forward();
@@ -78,6 +130,26 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
           return t.date.year == now.year && t.date.month == now.month;
         case 'This Year':
           return t.date.year == now.year;
+        case 'Single Date':
+          if (_selectedSingleDate == null) return true;
+          return t.date.year == _selectedSingleDate!.year &&
+              t.date.month == _selectedSingleDate!.month &&
+              t.date.day == _selectedSingleDate!.day;
+        case 'Custom Range':
+          if (_selectedCustomRange == null) return true;
+          final start = DateTime(
+              _selectedCustomRange!.start.year,
+              _selectedCustomRange!.start.month,
+              _selectedCustomRange!.start.day);
+          final end = DateTime(
+              _selectedCustomRange!.end.year,
+              _selectedCustomRange!.end.month,
+              _selectedCustomRange!.end.day,
+              23,
+              59,
+              59);
+          return (t.date.isAfter(start.subtract(const Duration(seconds: 1))) &&
+              t.date.isBefore(end.add(const Duration(seconds: 1))));
         default:
           return true;
       }
@@ -149,6 +221,11 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
           // ── Period Chips ──────────────────────────────────────────────────
           SliverToBoxAdapter(
             child: _buildPeriodChips(context, isDark),
+          ),
+
+          // ── Selected Date / Range Banner ────────────────────────────────
+          SliverToBoxAdapter(
+            child: _buildSelectedDateBanner(context, isDark),
           ),
 
           if (filtered.isEmpty)
@@ -316,7 +393,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
   // ── PERIOD CHIPS ───────────────────────────────────────────────────────────
   Widget _buildPeriodChips(BuildContext context, bool isDark) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.only(bottom: 12),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -324,7 +401,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
           children: _periods.map((p) {
             final isSelected = p == _selectedPeriod;
             return GestureDetector(
-              onTap: () => _changePeriod(p),
+              onTap: () => _onPeriodTap(p),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 250),
                 margin: const EdgeInsets.only(right: 8),
@@ -373,6 +450,78 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
               ),
             );
           }).toList(),
+        ),
+      ),
+    );
+  }
+
+  // ── SELECTED DATE / RANGE BANNER ───────────────────────────────────────────
+  Widget _buildSelectedDateBanner(BuildContext context, bool isDark) {
+    if (_selectedPeriod != 'Single Date' && _selectedPeriod != 'Custom Range') {
+      return const SizedBox.shrink();
+    }
+
+    String labelText = '';
+    if (_selectedPeriod == 'Single Date') {
+      final dateStr = _selectedSingleDate != null
+          ? Formatters.formatDate(_selectedSingleDate!)
+          : 'Tap to Select Date';
+      labelText = 'Selected Date: $dateStr';
+    } else if (_selectedPeriod == 'Custom Range') {
+      if (_selectedCustomRange != null) {
+        final startStr = Formatters.formatShortDate(_selectedCustomRange!.start);
+        final endStr = Formatters.formatShortDate(_selectedCustomRange!.end);
+        labelText = 'Selected Range: $startStr - $endStr';
+      } else {
+        labelText = 'Tap to Select Date Range';
+      }
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      child: InkWell(
+        onTap: () => _onPeriodTap(_selectedPeriod),
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: const Color(0xFF6C5CE7).withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFF6C5CE7).withValues(alpha: 0.3)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.calendar_month_rounded, color: Color(0xFF6C5CE7), size: 20),
+                  const SizedBox(width: 10),
+                  Text(
+                    labelText,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                      color: Color(0xFF6C5CE7),
+                    ),
+                  ),
+                ],
+              ),
+              Row(
+                children: [
+                  Text(
+                    'Change',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.edit_calendar_rounded, size: 16, color: Color(0xFF6C5CE7)),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

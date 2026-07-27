@@ -211,4 +211,15 @@ class LocalStorageService {
     final box = Hive.box(settingsBoxName);
     await box.put('cc_preference', hasCreditCard);
   }
+
+  // --- New Month Budget Prompt Tracking ---
+  static String? getLastBudgetPromptMonth() {
+    final box = Hive.box(settingsBoxName);
+    return box.get('last_budget_prompt_month') as String?;
+  }
+
+  static Future<void> setLastBudgetPromptMonth(String monthKey) async {
+    final box = Hive.box(settingsBoxName);
+    await box.put('last_budget_prompt_month', monthKey);
+  }
 }

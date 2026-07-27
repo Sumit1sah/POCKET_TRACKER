@@ -19,11 +19,51 @@ class BudgetProvider extends ChangeNotifier {
   List<BudgetModel> _budgets = [];
 
   String? _activeUid;
+  DateTime _selectedMonth = DateTime(DateTime.now().year, DateTime.now().month, 1);
 
   List<BudgetModel> get budgets => _budgets;
+  DateTime get selectedMonth => _selectedMonth;
+
+  bool get isCurrentMonth {
+    final now = DateTime.now();
+    return _selectedMonth.year == now.year && _selectedMonth.month == now.month;
+  }
+
+  bool get isPastMonth {
+    final now = DateTime.now();
+    final currentFirst = DateTime(now.year, now.month, 1);
+    return _selectedMonth.isBefore(currentFirst);
+  }
+
+  bool get isFutureMonth {
+    final now = DateTime.now();
+    final currentFirst = DateTime(now.year, now.month, 1);
+    return _selectedMonth.isAfter(currentFirst);
+  }
 
   BudgetProvider() {
     loadBudgets();
+  }
+
+  void setSelectedMonth(DateTime date) {
+    _selectedMonth = DateTime(date.year, date.month, 1);
+    notifyListeners();
+  }
+
+  void previousMonth() {
+    _selectedMonth = DateTime(_selectedMonth.year, _selectedMonth.month - 1, 1);
+    notifyListeners();
+  }
+
+  void nextMonth() {
+    _selectedMonth = DateTime(_selectedMonth.year, _selectedMonth.month + 1, 1);
+    notifyListeners();
+  }
+
+  void resetToCurrentMonth() {
+    final now = DateTime.now();
+    _selectedMonth = DateTime(now.year, now.month, 1);
+    notifyListeners();
   }
 
   void loadForUser(String? uid) {
@@ -43,16 +83,16 @@ class BudgetProvider extends ChangeNotifier {
         .fold(0.0, (sum, b) => sum + b.monthlyLimit);
   }
 
-  // Get overall monthly budget status
-  BudgetStatus getOverallBudgetStatus(List<TransactionModel> transactions) {
-    final now = DateTime.now();
-    final currentMonthExpenses = transactions.where((t) =>
+  // Get overall monthly budget status for a given month (defaults to _selectedMonth)
+  BudgetStatus getOverallBudgetStatus(List<TransactionModel> transactions, {DateTime? month}) {
+    final targetMonth = month ?? _selectedMonth;
+    final targetExpenses = transactions.where((t) =>
         t.type == TransactionType.expense &&
         t.category.toLowerCase() != 'debt / repayment' &&
-        t.date.year == now.year &&
-        t.date.month == now.month).toList();
+        t.date.year == targetMonth.year &&
+        t.date.month == targetMonth.month).toList();
 
-    final totalSpent = currentMonthExpenses.fold(0.0, (sum, t) => sum + t.amount);
+    final totalSpent = targetExpenses.fold(0.0, (sum, t) => sum + t.amount);
 
     final overallMatch = _budgets.firstWhere(
       (b) => b.category.toLowerCase() == 'overall',
@@ -82,19 +122,19 @@ class BudgetProvider extends ChangeNotifier {
     return ratio > 1.0 ? 1.0 : ratio;
   }
 
-  // Get category-wise budget statuses
-  List<BudgetStatus> getCategoryBudgetStatuses(List<TransactionModel> transactions) {
-    final now = DateTime.now();
-    final currentMonthExpenses = transactions.where((t) =>
+  // Get category-wise budget statuses for a given month (defaults to _selectedMonth)
+  List<BudgetStatus> getCategoryBudgetStatuses(List<TransactionModel> transactions, {DateTime? month}) {
+    final targetMonth = month ?? _selectedMonth;
+    final targetExpenses = transactions.where((t) =>
         t.type == TransactionType.expense &&
         t.category.toLowerCase() != 'debt / repayment' &&
-        t.date.year == now.year &&
-        t.date.month == now.month).toList();
+        t.date.year == targetMonth.year &&
+        t.date.month == targetMonth.month).toList();
 
     final categoryBudgets = _budgets.where((b) => b.category.toLowerCase() != 'overall').toList();
 
     return categoryBudgets.map((budget) {
-      final spent = currentMonthExpenses
+      final spent = targetExpenses
           .where((t) => t.category.toLowerCase() == budget.category.toLowerCase())
           .fold(0.0, (sum, t) => sum + t.amount);
 
@@ -156,6 +196,14 @@ class BudgetProvider extends ChangeNotifier {
         category: entry.key,
         monthlyLimit: allocatedAmount,
       ));
+    }
+    loadBudgets();
+  }
+
+  // Clear all category budget allocations to start completely fresh
+  Future<void> clearAllBudgets() async {
+    for (final b in List<BudgetModel>.from(_budgets)) {
+      await LocalStorageService.deleteBudget(b.id);
     }
     loadBudgets();
   }

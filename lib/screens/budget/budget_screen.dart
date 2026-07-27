@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../providers/budget_provider.dart';
 import '../../providers/transaction_provider.dart';
@@ -34,6 +35,11 @@ class BudgetScreen extends StatelessWidget {
         title: const Text('Budget Allocation & Planning'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.restart_alt_rounded),
+            tooltip: 'Fresh Month Options',
+            onPressed: () => _showFreshMonthOptions(context, budgetProvider, overallLimit),
+          ),
+          IconButton(
             icon: const Icon(Icons.auto_awesome_rounded),
             tooltip: 'Smart Budget Allocator',
             onPressed: () => _showAutoAllocateDialog(context, overallLimit > 0 ? overallLimit : 30000.0),
@@ -46,6 +52,12 @@ class BudgetScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // --- Month Selector & Navigation Header ---
+            _buildMonthSelector(context, budgetProvider),
+
+            // --- Monthly Cycle Status Banner ---
+            _buildCycleStatusBanner(context, budgetProvider),
+
             // --- Exceeded / Critical Alert Banners ---
             if (exceededCount > 0 || overallStatus.isExceeded)
               Container(
@@ -740,6 +752,569 @@ class BudgetScreen extends StatelessWidget {
               child: const Text('Save Allocation'),
             ),
           ],
+        );
+      },
+    );
+  }
+
+  Widget _buildMonthSelector(BuildContext context, BudgetProvider budgetProvider) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final selected = budgetProvider.selectedMonth;
+    final monthText = Formatters.formatMonthYear(selected);
+
+    String cycleBadgeText = 'ACTIVE CYCLE';
+    Color cycleBadgeColor = const Color(0xFF00B894);
+    if (budgetProvider.isPastMonth) {
+      cycleBadgeText = 'CLOSED CYCLE';
+      cycleBadgeColor = Colors.blueGrey;
+    } else if (budgetProvider.isFutureMonth) {
+      cycleBadgeText = 'UPCOMING CYCLE';
+      cycleBadgeColor = const Color(0xFF6C5CE7);
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E1E2E) : Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: cycleBadgeColor.withValues(alpha: 0.3),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: isDark
+                ? Colors.black.withValues(alpha: 0.3)
+                : cycleBadgeColor.withValues(alpha: 0.08),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.chevron_left_rounded, size: 26),
+                  tooltip: 'Previous Month',
+                  onPressed: () => budgetProvider.previousMonth(),
+                ),
+                Expanded(
+                  child: InkWell(
+                    onTap: () => _showProfessionalMonthPicker(context, budgetProvider),
+                    borderRadius: BorderRadius.circular(16),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(7),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFF6C5CE7), Color(0xFF8E7CFE)],
+                              ),
+                              borderRadius: BorderRadius.circular(10),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF6C5CE7).withValues(alpha: 0.3),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(Icons.calendar_month_rounded, color: Colors.white, size: 16),
+                          ),
+                          const SizedBox(width: 10),
+                          Flexible(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      monthText,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                        letterSpacing: -0.3,
+                                      ),
+                                    ),
+                                    const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.grey, size: 20),
+                                  ],
+                                ),
+                                const SizedBox(height: 2),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: cycleBadgeColor.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    cycleBadgeText,
+                                    style: TextStyle(
+                                      color: cycleBadgeColor,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 9,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (!budgetProvider.isCurrentMonth)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 2),
+                        child: TextButton.icon(
+                          onPressed: () => budgetProvider.resetToCurrentMonth(),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            visualDensity: VisualDensity.compact,
+                            backgroundColor: const Color(0xFF00B894).withValues(alpha: 0.12),
+                            foregroundColor: const Color(0xFF00B894),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                          icon: const Icon(Icons.today_rounded, size: 14),
+                          label: const Text('Today', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                    IconButton(
+                      icon: const Icon(Icons.chevron_right_rounded, size: 26),
+                      tooltip: 'Next Month',
+                      onPressed: () => budgetProvider.nextMonth(),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          _buildQuickMonthSegmentBar(context, budgetProvider, isDark),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickMonthSegmentBar(BuildContext context, BudgetProvider budgetProvider, bool isDark) {
+    final now = DateTime.now();
+    final current = DateTime(now.year, now.month, 1);
+    final prev = DateTime(now.year, now.month - 1, 1);
+    final next = DateTime(now.year, now.month + 1, 1);
+
+    final months = [prev, current, next];
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
+      child: Row(
+        children: months.map((m) {
+          final isSelected = budgetProvider.selectedMonth.year == m.year &&
+              budgetProvider.selectedMonth.month == m.month;
+          final isCurrentMonth = m.year == now.year && m.month == now.month;
+
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 3),
+              child: InkWell(
+                onTap: () => budgetProvider.setSelectedMonth(m),
+                borderRadius: BorderRadius.circular(10),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? const Color(0xFF6C5CE7)
+                        : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.withValues(alpha: 0.1)),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    isCurrentMonth ? '${DateFormat('MMM').format(m)} (Active)' : DateFormat('MMM yyyy').format(m),
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                      color: isSelected
+                          ? Colors.white
+                          : (isDark ? Colors.white70 : Colors.black87),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  void _showProfessionalMonthPicker(BuildContext context, BudgetProvider budgetProvider) {
+    int tempYear = budgetProvider.selectedMonth.year;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final now = DateTime.now();
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+
+            final monthNames = [
+              'January', 'February', 'March', 'April',
+              'May', 'June', 'July', 'August',
+              'September', 'October', 'November', 'December'
+            ];
+
+            return Container(
+              decoration: BoxDecoration(
+                color: Theme.of(context).scaffoldBackgroundColor,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+              ),
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(Icons.calendar_month_rounded, color: Color(0xFF6C5CE7)),
+                          SizedBox(width: 8),
+                          Text(
+                            'Select Budget Month',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                          ),
+                        ],
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded, size: 20),
+                        onPressed: () => Navigator.pop(ctx),
+                      ),
+                    ],
+                  ),
+                  const Divider(height: 20),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.grey[900] : Colors.grey[100],
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.chevron_left_rounded),
+                          onPressed: () => setSheetState(() => tempYear--),
+                        ),
+                        Text(
+                          '$tempYear',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF6C5CE7)),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.chevron_right_rounded),
+                          onPressed: () => setSheetState(() => tempYear++),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 3,
+                      childAspectRatio: 2.2,
+                      crossAxisSpacing: 10,
+                      mainAxisSpacing: 10,
+                    ),
+                    itemCount: 12,
+                    itemBuilder: (context, index) {
+                      final monthNumber = index + 1;
+                      final isSelected = tempYear == budgetProvider.selectedMonth.year &&
+                          monthNumber == budgetProvider.selectedMonth.month;
+                      final isCurrentMonth = tempYear == now.year && monthNumber == now.month;
+
+                      return InkWell(
+                        onTap: () {
+                          budgetProvider.setSelectedMonth(DateTime(tempYear, monthNumber, 1));
+                          Navigator.pop(ctx);
+                        },
+                        borderRadius: BorderRadius.circular(14),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          decoration: BoxDecoration(
+                            gradient: isSelected
+                                ? const LinearGradient(
+                                    colors: [Color(0xFF6C5CE7), Color(0xFF8E7CFE)],
+                                  )
+                                : null,
+                            color: isSelected
+                                ? null
+                                : (isCurrentMonth
+                                    ? const Color(0xFF00B894).withValues(alpha: 0.12)
+                                    : (isDark ? Colors.grey[900] : Colors.grey[100])),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: isSelected
+                                  ? const Color(0xFF6C5CE7)
+                                  : (isCurrentMonth
+                                      ? const Color(0xFF00B894)
+                                      : Colors.transparent),
+                              width: isCurrentMonth || isSelected ? 1.5 : 1.0,
+                            ),
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                monthNames[index].substring(0, 3).toUpperCase(),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                  color: isSelected
+                                      ? Colors.white
+                                      : (isCurrentMonth
+                                          ? const Color(0xFF00B894)
+                                          : (isDark ? Colors.white : Colors.black87)),
+                                ),
+                              ),
+                              if (isCurrentMonth)
+                                Text(
+                                  'ACTIVE',
+                                  style: TextStyle(
+                                    fontSize: 8,
+                                    fontWeight: FontWeight.bold,
+                                    color: isSelected ? Colors.white70 : const Color(0xFF00B894),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          onPressed: () {
+                            budgetProvider.resetToCurrentMonth();
+                            Navigator.pop(ctx);
+                          },
+                          icon: const Icon(Icons.today_rounded, size: 16),
+                          label: const Text('Current Month', style: TextStyle(fontSize: 12)),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF6C5CE7),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          onPressed: () => Navigator.pop(ctx),
+                          icon: const Icon(Icons.check_rounded, size: 16),
+                          label: const Text('Done', style: TextStyle(fontSize: 12)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildCycleStatusBanner(BuildContext context, BudgetProvider budgetProvider) {
+    final monthText = Formatters.formatMonthYear(budgetProvider.selectedMonth);
+
+    if (budgetProvider.isCurrentMonth) {
+      return Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF00B894).withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFF00B894).withValues(alpha: 0.3)),
+        ),
+        child: const Row(
+          children: [
+            Icon(Icons.published_with_changes_rounded, color: Color(0xFF00B894), size: 20),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Active Month Cycle • Spending automatically resets to ₹0 when the new month starts while target limits carry over.',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF00B894)),
+              ),
+            ),
+          ],
+        ),
+      );
+    } else if (budgetProvider.isPastMonth) {
+      return Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.blueGrey.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.blueGrey.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.history_rounded, color: Colors.blueGrey, size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Closed Month ($monthText) • Showing historical spending against monthly limits.',
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.blueGrey),
+              ),
+            ),
+          ],
+        ),
+      );
+    } else {
+      return Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF6C5CE7).withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFF6C5CE7).withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.upcoming_rounded, color: Color(0xFF6C5CE7), size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Upcoming Month ($monthText) • Fresh cycle ready with ₹0 spent.',
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF6C5CE7)),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  void _showFreshMonthOptions(BuildContext context, BudgetProvider budgetProvider, double overallLimit) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        final monthStr = Formatters.formatMonthYear(budgetProvider.selectedMonth);
+        return Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.published_with_changes_rounded, color: Color(0xFF6C5CE7)),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Budget Cycle Options ($monthStr)',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'When a new month starts, spending automatically resets to ₹0 while your target limits carry over.',
+                style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodySmall?.color),
+              ),
+              const Divider(height: 24),
+              ListTile(
+                leading: const Icon(Icons.auto_awesome_rounded, color: Color(0xFF6C5CE7)),
+                title: const Text('Smart Auto-Allocate Budget'),
+                subtitle: const Text('Re-calculate category limits based on custom % rules'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _showAutoAllocateDialog(context, overallLimit > 0 ? overallLimit : 30000.0);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.refresh_rounded, color: Color(0xFF00B894)),
+                title: const Text('Renew Current Monthly Limits'),
+                subtitle: const Text('Carry existing target limits into this month cycle'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Monthly budget limits confirmed for $monthStr!')),
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.cleaning_services_rounded, color: Color(0xFFFF7675)),
+                title: const Text('Clear All Category Allocations'),
+                subtitle: const Text('Start with a blank slate for this month'),
+                onTap: () async {
+                  Navigator.pop(ctx);
+                  final confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (dCtx) => AlertDialog(
+                      title: const Text('Clear All Allocations?'),
+                      content: const Text('This will remove all category budget limits so you can configure a fresh budget setup.'),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(dCtx, false), child: const Text('Cancel')),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF7675), foregroundColor: Colors.white),
+                          onPressed: () => Navigator.pop(dCtx, true),
+                          child: const Text('Clear All'),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (confirm == true) {
+                    await budgetProvider.clearAllBudgets();
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('All category budget allocations cleared for fresh setup.')),
+                      );
+                    }
+                  }
+                },
+              ),
+            ],
+          ),
         );
       },
     );
