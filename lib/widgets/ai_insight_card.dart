@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/transaction_provider.dart';
 import '../providers/budget_provider.dart';
+import '../providers/savings_provider.dart';
 import '../providers/theme_currency_provider.dart';
 import '../services/ai_insight_service.dart';
 
@@ -10,8 +11,10 @@ class AIInsightCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final transactions = Provider.of<TransactionProvider>(context).transactions;
+    final txProvider = Provider.of<TransactionProvider>(context);
+    final transactions = txProvider.transactions;
     final budgetProvider = Provider.of<BudgetProvider>(context);
+    final savingsProvider = Provider.of<SavingsProvider>(context);
     final currency = Provider.of<ThemeCurrencyProvider>(context).currency;
 
     // Build budget data for AI engine
@@ -38,6 +41,8 @@ class AIInsightCard extends StatelessWidget {
       transactions,
       currency,
       budget: budgetData,
+      savingsGoals: savingsProvider.goals,
+      totalCreditLimit: txProvider.totalCreditLimit,
     );
 
     if (insights.isEmpty) return const SizedBox.shrink();
@@ -54,11 +59,11 @@ class AIInsightCard extends StatelessWidget {
           : null,
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: color.withValues(alpha: 0.3)),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: color.withValues(alpha: 0.28)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -67,14 +72,14 @@ class AIInsightCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
                     color: color.withValues(alpha: 0.18),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(icon, color: color, size: 20),
+                  child: Icon(icon, color: color, size: 17),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -86,34 +91,37 @@ class AIInsightCard extends StatelessWidget {
                               topInsight.title,
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
-                                fontSize: 13,
+                                fontSize: 12.5,
                                 color: Theme.of(context).textTheme.bodyLarge?.color,
                               ),
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 6),
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 7, vertical: 3),
+                                horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
                               color: color,
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(6),
                             ),
                             child: const Text(
                               'AI',
                               style: TextStyle(
                                   color: Colors.white,
-                                  fontSize: 10,
+                                  fontSize: 9.5,
                                   fontWeight: FontWeight.bold),
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 3),
                       Text(
                         topInsight.description,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 11.5,
+                          height: 1.35,
                           color: Theme.of(context)
                               .textTheme
                               .bodyMedium
@@ -127,7 +135,7 @@ class AIInsightCard extends StatelessWidget {
               ],
             ),
             if (hasMore) ...[
-              const SizedBox(height: 10),
+              const SizedBox(height: 6),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -139,19 +147,19 @@ class AIInsightCard extends StatelessWidget {
                         children: insights.skip(1).take(3).map((ins) {
                           final (Color bc, _) = _resolveStyle(ins.type);
                           return Container(
-                            margin: const EdgeInsets.only(right: 6),
+                            margin: const EdgeInsets.only(right: 5),
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
+                                horizontal: 7, vertical: 2),
                             decoration: BoxDecoration(
                               color: bc.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(6),
                               border: Border.all(
                                   color: bc.withValues(alpha: 0.3)),
                             ),
                             child: Text(
                               _shortLabel(ins.type),
                               style: TextStyle(
-                                  fontSize: 10,
+                                  fontSize: 9.5,
                                   fontWeight: FontWeight.bold,
                                   color: bc),
                             ),
@@ -163,16 +171,17 @@ class AIInsightCard extends StatelessWidget {
                   TextButton.icon(
                     onPressed: () =>
                         _showAllInsights(context, insights, currency),
-                    icon: const Icon(Icons.expand_more_rounded, size: 16),
+                    icon: const Icon(Icons.expand_more_rounded, size: 14),
                     label: Text(
                       '${insights.length - 1} more',
-                      style: const TextStyle(fontSize: 12),
+                      style: const TextStyle(fontSize: 11),
                     ),
                     style: TextButton.styleFrom(
                       foregroundColor: color,
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
+                          horizontal: 6, vertical: 2),
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      minimumSize: Size.zero,
                     ),
                   ),
                 ],
@@ -196,6 +205,10 @@ class AIInsightCard extends StatelessWidget {
 
   static (Color, IconData) _resolveStyle(String type) {
     switch (type) {
+      case 'health_score':
+        return (const Color(0xFF6C5CE7), Icons.speed_rounded);
+      case 'prediction':
+        return (const Color(0xFF0984E3), Icons.psychology_rounded);
       case 'critical':
         return (const Color(0xFFD63031), Icons.error_outline_rounded);
       case 'warning':
@@ -210,6 +223,10 @@ class AIInsightCard extends StatelessWidget {
 
   static String _shortLabel(String type) {
     switch (type) {
+      case 'health_score':
+        return '🌟 Score';
+      case 'prediction':
+        return '🔮 Forecast';
       case 'critical':
         return '🚨 Critical';
       case 'warning':
@@ -226,28 +243,49 @@ class AIInsightCard extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 // Full AI Insights Bottom Sheet
 // ─────────────────────────────────────────────────────────────────────────────
-class _AIInsightsSheet extends StatelessWidget {
+class _AIInsightsSheet extends StatefulWidget {
   final List<AIInsight> insights;
   final String currency;
 
   const _AIInsightsSheet({required this.insights, required this.currency});
 
   @override
+  State<_AIInsightsSheet> createState() => _AIInsightsSheetState();
+}
+
+class _AIInsightsSheetState extends State<_AIInsightsSheet> {
+  String _selectedFilter = 'All';
+
+  @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = isDark ? const Color(0xFF1E1E2E) : Colors.white;
 
-    // Separate by severity
+    final healthScores =
+        widget.insights.where((i) => i.type == 'health_score').toList();
     final criticals =
-        insights.where((i) => i.type == 'critical').toList();
+        widget.insights.where((i) => i.type == 'critical').toList();
     final warnings =
-        insights.where((i) => i.type == 'warning').toList();
-    final tips = insights.where((i) => i.type == 'tip').toList();
+        widget.insights.where((i) => i.type == 'warning').toList();
+    final predictions =
+        widget.insights.where((i) => i.type == 'prediction').toList();
+    final tips = widget.insights.where((i) => i.type == 'tip').toList();
     final positives =
-        insights.where((i) => i.type == 'positive').toList();
+        widget.insights.where((i) => i.type == 'positive').toList();
+
+    List<AIInsight> filteredList = widget.insights;
+    if (_selectedFilter == 'Tips') {
+      filteredList = tips;
+    } else if (_selectedFilter == 'Alerts') {
+      filteredList = [...criticals, ...warnings];
+    } else if (_selectedFilter == 'Forecasts') {
+      filteredList = predictions;
+    } else if (_selectedFilter == 'Wins') {
+      filteredList = positives;
+    }
 
     return DraggableScrollableSheet(
-      initialChildSize: 0.7,
+      initialChildSize: 0.75,
       minChildSize: 0.4,
       maxChildSize: 0.95,
       builder: (_, scrollController) => Container(
@@ -270,7 +308,7 @@ class _AIInsightsSheet extends StatelessWidget {
             ),
             // Header
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 10),
               child: Row(
                 children: [
                   Container(
@@ -288,12 +326,12 @@ class _AIInsightsSheet extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          'AI Financial Insights',
+                          'AI Financial Insights & Money Tips',
                           style: TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.bold),
+                              fontSize: 17, fontWeight: FontWeight.bold),
                         ),
                         Text(
-                          '${insights.length} personalized insights based on your budget & spending',
+                          '${widget.insights.length} personalized insights & money tips',
                           style: TextStyle(
                               fontSize: 12,
                               color: Colors.grey.shade500),
@@ -301,62 +339,156 @@ class _AIInsightsSheet extends StatelessWidget {
                       ],
                     ),
                   ),
-                  // Summary chips
-                  if (criticals.isNotEmpty)
-                    _SummaryPill(
-                        label: criticals.length.toString(),
-                        color: const Color(0xFFD63031)),
-                  if (warnings.isNotEmpty)
-                    _SummaryPill(
-                        label: warnings.length.toString(),
-                        color: const Color(0xFFE17055)),
-                  if (positives.isNotEmpty)
-                    _SummaryPill(
-                        label: positives.length.toString(),
-                        color: const Color(0xFF00B894)),
                 ],
               ),
             ),
-            const SizedBox(height: 4),
-            Divider(color: Colors.grey.shade200, height: 20),
+            // Filter Pills Row
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  _FilterChipItem(
+                    label: 'All (${widget.insights.length})',
+                    isSelected: _selectedFilter == 'All',
+                    onTap: () => setState(() => _selectedFilter = 'All'),
+                  ),
+                  _FilterChipItem(
+                    label: '💡 Money Tips (${tips.length})',
+                    isSelected: _selectedFilter == 'Tips',
+                    color: const Color(0xFF6C5CE7),
+                    onTap: () => setState(() => _selectedFilter = 'Tips'),
+                  ),
+                  if (criticals.isNotEmpty || warnings.isNotEmpty)
+                    _FilterChipItem(
+                      label: '🚨 Alerts (${criticals.length + warnings.length})',
+                      isSelected: _selectedFilter == 'Alerts',
+                      color: const Color(0xFFE17055),
+                      onTap: () => setState(() => _selectedFilter = 'Alerts'),
+                    ),
+                  if (predictions.isNotEmpty)
+                    _FilterChipItem(
+                      label: '🔮 Forecasts (${predictions.length})',
+                      isSelected: _selectedFilter == 'Forecasts',
+                      color: const Color(0xFF0984E3),
+                      onTap: () => setState(() => _selectedFilter = 'Forecasts'),
+                    ),
+                  if (positives.isNotEmpty)
+                    _FilterChipItem(
+                      label: '✅ Wins (${positives.length})',
+                      isSelected: _selectedFilter == 'Wins',
+                      color: const Color(0xFF00B894),
+                      onTap: () => setState(() => _selectedFilter = 'Wins'),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Divider(color: Colors.grey.shade200, height: 1),
+            const SizedBox(height: 8),
             // Insight list
             Expanded(
               child: ListView(
                 controller: scrollController,
-                padding:
-                    const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
                 children: [
-                  if (criticals.isNotEmpty) ...[
-                    _SectionHeader(
-                        label: '🚨 Critical Alerts',
-                        color: const Color(0xFFD63031)),
-                    ...criticals.map((i) => _InsightTile(insight: i)),
-                    const SizedBox(height: 8),
-                  ],
-                  if (warnings.isNotEmpty) ...[
-                    _SectionHeader(
-                        label: '⚠️ Warnings',
-                        color: const Color(0xFFE17055)),
-                    ...warnings.map((i) => _InsightTile(insight: i)),
-                    const SizedBox(height: 8),
-                  ],
-                  if (tips.isNotEmpty) ...[
-                    _SectionHeader(
-                        label: '💡 Smart Tips',
-                        color: const Color(0xFF6C5CE7)),
-                    ...tips.map((i) => _InsightTile(insight: i)),
-                    const SizedBox(height: 8),
-                  ],
-                  if (positives.isNotEmpty) ...[
-                    _SectionHeader(
-                        label: '✅ Positives',
-                        color: const Color(0xFF00B894)),
-                    ...positives.map((i) => _InsightTile(insight: i)),
+                  if (_selectedFilter == 'All') ...[
+                    if (healthScores.isNotEmpty) ...[
+                      ...healthScores.map((i) => _InsightTile(insight: i, currency: widget.currency)),
+                      const SizedBox(height: 8),
+                    ],
+                    if (criticals.isNotEmpty) ...[
+                      _SectionHeader(
+                          label: '🚨 Critical Alerts',
+                          color: const Color(0xFFD63031)),
+                      ...criticals.map((i) => _InsightTile(insight: i, currency: widget.currency)),
+                      const SizedBox(height: 8),
+                    ],
+                    if (warnings.isNotEmpty) ...[
+                      _SectionHeader(
+                          label: '⚠️ Spending Warnings',
+                          color: const Color(0xFFE17055)),
+                      ...warnings.map((i) => _InsightTile(insight: i, currency: widget.currency)),
+                      const SizedBox(height: 8),
+                    ],
+                    if (predictions.isNotEmpty) ...[
+                      _SectionHeader(
+                          label: '🔮 Predictive Goal Forecasts',
+                          color: const Color(0xFF0984E3)),
+                      ...predictions.map((i) => _InsightTile(insight: i, currency: widget.currency)),
+                      const SizedBox(height: 8),
+                    ],
+                    if (tips.isNotEmpty) ...[
+                      _SectionHeader(
+                          label: '💡 Financial Advice & Money Tips',
+                          color: const Color(0xFF6C5CE7)),
+                      ...tips.map((i) => _InsightTile(insight: i, currency: widget.currency)),
+                      const SizedBox(height: 8),
+                    ],
+                    if (positives.isNotEmpty) ...[
+                      _SectionHeader(
+                          label: '✅ Financial Wins',
+                          color: const Color(0xFF00B894)),
+                      ...positives.map((i) => _InsightTile(insight: i, currency: widget.currency)),
+                    ],
+                  ] else ...[
+                    if (filteredList.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.all(32.0),
+                        child: Center(
+                          child: Text(
+                            'No insights under this category.',
+                            style: TextStyle(color: Colors.grey),
+                          ),
+                        ),
+                      )
+                    else
+                      ...filteredList.map((i) => _InsightTile(insight: i, currency: widget.currency)),
                   ],
                 ],
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FilterChipItem extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _FilterChipItem({
+    required this.label,
+    required this.isSelected,
+    this.color = const Color(0xFF6C5CE7),
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(right: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? color : color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? color : color.withValues(alpha: 0.25),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
+            color: isSelected ? Colors.white : color,
+          ),
         ),
       ),
     );
@@ -404,7 +536,8 @@ class _SectionHeader extends StatelessWidget {
 
 class _InsightTile extends StatelessWidget {
   final AIInsight insight;
-  const _InsightTile({required this.insight});
+  final String currency;
+  const _InsightTile({required this.insight, required this.currency});
 
   @override
   Widget build(BuildContext context) {
@@ -412,25 +545,25 @@ class _InsightTile extends StatelessWidget {
         AIInsightCard._resolveStyle(insight.type);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.07),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: color.withValues(alpha: 0.22)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding: const EdgeInsets.all(7),
+            padding: const EdgeInsets.all(5),
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.15),
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: color, size: 16),
+            child: Icon(icon, color: color, size: 15),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -441,32 +574,33 @@ class _InsightTile extends StatelessWidget {
                       child: Text(
                         insight.title,
                         style: const TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 13),
+                            fontWeight: FontWeight.bold, fontSize: 12.5),
                       ),
                     ),
                     if (insight.category != null)
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 7, vertical: 2),
+                            horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
                           color: color.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(6),
+                          borderRadius: BorderRadius.circular(5),
                         ),
                         child: Text(
                           insight.category!,
                           style: TextStyle(
-                              fontSize: 10,
+                              fontSize: 9.5,
                               color: color,
                               fontWeight: FontWeight.bold),
                         ),
                       ),
                   ],
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 3),
                 Text(
                   insight.description,
                   style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 11.5,
+                      height: 1.3,
                       color: Theme.of(context)
                           .textTheme
                           .bodyMedium
@@ -475,15 +609,15 @@ class _InsightTile extends StatelessWidget {
                 ),
                 if (insight.impactAmount != null &&
                     insight.impactAmount! > 0) ...[
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   Row(
                     children: [
-                      Icon(Icons.bolt_rounded, size: 13, color: color),
-                      const SizedBox(width: 4),
+                      Icon(Icons.bolt_rounded, size: 12, color: color),
+                      const SizedBox(width: 3),
                       Text(
-                        'Impact: ₹${insight.impactAmount!.toStringAsFixed(0)}',
+                        'Impact: $currency ${insight.impactAmount!.toStringAsFixed(0)}',
                         style: TextStyle(
-                            fontSize: 11,
+                            fontSize: 10.5,
                             color: color,
                             fontWeight: FontWeight.w600),
                       ),
@@ -498,3 +632,4 @@ class _InsightTile extends StatelessWidget {
     );
   }
 }
+

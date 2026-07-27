@@ -308,7 +308,7 @@ class _MonthlyReportModalState extends State<MonthlyReportModal> {
                             final csv = await ReportService.generateCSVReport(monthTransactions, monthTitle: monthTitle);
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('CSV exported: ${csv.path}')),
+                                SnackBar(content: Text('CSV exported: $csv')),
                               );
                             }
                           },

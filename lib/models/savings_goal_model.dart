@@ -21,6 +21,7 @@ class SavingsGoalModel {
     this.colorValue = 0xFF4CAF50, // Colors.green
   });
 
+  // ignore: non_const_argument_for_const_parameter
   IconData get iconData => IconData(iconCodePoint, fontFamily: 'MaterialIcons');
   Color get color => Color(colorValue);
 

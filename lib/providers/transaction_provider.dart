@@ -6,6 +6,9 @@ import '../services/local_storage_service.dart';
 
 class TransactionProvider extends ChangeNotifier {
   List<TransactionModel> _transactions = [];
+  List<TransactionModel>? _filteredTransactionsCache;
+  double? _totalIncomeCache;
+  double? _totalExpenseCache;
   String? _activeUid;
   String _searchQuery = '';
   String _selectedCategoryFilter = 'All';
@@ -17,6 +20,15 @@ class TransactionProvider extends ChangeNotifier {
   StreamSubscription? _hiveBoxSubscription;
 
   List<TransactionModel> get transactions => _transactions;
+  String get searchQuery => _searchQuery;
+  String get selectedCategoryFilter => _selectedCategoryFilter;
+  String get selectedPaymentMethodFilter => _selectedPaymentMethodFilter;
+  DateTimeRange? get selectedDateRange => _selectedDateRange;
+  bool get hasActiveFilters =>
+      _selectedCategoryFilter != 'All' ||
+      _selectedPaymentMethodFilter != 'All' ||
+      _selectedDateRange != null ||
+      _searchQuery.isNotEmpty;
 
   TransactionProvider() {
     loadTransactions();
@@ -33,14 +45,23 @@ class TransactionProvider extends ChangeNotifier {
   }
 
   void loadForUser(String? uid) {
-    _activeUid = uid;
-    loadTransactions();
+    if (_activeUid != uid) {
+      _activeUid = uid;
+      loadTransactions();
+    }
   }
 
   void loadTransactions() {
     _transactions = LocalStorageService.getTransactions(uid: _activeUid);
     _transactions.sort((a, b) => b.date.compareTo(a.date));
+    _invalidateCaches();
     notifyListeners();
+  }
+
+  void _invalidateCaches() {
+    _filteredTransactionsCache = null;
+    _totalIncomeCache = null;
+    _totalExpenseCache = null;
   }
 
   @override
@@ -50,15 +71,25 @@ class TransactionProvider extends ChangeNotifier {
   }
 
   double get totalIncome {
-    return _transactions
-        .where((t) => t.type == TransactionType.income)
-        .fold(0.0, (sum, t) => sum + t.amount);
+    if (_totalIncomeCache == null) {
+      double sum = 0.0;
+      for (final t in _transactions) {
+        if (t.type == TransactionType.income) sum += t.amount;
+      }
+      _totalIncomeCache = sum;
+    }
+    return _totalIncomeCache!;
   }
 
   double get totalExpense {
-    return _transactions
-        .where((t) => t.type == TransactionType.expense)
-        .fold(0.0, (sum, t) => sum + t.amount);
+    if (_totalExpenseCache == null) {
+      double sum = 0.0;
+      for (final t in _transactions) {
+        if (t.type == TransactionType.expense) sum += t.amount;
+      }
+      _totalExpenseCache = sum;
+    }
+    return _totalExpenseCache!;
   }
 
   /// Total Credit Limit across registered credit cards as explicitly set by the user.
@@ -109,12 +140,10 @@ class TransactionProvider extends ChangeNotifier {
   /// Extracts the card identifier (e.g. "••2235") from a transaction's
   /// description. Used by both expense and refund grouping.
   String _extractCardKey(TransactionModel t) {
-    // Match masked number: ••XXXX or ****XXXX
     final maskedMatch =
         RegExp(r'[•\*]{1,4}(\d{4})').firstMatch(t.description);
     if (maskedMatch != null) return '••${maskedMatch.group(1)}';
 
-    // Match plain 4-digit card number
     final plain4Match = RegExp(r'\b(\d{4})\b').firstMatch(t.description);
     if (plain4Match != null) return '••${plain4Match.group(1)}';
 
@@ -126,17 +155,14 @@ class TransactionProvider extends ChangeNotifier {
   Map<String, double> get creditCardSpendingByCard {
     final map = <String, double>{};
 
-    // Add purchase amounts
     for (final t in creditCardTransactions) {
       final key = _extractCardKey(t);
       map[key] = (map[key] ?? 0.0) + t.amount;
     }
 
-    // Subtract refund amounts — money returned to the CC reduces the balance
     for (final t in creditCardRefundTransactions) {
       final key = _extractCardKey(t);
       map[key] = (map[key] ?? 0.0) - t.amount;
-      // Clamp: a card cannot show negative net spent
       if (map[key]! < 0) map[key] = 0.0;
     }
 
@@ -144,10 +170,13 @@ class TransactionProvider extends ChangeNotifier {
   }
 
   List<TransactionModel> get filteredTransactions {
-    return _transactions.where((t) {
+    if (_filteredTransactionsCache != null) return _filteredTransactionsCache!;
+
+    final lowerQuery = _searchQuery.toLowerCase();
+    _filteredTransactionsCache = _transactions.where((t) {
       final matchesQuery = _searchQuery.isEmpty ||
-          t.category.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          t.description.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          t.category.toLowerCase().contains(lowerQuery) ||
+          t.description.toLowerCase().contains(lowerQuery) ||
           t.amount.toString().contains(_searchQuery);
 
       final matchesCategory = _selectedCategoryFilter == 'All' || t.category == _selectedCategoryFilter;
@@ -158,6 +187,8 @@ class TransactionProvider extends ChangeNotifier {
 
       return matchesQuery && matchesCategory && matchesPayment && matchesDate;
     }).toList();
+
+    return _filteredTransactionsCache!;
   }
 
   Future<void> addTransaction(TransactionModel transaction) async {
@@ -165,37 +196,46 @@ class TransactionProvider extends ChangeNotifier {
       uid: transaction.uid.isEmpty ? (_activeUid ?? 'local_user') : transaction.uid,
     );
     await LocalStorageService.saveTransaction(scopedTransaction);
-    loadTransactions();
   }
 
   Future<void> updateTransaction(TransactionModel transaction) async {
     await LocalStorageService.saveTransaction(transaction);
-    loadTransactions();
   }
 
   Future<void> deleteTransaction(String id) async {
     await LocalStorageService.deleteTransaction(id);
-    loadTransactions();
   }
 
   void setSearchQuery(String query) {
-    _searchQuery = query;
-    notifyListeners();
+    if (_searchQuery != query) {
+      _searchQuery = query;
+      _filteredTransactionsCache = null;
+      notifyListeners();
+    }
   }
 
   void setCategoryFilter(String category) {
-    _selectedCategoryFilter = category;
-    notifyListeners();
+    if (_selectedCategoryFilter != category) {
+      _selectedCategoryFilter = category;
+      _filteredTransactionsCache = null;
+      notifyListeners();
+    }
   }
 
   void setPaymentFilter(String paymentMethod) {
-    _selectedPaymentMethodFilter = paymentMethod;
-    notifyListeners();
+    if (_selectedPaymentMethodFilter != paymentMethod) {
+      _selectedPaymentMethodFilter = paymentMethod;
+      _filteredTransactionsCache = null;
+      notifyListeners();
+    }
   }
 
   void setDateRange(DateTimeRange? range) {
-    _selectedDateRange = range;
-    notifyListeners();
+    if (_selectedDateRange != range) {
+      _selectedDateRange = range;
+      _filteredTransactionsCache = null;
+      notifyListeners();
+    }
   }
 
   void resetFilters() {
@@ -203,6 +243,7 @@ class TransactionProvider extends ChangeNotifier {
     _selectedCategoryFilter = 'All';
     _selectedPaymentMethodFilter = 'All';
     _selectedDateRange = null;
+    _filteredTransactionsCache = null;
     notifyListeners();
   }
 }

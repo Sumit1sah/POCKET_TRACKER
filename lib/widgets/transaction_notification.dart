@@ -191,11 +191,12 @@ class _TransactionNotificationCardState
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(20),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // Colored accent bar on the left
-                      Container(width: 5, color: _accentColor),
+                  child: IntrinsicHeight(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Colored accent bar on the left
+                        Container(width: 5, color: _accentColor),
 
                       // Main content
                       Expanded(
@@ -266,7 +267,7 @@ class _TransactionNotificationCardState
                                         ),
                                         const SizedBox(width: 8),
                                         Text(
-                                          '${_amountPrefix}${widget.currency}${widget.amount}',
+                                          '$_amountPrefix${widget.currency}${widget.amount}',
                                           style: TextStyle(
                                             fontSize: 17,
                                             fontWeight: FontWeight.w800,
@@ -300,6 +301,7 @@ class _TransactionNotificationCardState
                   ),
                 ),
               ),
+            ),
             ),
           ),
         ),

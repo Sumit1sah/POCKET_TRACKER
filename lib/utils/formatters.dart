@@ -32,4 +32,15 @@ class Formatters {
   static String formatMonthYear(DateTime date) {
     return DateFormat('MMMM yyyy').format(date);
   }
+
+  static String formatCompactCurrency(double amount, {String symbol = '₹'}) {
+    if (amount.abs() >= 1000000) {
+      return '$symbol${(amount / 1000000).toStringAsFixed(1)}M';
+    } else if (amount.abs() >= 1000) {
+      final k = amount / 1000;
+      return '$symbol${k % 1 == 0 ? k.toInt() : k.toStringAsFixed(1)}k';
+    } else {
+      return '$symbol${amount.toInt()}';
+    }
+  }
 }

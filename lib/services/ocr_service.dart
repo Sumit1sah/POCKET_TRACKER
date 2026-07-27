@@ -1,5 +1,3 @@
-import 'dart:io';
-
 class OCRParsedResult {
   final double? amount;
   final String? merchant;
@@ -9,7 +7,7 @@ class OCRParsedResult {
 }
 
 class OCRService {
-  static Future<OCRParsedResult> parseReceiptImage(File imageFile) async {
+  static Future<OCRParsedResult> parseReceiptImage(dynamic imageInput) async {
     // Simple heuristic parser for receipt demo
     return OCRParsedResult(
       amount: 450.0,

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -101,19 +102,21 @@ class _SplashScreenState extends State<SplashScreen>
 
   Future<void> _navigateNext() async {
     if (!mounted) return;
-    final smsStatus = await Permission.sms.status;
-    if (!smsStatus.isGranted && !smsStatus.isPermanentlyDenied) {
-      await Permission.sms.request();
+    if (!kIsWeb) {
+      final smsStatus = await Permission.sms.status;
+      if (!smsStatus.isGranted && !smsStatus.isPermanentlyDenied) {
+        await Permission.sms.request();
+      }
     }
     if (!mounted) return;
     final auth = Provider.of<AuthProvider>(context, listen: false);
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         transitionDuration: const Duration(milliseconds: 600),
-        pageBuilder: (_, __, ___) => auth.isAuthenticated
+        pageBuilder: (context, animation, secondaryAnimation) => auth.isAuthenticated
             ? const MainNavigationScreen()
             : const LoginScreen(),
-        transitionsBuilder: (_, anim, __, child) => FadeTransition(
+        transitionsBuilder: (context, anim, secondaryAnim, child) => FadeTransition(
           opacity: CurvedAnimation(parent: anim, curve: Curves.easeOut),
           child: child,
         ),
@@ -168,7 +171,7 @@ class _SplashScreenState extends State<SplashScreen>
                 // ── Animated logo ──────────────────────────────────────────
                 AnimatedBuilder(
                   animation: Listenable.merge([_logoCtrl, _floatCtrl]),
-                  builder: (_, __) {
+                  builder: (context, child) {
                     return Transform.translate(
                       offset: Offset(0, _floatY.value),
                       child: Opacity(
@@ -309,7 +312,7 @@ class _SplashScreenState extends State<SplashScreen>
             bottom: 0,
             child: AnimatedBuilder(
               animation: _barCtrl,
-              builder: (_, __) {
+              builder: (context, child) {
                 return Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [

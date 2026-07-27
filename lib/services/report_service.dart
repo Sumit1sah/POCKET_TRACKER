@@ -1,6 +1,6 @@
-import 'dart:io';
+import 'dart:convert';
 import 'package:csv/csv.dart';
-import 'package:path_provider/path_provider.dart';
+import 'package:flutter/foundation.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -8,7 +8,7 @@ import '../models/transaction_model.dart';
 import '../utils/formatters.dart';
 
 class ReportService {
-  static Future<File> generateCSVReport(List<TransactionModel> transactions, {String? monthTitle}) async {
+  static Future<String> generateCSVReport(List<TransactionModel> transactions, {String? monthTitle}) async {
     final List<List<dynamic>> rows = [
       ['Transaction ID', 'Type', 'Amount', 'Category', 'Payment Method', 'Date', 'Description'],
     ];
@@ -26,11 +26,12 @@ class ReportService {
     }
 
     final csvData = const ListToCsvConverter().convert(rows);
-    final directory = await getApplicationDocumentsDirectory();
     final prefix = monthTitle != null ? 'Pocketify_Report_${monthTitle.replaceAll(' ', '_')}' : 'Pocketify_Report';
-    final file = File('${directory.path}/${prefix}_${DateTime.now().millisecondsSinceEpoch}.csv');
-    await file.writeAsString(csvData);
-    return file;
+    final fileName = '${prefix}_${DateTime.now().millisecondsSinceEpoch}.csv';
+
+    final bytes = Uint8List.fromList(utf8.encode(csvData));
+    await Printing.sharePdf(bytes: bytes, filename: fileName);
+    return fileName;
   }
 
   static Future<void> printPDFReport(List<TransactionModel> transactions, String currencySymbol, {String? monthTitle}) async {

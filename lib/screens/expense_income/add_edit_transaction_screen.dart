@@ -8,6 +8,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/theme_currency_provider.dart';
 import '../../services/local_storage_service.dart';
 import '../../services/sms_parser_service.dart';
+import '../../services/smart_categorizer_service.dart';
 import '../../utils/constants.dart';
 import '../../utils/formatters.dart';
 import '../../widgets/transaction_notification.dart';
@@ -39,6 +40,7 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
   DateTime _selectedDate = DateTime.now();
   String? _receiptPath;
   bool _isRecurring = false;
+  String? _autoDetectedCategory;
 
   @override
   void initState() {
@@ -47,6 +49,7 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
     final edit = widget.transactionToEdit;
     _amountController = TextEditingController(text: edit != null ? edit.amount.toStringAsFixed(0) : '');
     _descriptionController = TextEditingController(text: edit?.description ?? '');
+    _descriptionController.addListener(_onDescriptionChanged);
     if (edit != null) {
       _selectedCategory = edit.category;
       _selectedPaymentMethod = edit.paymentMethod;
@@ -56,6 +59,17 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
     } else {
       _selectedCategory = _isExpense ? 'Food' : 'Salary';
       _checkClipboardAutoDetect();
+    }
+  }
+
+  void _onDescriptionChanged() {
+    final text = _descriptionController.text;
+    final predicted = SmartCategorizerService.predictCategory(text, isExpense: _isExpense);
+    if (predicted != null && predicted != _selectedCategory) {
+      setState(() {
+        _selectedCategory = predicted;
+        _autoDetectedCategory = predicted;
+      });
     }
   }
 
@@ -88,6 +102,7 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
 
   @override
   void dispose() {
+    _descriptionController.removeListener(_onDescriptionChanged);
     _amountController.dispose();
     _descriptionController.dispose();
     super.dispose();
@@ -433,12 +448,38 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
               ),
               const SizedBox(height: 20),
 
-              // Category Selector
+              // Category Selector & Smart Suggestions
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Category', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
+                  if (_autoDetectedCategory != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF6C5CE7).withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.auto_awesome, size: 12, color: Color(0xFF6C5CE7)),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Smart AI: $_autoDetectedCategory',
+                            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF6C5CE7)),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 6),
               DropdownButtonFormField<String>(
                 key: ValueKey('cat_${_isExpense}_$currentCategory'),
                 initialValue: currentCategory,
                 decoration: InputDecoration(
-                  labelText: 'Category',
+                  prefixIcon: const Icon(Icons.auto_awesome_rounded, color: Color(0xFF6C5CE7), size: 20),
+                  labelText: 'Selected Category',
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
                 ),
                 items: filteredCategories.map((cat) {
@@ -448,10 +489,64 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
                   );
                 }).toList(),
                 onChanged: (val) {
-                  if (val != null) setState(() => _selectedCategory = val);
+                  if (val != null) {
+                    setState(() {
+                      _selectedCategory = val;
+                      _autoDetectedCategory = null;
+                    });
+                  }
                 },
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 8),
+
+              // Smart Category Chips
+              Builder(
+                builder: (context) {
+                  final suggested = SmartCategorizerService.getSuggestedCategories(
+                    _descriptionController.text,
+                    isExpense: _isExpense,
+                  );
+                  return SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: suggested.map((catName) {
+                        final isSel = currentCategory == catName;
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 6),
+                          child: ActionChip(
+                            avatar: isSel
+                                ? const Icon(Icons.check_rounded, size: 14, color: Colors.white)
+                                : const Icon(Icons.auto_awesome_rounded, size: 12, color: Color(0xFF6C5CE7)),
+                            label: Text(catName),
+                            onPressed: () {
+                              setState(() {
+                                _selectedCategory = catName;
+                                _autoDetectedCategory = null;
+                              });
+                            },
+                            backgroundColor: isSel
+                                ? const Color(0xFF6C5CE7)
+                                : const Color(0xFF6C5CE7).withValues(alpha: 0.08),
+                            labelStyle: TextStyle(
+                              fontSize: 11,
+                              fontWeight: isSel ? FontWeight.bold : FontWeight.w500,
+                              color: isSel ? Colors.white : const Color(0xFF2D3436),
+                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              side: BorderSide(
+                                color: isSel ? const Color(0xFF6C5CE7) : const Color(0xFF6C5CE7).withValues(alpha: 0.2),
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 16),
 
               // Payment Method Selector
               DropdownButtonFormField<String>(
@@ -571,7 +666,7 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
     }
 
     return DropdownButtonFormField<String>(
-      value: _selectedCardLast4 ?? rawCards.first['last4'] as String?,
+      initialValue: _selectedCardLast4 ?? rawCards.first['last4'] as String?,
       decoration: InputDecoration(
         labelText: 'Select Credit Card',
         prefixIcon: const Icon(Icons.credit_card_rounded, color: Color(0xFF6C5CE7)),

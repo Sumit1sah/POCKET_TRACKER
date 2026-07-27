@@ -143,10 +143,10 @@ class ReportsScreen extends StatelessWidget {
                 subtitle: const Text('Download raw spreadsheet data (.csv)'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () async {
-                  final csvFile = await ReportService.generateCSVReport(txProvider.transactions);
+                  final fileName = await ReportService.generateCSVReport(txProvider.transactions);
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('CSV exported successfully: ${csvFile.path}')),
+                      SnackBar(content: Text('CSV exported successfully: $fileName')),
                     );
                   }
                 },

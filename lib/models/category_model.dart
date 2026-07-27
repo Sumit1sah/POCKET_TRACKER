@@ -19,6 +19,7 @@ class CategoryModel {
     this.isDefault = false,
   });
 
+  // ignore: non_const_argument_for_const_parameter
   IconData get iconData => IconData(iconCodePoint, fontFamily: 'MaterialIcons');
   Color get color => Color(colorValue);
 

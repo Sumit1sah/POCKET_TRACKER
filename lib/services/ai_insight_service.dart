@@ -1,12 +1,16 @@
 import '../models/transaction_model.dart';
+import '../models/savings_goal_model.dart';
 import '../utils/formatters.dart';
 
 class AIInsight {
   final String title;
   final String description;
-  final String type; // 'warning', 'tip', 'positive', 'critical'
+  final String type; // 'health_score', 'critical', 'warning', 'positive', 'tip', 'prediction'
   final String? category;
   final double? impactAmount;
+  final int? healthScore;
+  final String? actionLabel;
+  final String? actionRoute;
 
   AIInsight({
     required this.title,
@@ -14,6 +18,9 @@ class AIInsight {
     required this.type,
     this.category,
     this.impactAmount,
+    this.healthScore,
+    this.actionLabel,
+    this.actionRoute,
   });
 }
 
@@ -39,15 +46,19 @@ class AIInsightService {
     List<TransactionModel> transactions,
     String currencySymbol, {
     BudgetInsightData? budget,
+    List<SavingsGoalModel>? savingsGoals,
+    double? totalCreditLimit,
   }) {
     final List<AIInsight> insights = [];
 
     if (transactions.isEmpty) {
       insights.add(AIInsight(
-        title: '👋 Welcome to Pocketify!',
+        title: '👋 Welcome to Pocketify AI Insights!',
         description:
-            'Start logging your daily income and expenses to unlock intelligent financial insights and budget tracking.',
+            'Start logging your daily income and expenses to unlock intelligent financial health scores, subscription tracking, and predictive budget forecasting.',
         type: 'tip',
+        actionLabel: 'Add First Transaction',
+        actionRoute: '/add_transaction',
       ));
       return insights;
     }
@@ -57,12 +68,17 @@ class AIInsightService {
     final daysPassed = now.day;
     final daysRemaining = daysInMonth - daysPassed;
 
-    // Current & previous month expenses
-    final currentMonthExpenses = transactions
-        .where((t) =>
-            t.type == TransactionType.expense &&
-            t.date.year == now.year &&
-            t.date.month == now.month)
+    // Current & previous month income and expenses
+    final currentMonthTxs = transactions
+        .where((t) => t.date.year == now.year && t.date.month == now.month)
+        .toList();
+
+    final currentMonthExpenses = currentMonthTxs
+        .where((t) => t.type == TransactionType.expense)
+        .toList();
+
+    final currentMonthIncome = currentMonthTxs
+        .where((t) => t.type == TransactionType.income)
         .toList();
 
     final prevMonthExpenses = transactions
@@ -74,61 +90,295 @@ class AIInsightService {
                     t.date.month == now.month - 1)))
         .toList();
 
-    final totalCurrent =
-        currentMonthExpenses.fold(0.0, (s, t) => s + t.amount);
-    final totalPrev = prevMonthExpenses.fold(0.0, (s, t) => s + t.amount);
+    final totalCurrentExpense = currentMonthExpenses.fold(0.0, (s, t) => s + t.amount);
+    final totalCurrentIncome = currentMonthIncome.fold(0.0, (s, t) => s + t.amount);
+    final totalPrevExpense = prevMonthExpenses.fold(0.0, (s, t) => s + t.amount);
 
-    // Category totals this month
-    final Map<String, double> catTotals = {};
-    for (final t in currentMonthExpenses) {
-      catTotals[t.category] = (catTotals[t.category] ?? 0.0) + t.amount;
+    // All-time income & expense
+    final allTimeIncome = transactions
+        .where((t) => t.type == TransactionType.income)
+        .fold(0.0, (s, t) => s + t.amount);
+    final allTimeExpense = transactions
+        .where((t) => t.type == TransactionType.expense)
+        .fold(0.0, (s, t) => s + t.amount);
+
+    final netSavingsMonth = totalCurrentIncome - totalCurrentExpense;
+
+    // ══════════════════════════════════════════════
+    // 1. FINANCIAL HEALTH SCORE (0 - 100 Index)
+    // ══════════════════════════════════════════════
+    int savingsScore = 0;
+    if (totalCurrentIncome > 0) {
+      final savingsRatio = netSavingsMonth / totalCurrentIncome;
+      if (savingsRatio >= 0.30) {
+        savingsScore = 40;
+      } else if (savingsRatio >= 0.20) {
+        savingsScore = 32;
+      } else if (savingsRatio >= 0.10) {
+        savingsScore = 22;
+      } else if (savingsRatio > 0) {
+        savingsScore = 12;
+      } else {
+        savingsScore = 0;
+      }
+    } else if (allTimeIncome > 0 && (allTimeIncome - allTimeExpense) > 0) {
+      savingsScore = 25;
+    } else {
+      savingsScore = 15;
+    }
+
+    int budgetScore = 30;
+    if (budget != null && budget.overallLimit > 0) {
+      if (budget.usagePercent > 1.0) {
+        budgetScore = 5;
+      } else if (budget.usagePercent > 0.9) {
+        budgetScore = 15;
+      } else if (budget.usagePercent > 0.75) {
+        budgetScore = 22;
+      } else {
+        budgetScore = 30;
+      }
+    }
+
+    int creditScoreComponent = 15;
+    if (totalCreditLimit != null && totalCreditLimit > 0) {
+      final ccSpent = currentMonthExpenses
+          .where((t) => t.paymentMethod == 'Credit Card')
+          .fold(0.0, (s, t) => s + t.amount);
+      final util = ccSpent / totalCreditLimit;
+      if (util <= 0.30) {
+        creditScoreComponent = 15;
+      } else if (util <= 0.50) {
+        creditScoreComponent = 10;
+      } else if (util <= 0.75) {
+        creditScoreComponent = 5;
+      } else {
+        creditScoreComponent = 0;
+      }
+    }
+
+    int goalScoreComponent = 15;
+    if (savingsGoals != null && savingsGoals.isNotEmpty) {
+      final totalTarget = savingsGoals.fold(0.0, (s, g) => s + g.targetAmount);
+      final totalSaved = savingsGoals.fold(0.0, (s, g) => s + g.savedAmount);
+      if (totalTarget > 0) {
+        final goalPct = totalSaved / totalTarget;
+        goalScoreComponent = (goalPct * 15).clamp(5, 15).toInt();
+      }
+    }
+
+    final totalHealthScore = (savingsScore + budgetScore + creditScoreComponent + goalScoreComponent).clamp(0, 100);
+
+    String healthGrade = 'Excellent';
+    String healthEmoji = '🌟';
+    if (totalHealthScore < 50) {
+      healthGrade = 'Needs Attention';
+      healthEmoji = '⚠️';
+    } else if (totalHealthScore < 70) {
+      healthGrade = 'Fair';
+      healthEmoji = '📈';
+    } else if (totalHealthScore < 85) {
+      healthGrade = 'Good';
+      healthEmoji = '💪';
+    }
+
+    insights.add(AIInsight(
+      title: '$healthEmoji Pocketify Financial Health: $totalHealthScore/100 ($healthGrade)',
+      description:
+          'Based on your monthly savings ratio, budget adherence, and credit utilization. '
+          '${totalCurrentIncome > 0 ? "You saved ${((netSavingsMonth / totalCurrentIncome) * 100).toStringAsFixed(0)}% of income this month." : "Log income to track your net savings ratio."}',
+      type: 'health_score',
+      healthScore: totalHealthScore,
+      actionLabel: 'View Monthly Report',
+      actionRoute: '/monthly_report',
+    ));
+
+    // ══════════════════════════════════════════════
+    // 2. PREDICTIVE SAVINGS GOAL COMPLETION ENGINE
+    // ══════════════════════════════════════════════
+    if (savingsGoals != null && savingsGoals.isNotEmpty && netSavingsMonth > 0) {
+      final incompleteGoals = savingsGoals.where((g) => g.savedAmount < g.targetAmount).toList();
+      if (incompleteGoals.isNotEmpty) {
+        final topGoal = incompleteGoals.first;
+        final remainingGoal = topGoal.targetAmount - topGoal.savedAmount;
+        final monthsNeeded = remainingGoal / netSavingsMonth;
+
+        if (monthsNeeded <= 1.0) {
+          insights.add(AIInsight(
+            title: '🎯 ${topGoal.title} Goal Reachable This Month!',
+            description:
+                'Only ${Formatters.formatCurrency(remainingGoal, symbol: currencySymbol)} remaining for "${topGoal.title}". '
+                'At your current savings pace of ${Formatters.formatCurrency(netSavingsMonth, symbol: currencySymbol)}/mo, '
+                'you can fully achieve this goal before month end!',
+            type: 'prediction',
+            impactAmount: remainingGoal,
+            actionLabel: 'Deposit to Goal',
+            actionRoute: '/savings',
+          ));
+        } else if (monthsNeeded <= 12.0) {
+          final estimatedDays = (monthsNeeded * 30).round();
+          insights.add(AIInsight(
+            title: '🔮 Target Forecast: ${topGoal.title}',
+            description:
+                'At your current net saving velocity of ${Formatters.formatCurrency(netSavingsMonth, symbol: currencySymbol)}/mo, '
+                'you will reach your ${Formatters.formatCurrency(topGoal.targetAmount, symbol: currencySymbol)} target in ~$estimatedDays days (${monthsNeeded.toStringAsFixed(1)} months).',
+            type: 'prediction',
+            impactAmount: remainingGoal,
+            actionLabel: 'View Savings Goals',
+            actionRoute: '/savings',
+          ));
+        }
+      }
     }
 
     // ══════════════════════════════════════════════
-    // BUDGET-INTEGRATED INSIGHTS
+    // 3. RECURRING SUBSCRIPTION & OUTFLOW DETECTOR
+    // ══════════════════════════════════════════════
+    final Map<String, List<TransactionModel>> categoryGroup = {};
+    for (final t in transactions.where((t) => t.type == TransactionType.expense)) {
+      final key = '${t.category}_${t.description.toLowerCase().trim()}';
+      categoryGroup.putIfAbsent(key, () => []).add(t);
+    }
+
+    final recurringItems = <String, double>{};
+    for (final entry in categoryGroup.entries) {
+      if (entry.value.length >= 2) {
+        final amounts = entry.value.map((e) => e.amount).toList();
+        final firstAmt = amounts.first;
+        final isFixed = amounts.every((a) => (a - firstAmt).abs() < 10.0);
+        if (isFixed && firstAmt > 0) {
+          final name = entry.value.first.description.isNotEmpty
+              ? entry.value.first.description
+              : entry.value.first.category;
+          recurringItems[name] = firstAmt;
+        }
+      }
+    }
+
+    if (recurringItems.isNotEmpty) {
+      final totalMonthlyRec = recurringItems.values.fold(0.0, (s, a) => s + a);
+      final yearlyCost = totalMonthlyRec * 12;
+      final topRecName = recurringItems.keys.first;
+
+      insights.add(AIInsight(
+        title: '🔄 ${recurringItems.length} Active Recurring Subscriptions Detected',
+        description:
+            'You have ~${Formatters.formatCurrency(totalMonthlyRec, symbol: currencySymbol)}/mo in fixed recurring bills (e.g., $topRecName). '
+            'That amounts to ${Formatters.formatCurrency(yearlyCost, symbol: currencySymbol)} annually.',
+        type: 'tip',
+        impactAmount: totalMonthlyRec,
+        actionLabel: 'Review Bills',
+        actionRoute: '/analytics',
+      ));
+    }
+
+    // ══════════════════════════════════════════════
+    // 4. IMPULSE SPENDING & ANOMALY DETECTOR
+    // ══════════════════════════════════════════════
+    if (currentMonthExpenses.length >= 3) {
+      final avgSpend = totalCurrentExpense / currentMonthExpenses.length;
+      final highSpikes = currentMonthExpenses.where((t) => t.amount > (avgSpend * 3.0) && t.amount > 500).toList();
+
+      if (highSpikes.isNotEmpty) {
+        final spike = highSpikes.first;
+        insights.add(AIInsight(
+          title: '⚡ High-Value Purchase Anomaly',
+          description:
+              'Detected a single transaction of ${Formatters.formatCurrency(spike.amount, symbol: currencySymbol)} '
+              'at ${spike.description.isNotEmpty ? spike.description : spike.category} on ${Formatters.formatShortDate(spike.date)} '
+              '(${(spike.amount / avgSpend).toStringAsFixed(1)}x your average purchase). '
+              'High-value impulse buys accelerate monthly budget burn.',
+          type: 'warning',
+          category: spike.category,
+          impactAmount: spike.amount,
+          actionLabel: 'View Transaction',
+          actionRoute: '/transactions',
+        ));
+      }
+    }
+
+    // ══════════════════════════════════════════════
+    // 5. CREDIT CARD UTILIZATION & INTEREST RISK
+    // ══════════════════════════════════════════════
+    if (totalCreditLimit != null && totalCreditLimit > 0) {
+      final ccExpenses = currentMonthExpenses
+          .where((t) => t.paymentMethod == 'Credit Card')
+          .fold(0.0, (s, t) => s + t.amount);
+      final utilRatio = ccExpenses / totalCreditLimit;
+
+      if (utilRatio > 0.70) {
+        insights.add(AIInsight(
+          title: '🚨 High Credit Card Utilization (${(utilRatio * 100).toStringAsFixed(0)}%)',
+          description:
+              'You\'ve spent ${Formatters.formatCurrency(ccExpenses, symbol: currencySymbol)} out of your '
+              '${Formatters.formatCurrency(totalCreditLimit, symbol: currencySymbol)} credit limit. '
+              'High card balance (>70%) can trigger high finance interest charges and lower credit score.',
+          type: 'critical',
+          impactAmount: ccExpenses,
+          actionLabel: 'Manage Card Limits',
+          actionRoute: '/home',
+        ));
+      } else if (utilRatio > 0.30) {
+        insights.add(AIInsight(
+          title: '💳 Credit Card Usage Alert',
+          description:
+              'Card utilization is at ${(utilRatio * 100).toStringAsFixed(0)}% '
+              '(${Formatters.formatCurrency(ccExpenses, symbol: currencySymbol)} spent). '
+              'Financial experts recommend keeping card usage below 30% for optimal credit health.',
+          type: 'warning',
+          impactAmount: ccExpenses,
+        ));
+      }
+    }
+
+    // ══════════════════════════════════════════════
+    // 6. BUDGET-INTEGRATED INSIGHTS
     // ══════════════════════════════════════════════
     if (budget != null && budget.overallLimit > 0) {
       final usedPct = budget.usagePercent;
       final expectedPacePct = daysPassed / daysInMonth;
 
-      // 1. Overall budget status
       if (usedPct > 1.0) {
         final overspend = budget.totalSpent - budget.overallLimit;
         insights.add(AIInsight(
           title: '🚨 Monthly Budget Exceeded!',
           description:
-              'You\'ve spent ${Formatters.formatCurrency(budget.totalSpent, symbol: currencySymbol)} '
-              'against a limit of ${Formatters.formatCurrency(budget.overallLimit, symbol: currencySymbol)}. '
+              'Spent ${Formatters.formatCurrency(budget.totalSpent, symbol: currencySymbol)} '
+              'against limit of ${Formatters.formatCurrency(budget.overallLimit, symbol: currencySymbol)}. '
               'Overspent by ${Formatters.formatCurrency(overspend, symbol: currencySymbol)}. '
-              'Pause all non-essential spending immediately.',
+              'Pause non-essential expenses immediately.',
           type: 'critical',
           impactAmount: overspend,
+          actionLabel: 'Rebalance Budget',
+          actionRoute: '/budget',
         ));
-      } else if (usedPct > 0.9) {
+      } else if (usedPct > 0.90) {
         insights.add(AIInsight(
           title: '⚠️ Budget Almost Exhausted',
           description:
-              'You\'ve consumed ${(usedPct * 100).toStringAsFixed(0)}% of your budget with $daysRemaining days to go. '
-              'Only ${Formatters.formatCurrency(budget.remaining, symbol: currencySymbol)} left — '
-              'avoid discretionary spending.',
+              'You\'ve consumed ${(usedPct * 100).toStringAsFixed(0)}% of your budget with $daysRemaining days left. '
+              'Only ${Formatters.formatCurrency(budget.remaining, symbol: currencySymbol)} remaining.',
           type: 'warning',
           impactAmount: budget.remaining,
+          actionLabel: 'Manage Budget',
+          actionRoute: '/budget',
         ));
-      } else if (usedPct > expectedPacePct + 0.1) {
-        // Burning faster than expected
+      } else if (usedPct > expectedPacePct + 0.10) {
         final projectedTotal = daysPassed > 0
             ? (budget.totalSpent / daysPassed * daysInMonth)
             : budget.totalSpent;
         final projectedOverrun = projectedTotal - budget.overallLimit;
         if (projectedOverrun > 0) {
           insights.add(AIInsight(
-            title: '📈 Spending Pace Too Fast',
+            title: '📈 Fast Spending Velocity',
             description:
-                'At your current rate, you\'ll spend ${Formatters.formatCurrency(projectedTotal, symbol: currencySymbol)} '
-                'this month — ${Formatters.formatCurrency(projectedOverrun, symbol: currencySymbol)} over your limit. '
-                'Slow down now to avoid a budget breach.',
+                'At your current rate, you\'ll reach ${Formatters.formatCurrency(projectedTotal, symbol: currencySymbol)} '
+                'by month end (${Formatters.formatCurrency(projectedOverrun, symbol: currencySymbol)} over limit). '
+                'Slow down daily pace to stay safe.',
             type: 'warning',
             impactAmount: projectedOverrun,
+            actionLabel: 'Adjust Pace',
+            actionRoute: '/budget',
           ));
         }
       } else if (usedPct < expectedPacePct - 0.15 && daysPassed > 5) {
@@ -137,218 +387,197 @@ class AIInsightService {
           description:
               'Only ${(usedPct * 100).toStringAsFixed(0)}% of budget used by day $daysPassed. '
               '${Formatters.formatCurrency(budget.remaining, symbol: currencySymbol)} remaining. '
-              'You\'re well ahead of pace — consider routing surplus to savings!',
+              'You\'re well ahead of pace — consider routing surplus to savings goals!',
           type: 'positive',
           impactAmount: budget.remaining,
+          actionLabel: 'Route to Savings',
+          actionRoute: '/savings',
         ));
       }
 
-      // 2. Per-category budget alerts
-      int exceededCount = 0;
-      String? worstCategory;
-      double worstOverspend = 0;
-
-      for (final entry in budget.categoryLimits.entries) {
-        final catName = entry.key;
-        if (catName.toLowerCase() == 'overall') continue;
-        final limit = entry.value;
-        final spent = budget.categorySpend[catName] ?? 0.0;
-        if (limit <= 0 || spent <= 0) continue;
-        final pct = spent / limit;
-
-        if (pct > 1.0) {
-          exceededCount++;
-          final overspend = spent - limit;
-          if (overspend > worstOverspend) {
-            worstOverspend = overspend;
-            worstCategory = catName;
-          }
-          insights.add(AIInsight(
-            title: '🔴 $catName Budget Exceeded',
-            description:
-                'Spent ${Formatters.formatCurrency(spent, symbol: currencySymbol)} of '
-                '${Formatters.formatCurrency(limit, symbol: currencySymbol)} limit '
-                '(${(pct * 100).toStringAsFixed(0)}%). Overspent by '
-                '${Formatters.formatCurrency(overspend, symbol: currencySymbol)} — reduce $catName expenses.',
-            type: 'critical',
-            category: catName,
-            impactAmount: overspend,
-          ));
-        } else if (pct >= 0.85) {
-          insights.add(AIInsight(
-            title: '🟡 $catName Nearing Limit',
-            description:
-                'Used ${(pct * 100).toStringAsFixed(0)}% of $catName budget '
-                '(${Formatters.formatCurrency(spent, symbol: currencySymbol)} / '
-                '${Formatters.formatCurrency(limit, symbol: currencySymbol)}). '
-                'Only ${Formatters.formatCurrency(limit - spent, symbol: currencySymbol)} left.',
-            type: 'warning',
-            category: catName,
-            impactAmount: limit - spent,
-          ));
-        } else if (pct < 0.3 && daysPassed > 15) {
-          insights.add(AIInsight(
-            title: '💚 $catName Under Budget',
-            description:
-                'Only ${(pct * 100).toStringAsFixed(0)}% of $catName budget used by mid-month. '
-                '${Formatters.formatCurrency(limit - spent, symbol: currencySymbol)} still available. '
-                'Great restraint!',
-            type: 'positive',
-            category: catName,
-            impactAmount: limit - spent,
-          ));
-        }
-      }
-
-      // 3. Multi-category reallocation tip
-      if (exceededCount >= 2 && worstCategory != null) {
-        insights.add(AIInsight(
-          title: '💡 Reallocation Recommended',
-          description:
-              '$exceededCount categories exceeded their budgets. '
-              '$worstCategory is the biggest offender (${Formatters.formatCurrency(worstOverspend, symbol: currencySymbol)} over). '
-              'Use the Budget screen\'s Smart Auto-Allocate to rebalance.',
-          type: 'tip',
-          category: worstCategory,
-          impactAmount: worstOverspend,
-        ));
-      }
-
-      // 4. Daily safe-to-spend
+      // Daily safe-to-spend calculation
       if (daysRemaining > 0 && budget.remaining > 0) {
         final dailySafe = budget.remaining / daysRemaining;
         insights.add(AIInsight(
-          title: '📅 Daily Safe-to-Spend',
+          title: '📅 Daily Safe-to-Spend: ${Formatters.formatCurrency(dailySafe, symbol: currencySymbol)}/day',
           description:
-              'You can spend up to ${Formatters.formatCurrency(dailySafe, symbol: currencySymbol)} per day '
-              'for the remaining $daysRemaining days to stay within your '
-              '${Formatters.formatCurrency(budget.overallLimit, symbol: currencySymbol)} monthly budget.',
+              'To finish the remaining $daysRemaining days within your '
+              '${Formatters.formatCurrency(budget.overallLimit, symbol: currencySymbol)} monthly limit, '
+              'keep daily expenses under ${Formatters.formatCurrency(dailySafe, symbol: currencySymbol)}.',
           type: 'tip',
           impactAmount: dailySafe,
         ));
       }
-
-      // 5. Month-end savings projection
-      if (budget.remaining > 0 && usedPct < 1.0 && daysRemaining > 0) {
-        final projectedDailySpend = daysPassed > 0 ? totalCurrent / daysPassed : 0.0;
-        final projectedMonthTotal = projectedDailySpend * daysInMonth;
-        final projectedSavings = budget.overallLimit - projectedMonthTotal;
-        if (projectedSavings > 0) {
-          insights.add(AIInsight(
-            title: '💰 Projected Budget Savings',
-            description:
-                'At your current pace, you\'ll save ${Formatters.formatCurrency(projectedSavings, symbol: currencySymbol)} '
-                'from your monthly budget. Consider moving this to your savings goals!',
-            type: 'positive',
-            impactAmount: projectedSavings,
-          ));
-        }
-      }
     } else {
-      // No budget configured nudge
       insights.add(AIInsight(
-        title: '💡 Set Up Your Monthly Budget',
+        title: '💡 Unlock Smart Budget Tracking',
         description:
-            'You haven\'t configured a monthly budget yet. Head to the Budget tab and use Smart Auto-Allocate '
-            'to unlock personalized AI budget insights.',
+            'You haven\'t configured a monthly budget yet. Head to the Budget screen and tap Smart Auto-Allocate '
+            'to enable dynamic pace forecasting.',
         type: 'tip',
+        actionLabel: 'Setup Budget',
+        actionRoute: '/budget',
       ));
     }
 
     // ══════════════════════════════════════════════
-    // TRANSACTION-PATTERN INSIGHTS
+    // 7. MONTH-OVER-MONTH COMPARISON
     // ══════════════════════════════════════════════
-
-    // 6. Month-over-Month spending comparison
-    if (totalPrev > 0) {
-      final diffPct = ((totalCurrent - totalPrev) / totalPrev * 100).round();
+    if (totalPrevExpense > 0) {
+      final diffPct = ((totalCurrentExpense - totalPrevExpense) / totalPrevExpense * 100).round();
       if (diffPct > 15) {
         insights.add(AIInsight(
-          title: '📊 Spending Up $diffPct% vs Last Month',
+          title: '📊 Spending Up +$diffPct% vs Last Month',
           description:
-              'You\'ve spent ${Formatters.formatCurrency(totalCurrent, symbol: currencySymbol)} this month vs '
-              '${Formatters.formatCurrency(totalPrev, symbol: currencySymbol)} last month. '
-              'Review recent food, shopping, and entertainment entries.',
+              'You\'ve spent ${Formatters.formatCurrency(totalCurrentExpense, symbol: currencySymbol)} this month vs '
+              '${Formatters.formatCurrency(totalPrevExpense, symbol: currencySymbol)} last month. '
+              'Check recent category trends in Analytics.',
           type: 'warning',
-          impactAmount: totalCurrent - totalPrev,
+          impactAmount: totalCurrentExpense - totalPrevExpense,
+          actionLabel: 'View Analytics',
+          actionRoute: '/analytics',
         ));
       } else if (diffPct < -10) {
         insights.add(AIInsight(
           title: '🎉 Spending Down ${diffPct.abs()}% vs Last Month',
           description:
-              'You\'re spending ${diffPct.abs()}% less than last month, '
-              'saving ${Formatters.formatCurrency(totalPrev - totalCurrent, symbol: currencySymbol)} more. Keep it up!',
+              'Great job! You\'re spending ${diffPct.abs()}% less than last month, '
+              'saving ${Formatters.formatCurrency(totalPrevExpense - totalCurrentExpense, symbol: currencySymbol)} extra.',
           type: 'positive',
-          impactAmount: totalPrev - totalCurrent,
+          impactAmount: totalPrevExpense - totalCurrentExpense,
         ));
       }
     }
 
-    // 7. Top category concentration
-    if (catTotals.isNotEmpty && totalCurrent > 0) {
-      final topEntry =
-          catTotals.entries.reduce((a, b) => a.value > b.value ? a : b);
-      final topPct = ((topEntry.value / totalCurrent) * 100).round();
-      if (topPct >= 35) {
-        insights.add(AIInsight(
-          title: '🏷️ High ${topEntry.key} Concentration',
-          description:
-              '${topEntry.key} is $topPct% of all expenses '
-              '(${Formatters.formatCurrency(topEntry.value, symbol: currencySymbol)}). '
-              'Reducing by 20% would free up ${Formatters.formatCurrency(topEntry.value * 0.2, symbol: currencySymbol)}.',
-          type: 'warning',
-          category: topEntry.key,
-          impactAmount: topEntry.value * 0.2,
-        ));
-      }
-    }
+    // ══════════════════════════════════════════════
+    // 8. DYNAMIC FINANCIAL WISDOM & MONEY TIPS
+    // ══════════════════════════════════════════════
 
-    // 8. Weekend spending spike
-    final weekendSpend = currentMonthExpenses
-        .where((t) =>
-            t.date.weekday == DateTime.saturday ||
-            t.date.weekday == DateTime.sunday)
+    // A. 50/30/20 Budgeting Rule Analysis
+    final needsCategories = {'Bills', 'Groceries', 'Utilities', 'Rent', 'Health', 'Transport', 'Education', 'Insurance', 'Fuel', 'EMI', 'Debt / Repayment'};
+    final wantsCategories = {'Food', 'Dining', 'Shopping', 'Entertainment', 'Travel', 'Personal Care', 'Electronics', 'Gifts'};
+
+    final needsSpend = currentMonthExpenses
+        .where((t) => needsCategories.contains(t.category))
         .fold(0.0, (s, t) => s + t.amount);
 
-    if (totalCurrent > 0 && weekendSpend / totalCurrent > 0.5) {
-      insights.add(AIInsight(
-        title: '📅 Weekend Spending Spike',
-        description:
-            'Over 50% of expenses (${Formatters.formatCurrency(weekendSpend, symbol: currencySymbol)}) '
-            'happen on weekends. A weekend spending cap could improve savings by 30%.',
-        type: 'warning',
-        impactAmount: weekendSpend * 0.3,
-      ));
-    }
+    final wantsSpend = currentMonthExpenses
+        .where((t) => wantsCategories.contains(t.category))
+        .fold(0.0, (s, t) => s + t.amount);
 
-    // 9. High-frequency spending today
-    final todayExpenses = currentMonthExpenses
-        .where((t) =>
-            t.date.day == now.day &&
-            t.date.month == now.month &&
-            t.date.year == now.year)
-        .toList();
-    if (todayExpenses.length >= 4) {
-      final todayTotal = todayExpenses.fold(0.0, (s, t) => s + t.amount);
+    if (totalCurrentIncome > 0) {
+      final needsPct = (needsSpend / totalCurrentIncome * 100).round();
+      final wantsPct = (wantsSpend / totalCurrentIncome * 100).round();
+      final savingsPct = (netSavingsMonth / totalCurrentIncome * 100).round();
+
+      String tipAdvice = '';
+      if (savingsPct >= 20) {
+        tipAdvice = 'Awesome! Your savings ratio ($savingsPct%) hits the recommended 20% target.';
+      } else if (wantsPct > 30) {
+        tipAdvice = 'Your discretionary Wants spending is $wantsPct% (target: <=30%). Trim dining or shopping to save more.';
+      } else if (needsPct > 50) {
+        tipAdvice = 'Essential Needs take up $needsPct% of income (target: <=50%). Look for ways to lower recurring utility/bill costs.';
+      } else {
+        tipAdvice = 'Aim to push monthly savings up from $savingsPct% closer to 20%.';
+      }
+
       insights.add(AIInsight(
-        title: '⚡ ${todayExpenses.length} Transactions Today',
+        title: '💡 Money Tip: 50/30/20 Budget Rule Breakdown',
         description:
-            'You\'ve made ${todayExpenses.length} expense entries today '
-            '(${Formatters.formatCurrency(todayTotal, symbol: currencySymbol)} total). '
-            'Consider grouping small purchases to simplify tracking.',
+            'Monthly income allocation: $needsPct% Needs, $wantsPct% Wants, $savingsPct% Savings. '
+            'The ideal benchmark is 50% Needs, 30% Wants, 20% Savings. $tipAdvice',
         type: 'tip',
-        impactAmount: todayTotal,
+        actionLabel: 'View Budgeting',
+        actionRoute: '/budget',
+      ));
+    } else {
+      insights.add(AIInsight(
+        title: '💡 Money Tip: Master the 50/30/20 Rule',
+        description:
+            'Allocate 50% of your earnings to Needs (rent, groceries), 30% to Wants (dining, fun), and 20% directly to Savings or debt payoff.',
+        type: 'tip',
+        actionLabel: 'Setup Budget',
+        actionRoute: '/budget',
       ));
     }
 
-    // 10. Positive catch-all
-    if (insights.isEmpty) {
+    // B. Emergency Safety Buffer Fund Tip
+    final monthlyExpensePace = totalCurrentExpense > 0
+        ? totalCurrentExpense
+        : (allTimeExpense > 0 ? allTimeExpense : 10000.0);
+    final minReserve = monthlyExpensePace * 3;
+    final maxReserve = monthlyExpensePace * 6;
+
+    insights.add(AIInsight(
+      title: '🛡️ Money Tip: Build a 3-6 Month Safety Buffer',
+      description:
+          'Financial security starts with an emergency fund. Based on your current spend pace of ${Formatters.formatCurrency(monthlyExpensePace, symbol: currencySymbol)}/mo, '
+          'aim to keep ${Formatters.formatCurrency(minReserve, symbol: currencySymbol)} to ${Formatters.formatCurrency(maxReserve, symbol: currencySymbol)} in a high-yield liquid account.',
+      type: 'tip',
+      impactAmount: minReserve,
+      actionLabel: 'Add Savings Goal',
+      actionRoute: '/savings',
+    ));
+
+    // C. "Pay Yourself First" Rule
+    insights.add(AIInsight(
+      title: '💸 Money Tip: Pay Yourself First Rule',
+      description:
+          'Set up automatic transfers of 10-20% of your income into your savings or investment account right on payday, before spending on discretionary desires.',
+      type: 'tip',
+      actionLabel: 'Create Goal',
+      actionRoute: '/savings',
+    ));
+
+    // D. Category Savings Advice (Food & Dining or Shopping)
+    final foodSpend = currentMonthExpenses
+        .where((t) => t.category == 'Food' || t.category == 'Dining')
+        .fold(0.0, (s, t) => s + t.amount);
+    final shoppingSpend = currentMonthExpenses
+        .where((t) => t.category == 'Shopping')
+        .fold(0.0, (s, t) => s + t.amount);
+
+    if (totalCurrentExpense > 0 && foodSpend / totalCurrentExpense > 0.25 && foodSpend > 300) {
+      final potentialSavings = foodSpend * 0.25;
       insights.add(AIInsight(
-        title: '✅ Financial Health Balanced',
+        title: '🍳 Money Tip: Cut Food & Dining Costs',
         description:
-            'No budget overruns or concerning patterns detected. Your spending is well-balanced. '
-            'Keep logging daily to unlock more trend insights.',
-        type: 'positive',
+            'Food & Dining makes up ${(foodSpend / totalCurrentExpense * 100).toStringAsFixed(0)}% '
+            '(${Formatters.formatCurrency(foodSpend, symbol: currencySymbol)}) of your expenses. '
+            'Preparing home meals just 2 extra days a week can save up to ${Formatters.formatCurrency(potentialSavings, symbol: currencySymbol)} monthly.',
+        type: 'tip',
+        category: 'Food',
+        impactAmount: potentialSavings,
+        actionLabel: 'View Food Expenses',
+        actionRoute: '/transactions',
+      ));
+    }
+
+    if (totalCurrentExpense > 0 && shoppingSpend / totalCurrentExpense > 0.20 && shoppingSpend > 300) {
+      final potentialSavings = shoppingSpend * 0.20;
+      insights.add(AIInsight(
+        title: '🛍️ Money Tip: The 24-Hour Purchase Delay Rule',
+        description:
+            'Shopping accounts for ${(shoppingSpend / totalCurrentExpense * 100).toStringAsFixed(0)}% '
+            '(${Formatters.formatCurrency(shoppingSpend, symbol: currencySymbol)}) of monthly spend. '
+            'Before non-essential purchases, wait 24 hours — over 60% of impulse buys fade after reflection.',
+        type: 'tip',
+        category: 'Shopping',
+        impactAmount: potentialSavings,
+        actionLabel: 'View Shopping',
+        actionRoute: '/transactions',
+      ));
+    }
+
+    // E. Debt Avalanche & Credit Card Wisdom Tip (if credit card is used)
+    final ccExpensesCount = currentMonthExpenses.where((t) => t.paymentMethod == 'Credit Card').length;
+    if (ccExpensesCount > 0 || (totalCreditLimit != null && totalCreditLimit > 0)) {
+      insights.add(AIInsight(
+        title: '⚡ Money Tip: Debt Avalanche & Card Discipline',
+        description:
+            'Always clear your full credit card balance before the due date to avoid high annual interest charges. '
+            'If paying debt, prioritize the highest interest balance first to save maximum money.',
+        type: 'tip',
       ));
     }
 

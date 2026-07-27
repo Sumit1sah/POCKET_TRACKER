@@ -20,16 +20,22 @@ class AnalyticsScreen extends StatefulWidget {
 class _AnalyticsScreenState extends State<AnalyticsScreen>
     with TickerProviderStateMixin {
   String _selectedPeriod = 'This Month';
+  String _chartStyle = 'bar';
+  String? _selectedBreakdownCategory;
   DateTime? _selectedSingleDate;
   DateTimeRange? _selectedCustomRange;
 
   final List<String> _periods = [
+    'Today',
     'This Week',
     'This Month',
     'This Year',
+    'Last 7 Days',
+    'Last 30 Days',
+    'Last Month',
     'Single Date',
     'Custom Range',
-    'All Time'
+    'All Time',
   ];
 
   late AnimationController _heroController;
@@ -124,10 +130,25 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
     final now = DateTime.now();
     return all.where((t) {
       switch (_selectedPeriod) {
+        case 'Today':
+          return t.date.year == now.year &&
+              t.date.month == now.month &&
+              t.date.day == now.day;
         case 'This Week':
-          return t.date.isAfter(now.subtract(const Duration(days: 7)));
+          final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
+          final start = DateTime(startOfWeek.year, startOfWeek.month, startOfWeek.day);
+          return t.date.isAfter(start.subtract(const Duration(seconds: 1)));
+        case 'Last 7 Days':
+          final start = DateTime(now.year, now.month, now.day).subtract(const Duration(days: 7));
+          return t.date.isAfter(start.subtract(const Duration(seconds: 1)));
         case 'This Month':
           return t.date.year == now.year && t.date.month == now.month;
+        case 'Last Month':
+          final lastMonth = DateTime(now.year, now.month - 1, 1);
+          return t.date.year == lastMonth.year && t.date.month == lastMonth.month;
+        case 'Last 30 Days':
+          final start = DateTime(now.year, now.month, now.day).subtract(const Duration(days: 30));
+          return t.date.isAfter(start.subtract(const Duration(seconds: 1)));
         case 'This Year':
           return t.date.year == now.year;
         case 'Single Date':
@@ -150,10 +171,24 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
               59);
           return (t.date.isAfter(start.subtract(const Duration(seconds: 1))) &&
               t.date.isBefore(end.add(const Duration(seconds: 1))));
+        case 'All Time':
         default:
           return true;
       }
     }).toList();
+  }
+
+  static String _dayShort(int weekday) {
+    switch (weekday) {
+      case 1: return 'Mon';
+      case 2: return 'Tue';
+      case 3: return 'Wed';
+      case 4: return 'Thu';
+      case 5: return 'Fri';
+      case 6: return 'Sat';
+      case 7: return 'Sun';
+      default: return '';
+    }
   }
 
   @override
@@ -183,28 +218,106 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
     final sortedCats = catTotals.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
 
-    // Last 6 months
+    // Dynamic Chart Data based on selected period
     final now = DateTime.now();
-    final monthlyData = List.generate(6, (i) {
-      final month = DateTime(now.year, now.month - (5 - i));
-      final mExp = txProvider.transactions
-          .where((t) =>
-              t.type == TransactionType.expense &&
-              t.date.year == month.year &&
-              t.date.month == month.month)
-          .fold(0.0, (s, t) => s + t.amount);
-      final mInc = txProvider.transactions
-          .where((t) =>
-              t.type == TransactionType.income &&
-              t.date.year == month.year &&
-              t.date.month == month.month)
-          .fold(0.0, (s, t) => s + t.amount);
-      return _MonthData(label: _monthShort(month.month), expense: mExp, income: mInc);
-    });
+    List<_MonthData> chartData = [];
+    String chartTitle = '📊 Overview';
+    String chartSubtitle = 'Spending & Income trend';
 
-    final maxMonthly = monthlyData
-        .map((m) => m.expense > m.income ? m.expense : m.income)
-        .reduce((a, b) => a > b ? a : b);
+    if (_selectedPeriod == 'Today' || _selectedPeriod == 'Single Date') {
+      chartTitle = '📊 Hourly Breakdown';
+      chartSubtitle = 'Activity by time block';
+      final targetDate = _selectedPeriod == 'Single Date' ? (_selectedSingleDate ?? now) : now;
+
+      final blocks = [
+        {'label': 'Morning', 'start': 6, 'end': 12},
+        {'label': 'Noon', 'start': 12, 'end': 17},
+        {'label': 'Evening', 'start': 17, 'end': 21},
+        {'label': 'Night', 'start': 21, 'end': 30},
+      ];
+
+      chartData = blocks.map((b) {
+        final startH = b['start'] as int;
+        final endH = b['end'] as int;
+        final label = b['label'] as String;
+
+        final blockTxs = txProvider.transactions.where((t) {
+          if (t.date.year != targetDate.year ||
+              t.date.month != targetDate.month ||
+              t.date.day != targetDate.day) {
+            return false;
+          }
+          final hour = t.date.hour;
+          if (startH == 21) return hour >= 21 || hour < 6;
+          return hour >= startH && hour < endH;
+        }).toList();
+
+        final exp = blockTxs.where((t) => t.type == TransactionType.expense).fold(0.0, (s, t) => s + t.amount);
+        final inc = blockTxs.where((t) => t.type == TransactionType.income).fold(0.0, (s, t) => s + t.amount);
+        return _MonthData(label: label, expense: exp, income: inc);
+      }).toList();
+
+    } else if (_selectedPeriod == 'This Week' || _selectedPeriod == 'Last 7 Days') {
+      chartTitle = '📊 Daily Trend';
+      chartSubtitle = 'Breakdown by day';
+
+      chartData = List.generate(7, (i) {
+        final d = now.subtract(Duration(days: 6 - i));
+        final dayTxs = txProvider.transactions.where((t) =>
+            t.date.year == d.year && t.date.month == d.month && t.date.day == d.day).toList();
+
+        final exp = dayTxs.where((t) => t.type == TransactionType.expense).fold(0.0, (s, t) => s + t.amount);
+        final inc = dayTxs.where((t) => t.type == TransactionType.income).fold(0.0, (s, t) => s + t.amount);
+        return _MonthData(label: _dayShort(d.weekday), expense: exp, income: inc);
+      });
+
+    } else if (_selectedPeriod == 'This Month' || _selectedPeriod == 'Last Month' || _selectedPeriod == 'Last 30 Days') {
+      chartTitle = '📊 Weekly Trend';
+      chartSubtitle = 'Breakdown by week';
+
+      chartData = List.generate(4, (w) {
+        final startDay = w * 7 + 1;
+        final endDay = (w == 3) ? 31 : (w + 1) * 7;
+        final weekTxs = filtered.where((t) => t.date.day >= startDay && t.date.day <= endDay).toList();
+
+        final exp = weekTxs.where((t) => t.type == TransactionType.expense).fold(0.0, (s, t) => s + t.amount);
+        final inc = weekTxs.where((t) => t.type == TransactionType.income).fold(0.0, (s, t) => s + t.amount);
+        return _MonthData(label: 'W${w + 1}', expense: exp, income: inc);
+      });
+
+    } else if (_selectedPeriod == 'This Year') {
+      chartTitle = '📊 Monthly Trend';
+      chartSubtitle = 'Breakdown by month of ${now.year}';
+
+      chartData = List.generate(12, (i) {
+        final monthNum = i + 1;
+        final mExp = txProvider.transactions
+            .where((t) => t.type == TransactionType.expense && t.date.year == now.year && t.date.month == monthNum)
+            .fold(0.0, (s, t) => s + t.amount);
+        final mInc = txProvider.transactions
+            .where((t) => t.type == TransactionType.income && t.date.year == now.year && t.date.month == monthNum)
+            .fold(0.0, (s, t) => s + t.amount);
+        return _MonthData(label: _monthShort(monthNum), expense: mExp, income: mInc);
+      });
+
+    } else {
+      chartTitle = '📊 Multi-Month Overview';
+      chartSubtitle = '6-month comparison';
+      chartData = List.generate(6, (i) {
+        final month = DateTime(now.year, now.month - (5 - i));
+        final mExp = txProvider.transactions
+            .where((t) => t.type == TransactionType.expense && t.date.year == month.year && t.date.month == month.month)
+            .fold(0.0, (s, t) => s + t.amount);
+        final mInc = txProvider.transactions
+            .where((t) => t.type == TransactionType.income && t.date.year == month.year && t.date.month == month.month)
+            .fold(0.0, (s, t) => s + t.amount);
+        return _MonthData(label: _monthShort(month.month), expense: mExp, income: mInc);
+      });
+    }
+
+    final maxMonthly = chartData.isEmpty
+        ? 1.0
+        : chartData.map((m) => math.max(m.expense, m.income)).reduce(math.max);
 
     final bgColor = isDark ? const Color(0xFF0A0A14) : const Color(0xFFF0F2FA);
 
@@ -254,11 +367,83 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
               ),
             ),
 
-            // ── Monthly Bar Chart ──────────────────────────────────────────
+            // ── Dynamic Bar / Continuous Line Chart ──────────────────────────
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
-                child: _sectionHeader(context, '📊 Monthly Overview', '6-month trend'),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(child: _sectionHeader(context, chartTitle, chartSubtitle)),
+                    Container(
+                      padding: const EdgeInsets.all(3),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF1C1C2E) : Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.05),
+                            blurRadius: 6,
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          GestureDetector(
+                            onTap: () => setState(() => _chartStyle = 'bar'),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: _chartStyle == 'bar' ? const Color(0xFF6C5CE7) : Colors.transparent,
+                                borderRadius: BorderRadius.circular(18),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.bar_chart_rounded, size: 13, color: _chartStyle == 'bar' ? Colors.white : Colors.grey),
+                                  const SizedBox(width: 3),
+                                  Text(
+                                    'Bar',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: _chartStyle == 'bar' ? Colors.white : Colors.grey,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: () => setState(() => _chartStyle = 'continuous'),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: _chartStyle == 'continuous' ? const Color(0xFF6C5CE7) : Colors.transparent,
+                                borderRadius: BorderRadius.circular(18),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.show_chart_rounded, size: 13, color: _chartStyle == 'continuous' ? Colors.white : Colors.grey),
+                                  const SizedBox(width: 3),
+                                  Text(
+                                    'Flow',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: _chartStyle == 'continuous' ? Colors.white : Colors.grey,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
             SliverToBoxAdapter(
@@ -266,14 +451,23 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                 child: AnimatedBuilder(
                   animation: _barAnim,
-                  builder: (_, __) => _buildPremiumBarChart(
-                    context,
-                    monthlyData,
-                    maxMonthly,
-                    isDark,
-                    _barAnim.value,
-                    currency,
-                  ),
+                  builder: (context, child) => _chartStyle == 'continuous'
+                      ? _buildContinuousFlowChart(
+                          context,
+                          chartData,
+                          maxMonthly,
+                          isDark,
+                          _barAnim.value,
+                          currency,
+                        )
+                      : _buildPremiumBarChart(
+                          context,
+                          chartData,
+                          maxMonthly,
+                          isDark,
+                          _barAnim.value,
+                          currency,
+                        ),
                 ),
               ),
             ),
@@ -292,13 +486,14 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                   child: AnimatedBuilder(
                     animation: _pieAnim,
-                    builder: (_, __) => _buildBreakdownCard(
+                    builder: (context, child) => _buildBreakdownCard(
                       context,
                       sortedCats,
                       totalExpense,
                       currency,
                       isDark,
                       _pieAnim.value,
+                      expenses,
                     ),
                   ),
                 ),
@@ -390,67 +585,124 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
     );
   }
 
-  // ── PERIOD CHIPS ───────────────────────────────────────────────────────────
+  // ── PERIOD CHIPS (Today, This Week, This Month, Custom Range in front + Filter Icon) ────
   Widget _buildPeriodChips(BuildContext context, bool isDark) {
+    const primaryFrontPeriods = ['Today', 'This Week', 'This Month', 'Custom Range'];
+    final visibleChips = List<String>.from(primaryFrontPeriods);
+    if (!primaryFrontPeriods.contains(_selectedPeriod)) {
+      visibleChips.add(_selectedPeriod);
+    }
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Row(
-          children: _periods.map((p) {
-            final isSelected = p == _selectedPeriod;
-            return GestureDetector(
-              onTap: () => _onPeriodTap(p),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 250),
-                margin: const EdgeInsets.only(right: 8),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
-                decoration: BoxDecoration(
-                  gradient: isSelected
-                      ? const LinearGradient(
-                          colors: [Color(0xFF6C5CE7), Color(0xFF8E7CFE)],
-                        )
-                      : null,
-                  color: isSelected
-                      ? null
-                      : (isDark
-                          ? const Color(0xFF1C1C2E)
-                          : Colors.white),
-                  borderRadius: BorderRadius.circular(30),
-                  boxShadow: isSelected
-                      ? [
-                          BoxShadow(
-                            color:
-                                const Color(0xFF6C5CE7).withValues(alpha: 0.4),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
+      child: Row(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: visibleChips.map((p) {
+                  final isSelected = p == _selectedPeriod;
+                  return GestureDetector(
+                    onTap: () => _onPeriodTap(p),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 250),
+                      margin: const EdgeInsets.only(right: 8),
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        gradient: isSelected
+                            ? const LinearGradient(
+                                colors: [Color(0xFF6C5CE7), Color(0xFF8E7CFE)],
+                              )
+                            : null,
+                        color: isSelected
+                            ? null
+                            : (isDark
+                                ? const Color(0xFF1C1C2E)
+                                : Colors.white),
+                        borderRadius: BorderRadius.circular(30),
+                        boxShadow: isSelected
+                            ? [
+                                BoxShadow(
+                                  color:
+                                      const Color(0xFF6C5CE7).withValues(alpha: 0.4),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ]
+                            : [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.05),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                      ),
+                      child: Text(
+                        p,
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight:
+                              isSelected ? FontWeight.bold : FontWeight.w500,
+                          color: isSelected
+                              ? Colors.white
+                              : (isDark ? Colors.white60 : Colors.black54),
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+          PopupMenuButton<String>(
+            tooltip: 'Filter All Timeframes',
+            icon: Container(
+              margin: const EdgeInsets.only(right: 16),
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1C1C2E) : Colors.white,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.06),
+                    blurRadius: 6,
+                  ),
+                ],
+              ),
+              child: const Icon(Icons.tune_rounded, size: 18, color: Color(0xFF6C5CE7)),
+            ),
+            onSelected: (val) => _onPeriodTap(val),
+            itemBuilder: (ctx) => _periods
+                .map((p) => PopupMenuItem(
+                      value: p,
+                      child: Row(
+                        children: [
+                          Icon(
+                            p == _selectedPeriod
+                                ? Icons.radio_button_checked_rounded
+                                : Icons.radio_button_unchecked_rounded,
+                            size: 16,
+                            color: const Color(0xFF6C5CE7),
                           ),
-                        ]
-                      : [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.06),
-                            blurRadius: 6,
-                            offset: const Offset(0, 2),
+                          const SizedBox(width: 8),
+                          Text(
+                            p,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: p == _selectedPeriod
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                            ),
                           ),
                         ],
-                ),
-                child: Text(
-                  p,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight:
-                        isSelected ? FontWeight.bold : FontWeight.w500,
-                    color: isSelected
-                        ? Colors.white
-                        : (isDark ? Colors.white60 : Colors.black54),
-                  ),
-                ),
-              ),
-            );
-          }).toList(),
-        ),
+                      ),
+                    ))
+                .toList(),
+          ),
+        ],
       ),
     );
   }
@@ -726,10 +978,21 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
   ) {
     final cardColor = isDark ? const Color(0xFF1C1C2E) : Colors.white;
     const barMaxH = 110.0;
-    const barW = 12.0;
+    final count = data.length;
+    final isMany = count > 8;
+    final isVeryMany = count > 10;
+
+    final barW = isVeryMany ? 4.5 : (isMany ? 7.0 : 12.0);
+    final gapW = isVeryMany ? 1.5 : (isMany ? 2.0 : 3.0);
+    final fontSize = isVeryMany ? 8.5 : (isMany ? 9.5 : 10.0);
+    final chipPaddingH = isVeryMany ? 2.0 : 4.0;
+
+    final maxFormatted = Formatters.formatCompactCurrency(maxVal, symbol: currency);
+    final midFormatted = Formatters.formatCompactCurrency(maxVal / 2, symbol: currency);
+    final minFormatted = Formatters.formatCompactCurrency(0, symbol: currency);
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
+      padding: const EdgeInsets.fromLTRB(14, 18, 14, 16),
       decoration: BoxDecoration(
         color: cardColor,
         borderRadius: BorderRadius.circular(24),
@@ -742,113 +1005,213 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
         ],
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Legend
+          // Header Row: Legend + Money Range Badge
           Row(
-            mainAxisAlignment: MainAxisAlignment.end,
             children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF6C5CE7).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: const Color(0xFF6C5CE7).withValues(alpha: 0.25)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.payments_rounded, size: 13, color: Color(0xFF6C5CE7)),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Range: $minFormatted – $maxFormatted',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF6C5CE7),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Spacer(),
               _dot('Income', const Color(0xFF6C5CE7)),
-              const SizedBox(width: 16),
+              const SizedBox(width: 12),
               _dot('Expense', const Color(0xFFFF7675)),
             ],
           ),
           const SizedBox(height: 16),
 
-          // Bars
+          // Chart with Y-Axis Money Scale and Bars
           SizedBox(
-            height: barMaxH + 30,
+            height: barMaxH + 52,
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: data.map((m) {
-                final incH =
-                    maxVal > 0 ? (m.income / maxVal * barMaxH * animValue) : 0.0;
-                final expH =
-                    maxVal > 0 ? (m.expense / maxVal * barMaxH * animValue) : 0.0;
-                final isCurrentMonth = m.label ==
-                    _monthShort(DateTime.now().month);
-
-                return Expanded(
+              children: [
+                // Left Y-Axis Money Scale
+                SizedBox(
+                  width: 38,
+                  height: barMaxH + 52,
                   child: Column(
-                    mainAxisAlignment: MainAxisAlignment.end,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Value tooltip for tallest
-                      SizedBox(
-                        height: barMaxH,
-                        child: Stack(
-                          alignment: Alignment.bottomCenter,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                // Income bar
-                                Container(
-                                  width: barW,
-                                  height: incH.clamp(2.0, barMaxH),
-                                  decoration: BoxDecoration(
-                                    gradient: const LinearGradient(
-                                      colors: [
-                                        Color(0xFF6C5CE7),
-                                        Color(0xFF8E7CFE),
-                                      ],
-                                      begin: Alignment.bottomCenter,
-                                      end: Alignment.topCenter,
-                                    ),
-                                    borderRadius: const BorderRadius.vertical(
-                                        top: Radius.circular(6)),
-                                  ),
-                                ),
-                                const SizedBox(width: 3),
-                                // Expense bar
-                                Container(
-                                  width: barW,
-                                  height: expH.clamp(2.0, barMaxH),
-                                  decoration: BoxDecoration(
-                                    gradient: const LinearGradient(
-                                      colors: [
-                                        Color(0xFFFF6B6B),
-                                        Color(0xFFFF8E53),
-                                      ],
-                                      begin: Alignment.bottomCenter,
-                                      end: Alignment.topCenter,
-                                    ),
-                                    borderRadius: const BorderRadius.vertical(
-                                        top: Radius.circular(6)),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
+                      Padding(
+                        padding: const EdgeInsets.only(top: 14),
+                        child: Text(
+                          maxFormatted,
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? Colors.white38 : Colors.black38,
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
-                        decoration: isCurrentMonth
-                            ? BoxDecoration(
-                                color: const Color(0xFF6C5CE7)
-                                    .withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(6),
-                              )
-                            : null,
+                      Text(
+                        midFormatted,
+                        style: TextStyle(
+                          fontSize: 9,
+                          color: isDark ? Colors.white24 : Colors.black26,
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 22),
                         child: Text(
-                          m.label,
+                          minFormatted,
                           style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: isCurrentMonth
-                                ? FontWeight.bold
-                                : FontWeight.w500,
-                            color: isCurrentMonth
-                                ? const Color(0xFF6C5CE7)
-                                : (isDark ? Colors.white54 : Colors.black45),
+                            fontSize: 9,
+                            color: isDark ? Colors.white24 : Colors.black26,
                           ),
                         ),
                       ),
                     ],
                   ),
-                );
-              }).toList(),
+                ),
+                const SizedBox(width: 4),
+
+                // Bars with Grid Lines background
+                Expanded(
+                  child: Stack(
+                    children: [
+                      // Grid Lines (Top, Mid, Bottom)
+                      Positioned.fill(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const SizedBox(height: 20),
+                            Divider(height: 1, color: isDark ? Colors.white10 : Colors.black12),
+                            Divider(height: 1, color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05)),
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 26),
+                              child: Divider(height: 1, color: isDark ? Colors.white10 : Colors.black12),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // Bar Columns
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: data.map((m) {
+                          final incH = maxVal > 0 ? (m.income / maxVal * barMaxH * animValue) : 0.0;
+                          final expH = maxVal > 0 ? (m.expense / maxVal * barMaxH * animValue) : 0.0;
+                          final highestVal = math.max(m.income, m.expense);
+                          final isCurrentMonth = m.label == _monthShort(DateTime.now().month);
+
+                          return Expanded(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                // Top Value Badge if non-zero
+                                SizedBox(
+                                  height: 14,
+                                  child: highestVal > 0
+                                      ? FittedBox(
+                                          fit: BoxFit.scaleDown,
+                                          child: Text(
+                                            Formatters.formatCompactCurrency(highestVal, symbol: currency),
+                                            style: TextStyle(
+                                              fontSize: isVeryMany ? 7.5 : 8.5,
+                                              fontWeight: FontWeight.bold,
+                                              color: m.expense >= m.income
+                                                  ? const Color(0xFFFF7675)
+                                                  : const Color(0xFF6C5CE7),
+                                            ),
+                                          ),
+                                        )
+                                      : const SizedBox.shrink(),
+                                ),
+                                const SizedBox(height: 2),
+
+                                // Bars
+                                SizedBox(
+                                  height: barMaxH,
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      // Income bar
+                                      Container(
+                                        width: barW,
+                                        height: incH.clamp(2.0, barMaxH),
+                                        decoration: BoxDecoration(
+                                          gradient: const LinearGradient(
+                                            colors: [Color(0xFF6C5CE7), Color(0xFF8E7CFE)],
+                                            begin: Alignment.bottomCenter,
+                                            end: Alignment.topCenter,
+                                          ),
+                                          borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+                                        ),
+                                      ),
+                                      SizedBox(width: gapW),
+                                      // Expense bar
+                                      Container(
+                                        width: barW,
+                                        height: expH.clamp(2.0, barMaxH),
+                                        decoration: BoxDecoration(
+                                          gradient: const LinearGradient(
+                                            colors: [Color(0xFFFF6B6B), Color(0xFFFF8E53)],
+                                            begin: Alignment.bottomCenter,
+                                            end: Alignment.topCenter,
+                                          ),
+                                          borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Container(
+                                  padding: EdgeInsets.symmetric(horizontal: chipPaddingH, vertical: 2),
+                                  decoration: isCurrentMonth
+                                      ? BoxDecoration(
+                                          color: const Color(0xFF6C5CE7).withValues(alpha: 0.15),
+                                          borderRadius: BorderRadius.circular(6),
+                                        )
+                                      : null,
+                                  child: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
+                                      m.label,
+                                      maxLines: 1,
+                                      softWrap: false,
+                                      style: TextStyle(
+                                        fontSize: fontSize,
+                                        fontWeight: isCurrentMonth ? FontWeight.bold : FontWeight.w500,
+                                        color: isCurrentMonth
+                                            ? const Color(0xFF6C5CE7)
+                                            : (isDark ? Colors.white54 : Colors.black45),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
 
@@ -864,7 +1227,180 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
     );
   }
 
-  // ── BREAKDOWN CARD (Donut + List) ──────────────────────────────────────────
+  // ── CONTINUOUS FLOW & TREND CHART ─────────────────────────────────────────
+  Widget _buildContinuousFlowChart(
+    BuildContext context,
+    List<_MonthData> data,
+    double maxVal,
+    bool isDark,
+    double animValue,
+    String currency,
+  ) {
+    final cardColor = isDark ? const Color(0xFF1C1C2E) : Colors.white;
+    const chartHeight = 130.0;
+
+    final maxFormatted = Formatters.formatCompactCurrency(maxVal, symbol: currency);
+    final midFormatted = Formatters.formatCompactCurrency(maxVal / 2, symbol: currency);
+    final minFormatted = Formatters.formatCompactCurrency(0, symbol: currency);
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 18, 14, 16),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.07),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header Row: Legend + Money Range Badge
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF6C5CE7).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: const Color(0xFF6C5CE7).withValues(alpha: 0.25)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.show_chart_rounded, size: 13, color: Color(0xFF6C5CE7)),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Continuous: $minFormatted – $maxFormatted',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF6C5CE7),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Spacer(),
+              _dot('Income', const Color(0xFF6C5CE7)),
+              const SizedBox(width: 12),
+              _dot('Expense', const Color(0xFFFF7675)),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Chart with Y-Axis Money Scale and Continuous Spline Painter
+          SizedBox(
+            height: chartHeight + 40,
+            child: Row(
+              children: [
+                // Left Y-Axis Money Scale
+                SizedBox(
+                  width: 38,
+                  height: chartHeight + 40,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          maxFormatted,
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? Colors.white38 : Colors.black38,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        midFormatted,
+                        style: TextStyle(
+                          fontSize: 9,
+                          color: isDark ? Colors.white24 : Colors.black26,
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 22),
+                        child: Text(
+                          minFormatted,
+                          style: TextStyle(
+                            fontSize: 9,
+                            color: isDark ? Colors.white24 : Colors.black26,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 4),
+
+                // Continuous Line & Area Painter
+                Expanded(
+                  child: Stack(
+                    children: [
+                      // Grid Lines
+                      Positioned.fill(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const SizedBox(height: 10),
+                            Divider(height: 1, color: isDark ? Colors.white10 : Colors.black12),
+                            Divider(height: 1, color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05)),
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 26),
+                              child: Divider(height: 1, color: isDark ? Colors.white10 : Colors.black12),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // Spline CustomPainter
+                      Positioned.fill(
+                        child: CustomPaint(
+                          painter: _ContinuousLinePainter(
+                            data: data,
+                            maxVal: maxVal,
+                            animValue: animValue,
+                            isDark: isDark,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 4),
+          Divider(
+              height: 1,
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.06)
+                  : Colors.black.withValues(alpha: 0.06)),
+        ],
+      ),
+    );
+  }
+
+  static Map<String, dynamic> _getCategoryMeta(String categoryName) {
+    final lower = categoryName.toLowerCase();
+    if (lower.contains('food') || lower.contains('grocer') || lower.contains('fuel') || lower.contains('rent') || lower.contains('bill') || lower.contains('health') || lower.contains('medic')) {
+      return {'tag': 'Needs', 'color': const Color(0xFF00B894), 'icon': Icons.shopping_basket_rounded};
+    } else if (lower.contains('shop') || lower.contains('entertain') || lower.contains('movie') || lower.contains('travel') || lower.contains('cafe')) {
+      return {'tag': 'Wants', 'color': const Color(0xFFE17055), 'icon': Icons.local_activity_rounded};
+    } else if (lower.contains('debt') || lower.contains('emi') || lower.contains('loan') || lower.contains('repay')) {
+      return {'tag': 'Obligations', 'color': const Color(0xFFD63031), 'icon': Icons.credit_card_rounded};
+    } else {
+      return {'tag': 'General', 'color': const Color(0xFF0984E3), 'icon': Icons.category_rounded};
+    }
+  }
+
+  // ── BREAKDOWN CARD (Donut + Interactive Category Insights) ───────────
   Widget _buildBreakdownCard(
     BuildContext context,
     List<MapEntry<String, double>> sorted,
@@ -872,9 +1408,29 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
     String currency,
     bool isDark,
     double animValue,
+    List<TransactionModel> expenses,
   ) {
     final cardColor = isDark ? const Color(0xFF1C1C2E) : Colors.white;
     final catColors = _getCategoryColors(sorted);
+
+    // Selected breakdown item details
+    MapEntry<String, double>? selectedEntry;
+    if (_selectedBreakdownCategory != null) {
+      for (final e in sorted) {
+        if (e.key == _selectedBreakdownCategory) {
+          selectedEntry = e;
+          break;
+        }
+      }
+    }
+
+    final displayLabel = selectedEntry != null ? selectedEntry.key : 'Total Expense';
+    final displayAmount = selectedEntry != null ? selectedEntry.value : total;
+    final displayPct = (total > 0 && selectedEntry != null)
+        ? (selectedEntry.value / total * 100).toStringAsFixed(1)
+        : null;
+
+    final displayList = sorted.toList();
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -890,119 +1446,246 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
         ],
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Donut Chart
-          SizedBox(
-            height: 180,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                CustomPaint(
-                  size: const Size(180, 180),
-                  painter: _DonutPainter(
-                    data: sorted.take(6).toList(),
-                    total: total,
-                    colors: catColors,
-                    animValue: animValue,
+          // Donut Chart Container
+          Center(
+            child: SizedBox(
+              height: 190,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  CustomPaint(
+                    size: const Size(190, 190),
+                    painter: _DonutPainter(
+                      data: sorted,
+                      total: total,
+                      colors: catColors,
+                      animValue: animValue,
+                      selectedCategory: _selectedBreakdownCategory,
+                    ),
                   ),
-                ),
-                // Center label
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'Total',
-                      style: TextStyle(
-                          fontSize: 12,
-                          color: isDark ? Colors.white38 : Colors.black38),
+                  // Center label with dynamic selected info
+                  GestureDetector(
+                    onTap: () {
+                      setState(() => _selectedBreakdownCategory = null);
+                    },
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          displayLabel,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: isDark ? Colors.white60 : Colors.black54,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          Formatters.formatCurrency(displayAmount, symbol: currency),
+                          style: const TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        if (displayPct != null) ...[
+                          const SizedBox(height: 2),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF6C5CE7).withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              '$displayPct% of total',
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF6C5CE7),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
-                    Text(
-                      Formatters.formatCurrency(total, symbol: currency),
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              ],
+                  ),
+                ],
+              ),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
+
+          // Smart Insight Banner
+          if (sorted.isNotEmpty) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF6C5CE7).withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFF6C5CE7).withValues(alpha: 0.15)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.lightbulb_outline_rounded, size: 16, color: Color(0xFF6C5CE7)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Top spending: ${sorted.first.key} (${(total > 0 ? (sorted.first.value / total * 100) : 0).toStringAsFixed(0)}% of total)',
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF6C5CE7),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+
           Divider(
               height: 1,
               color: isDark
                   ? Colors.white.withValues(alpha: 0.07)
                   : Colors.black.withValues(alpha: 0.06)),
           const SizedBox(height: 16),
-          // Category rows
-          ...sorted.take(6).toList().asMap().entries.map((entry) {
+
+          // Advanced Category rows
+          ...displayList.asMap().entries.map((entry) {
             final idx = entry.key;
             final cat = entry.value;
             final pct = total > 0 ? cat.value / total : 0.0;
             final color = catColors[idx % catColors.length];
+            final isSelected = _selectedBreakdownCategory == cat.key;
+            final meta = _getCategoryMeta(cat.key);
+            final txCount = expenses.where((t) => t.category == cat.key).length;
 
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Row(
-                children: [
-                  Container(
-                    width: 12,
-                    height: 12,
-                    decoration: BoxDecoration(
-                      color: color,
-                      shape: BoxShape.circle,
-                    ),
+            return GestureDetector(
+              onTap: () {
+                setState(() {
+                  if (_selectedBreakdownCategory == cat.key) {
+                    _selectedBreakdownCategory = null;
+                  } else {
+                    _selectedBreakdownCategory = cat.key;
+                  }
+                });
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? color.withValues(alpha: 0.12)
+                      : (isDark ? const Color(0xFF252538) : const Color(0xFFF8F9FE)),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: isSelected ? color : Colors.transparent,
+                    width: 1.5,
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              cat.key,
-                              style: const TextStyle(
-                                  fontSize: 13, fontWeight: FontWeight.w600),
-                            ),
-                            Text(
-                              Formatters.formatCurrency(cat.value,
-                                  symbol: currency),
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: color,
+                ),
+                child: Row(
+                  children: [
+                    // Category Icon Circle
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(meta['icon'] as IconData, size: 16, color: color),
+                    ),
+                    const SizedBox(width: 12),
+
+                    // Label, Tag & Progress
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  Text(
+                                    cat.key,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                    decoration: BoxDecoration(
+                                      color: (meta['color'] as Color).withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      meta['tag'] as String,
+                                      style: TextStyle(
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold,
+                                        color: meta['color'] as Color,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 5),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(4),
-                          child: LinearProgressIndicator(
-                            value: pct * animValue,
-                            minHeight: 5,
-                            backgroundColor: color.withValues(alpha: 0.12),
-                            valueColor:
-                                AlwaysStoppedAnimation<Color>(color),
+                              Text(
+                                Formatters.formatCurrency(cat.value, symbol: currency),
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: color,
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(4),
+                                  child: LinearProgressIndicator(
+                                    value: pct * animValue,
+                                    minHeight: 5,
+                                    backgroundColor: color.withValues(alpha: 0.12),
+                                    valueColor: AlwaysStoppedAnimation<Color>(color),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Text(
+                                '${(pct * 100).toStringAsFixed(1)}%',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: isDark ? Colors.white54 : Colors.black45,
+                                ),
+                              ),
+                              if (txCount > 0) ...[
+                                const SizedBox(width: 6),
+                                Text(
+                                  '• $txCount txns',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: isDark ? Colors.white38 : Colors.black38,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    '${(pct * 100).toStringAsFixed(0)}%',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: isDark ? Colors.white54 : Colors.black45,
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             );
           }),
@@ -1011,7 +1694,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
     );
   }
 
-  // ── QUICK STATS GRID ───────────────────────────────────────────────────────
+  // ── ADVANCED QUICK STATS GRID ─────────────────────────────────────────────
   Widget _buildQuickStatsGrid(
     BuildContext context, {
     required List<TransactionModel> expenses,
@@ -1021,31 +1704,54 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
     required bool isDark,
   }) {
     final now = DateTime.now();
-    final daysInPeriod = _selectedPeriod == 'This Week'
-        ? 7
-        : _selectedPeriod == 'This Month'
-            ? now.day
-            : _selectedPeriod == 'This Year'
-                ? now.dayOfYear
-                : 30;
-    final avgDaily = daysInPeriod > 0 ? totalExpense / daysInPeriod : 0.0;
+    final daysInPeriod = _selectedPeriod == 'Today'
+        ? 1
+        : _selectedPeriod == 'This Week' || _selectedPeriod == 'Last 7 Days'
+            ? 7
+            : _selectedPeriod == 'This Month' || _selectedPeriod == 'Last Month' || _selectedPeriod == 'Last 30 Days'
+                ? now.day
+                : _selectedPeriod == 'This Year'
+                    ? now.dayOfYear
+                    : 30;
 
+    final avgDaily = daysInPeriod > 0 ? totalExpense / daysInPeriod : 0.0;
+    final avgTxSize = expenses.isNotEmpty ? totalExpense / expenses.length : 0.0;
+
+    // Largest Expense
     double largestExpense = 0;
     String largestCategory = '-';
+    String largestMerchant = '';
     for (final t in expenses) {
       if (t.amount > largestExpense) {
         largestExpense = t.amount;
         largestCategory = t.category;
+        largestMerchant = t.description;
       }
     }
 
+    // Most Frequent Category
     final Map<String, int> catFreq = {};
     for (final t in expenses) {
       catFreq[t.category] = (catFreq[t.category] ?? 0) + 1;
     }
-    final mostFrequent = catFreq.isNotEmpty
-        ? catFreq.entries.reduce((a, b) => a.value > b.value ? a : b).key
-        : '-';
+    final mostFrequentEntry = catFreq.isNotEmpty
+        ? catFreq.entries.reduce((a, b) => a.value > b.value ? a : b)
+        : null;
+
+    // Peak Spend Day
+    final Map<int, double> dayTotals = {};
+    for (final t in expenses) {
+      dayTotals[t.date.weekday] = (dayTotals[t.date.weekday] ?? 0.0) + t.amount;
+    }
+    final peakDayEntry = dayTotals.isNotEmpty
+        ? dayTotals.entries.reduce((a, b) => a.value > b.value ? a : b)
+        : null;
+    final peakDayName = peakDayEntry != null ? _dayShort(peakDayEntry.key) : '-';
+    final peakDayAmount = peakDayEntry != null ? peakDayEntry.value : 0.0;
+
+    // Income Retention
+    final totalInc = incomes.fold(0.0, (s, t) => s + t.amount);
+    final retentionPct = totalInc > 0 ? ((totalInc - totalExpense) / totalInc * 100) : 0.0;
 
     final stats = [
       _QuickStat(
@@ -1053,12 +1759,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
         gradient: const [Color(0xFF6C5CE7), Color(0xFF8E7CFE)],
         label: 'Daily Avg Spend',
         value: Formatters.formatCurrency(avgDaily, symbol: currency),
-      ),
-      _QuickStat(
-        icon: Icons.receipt_long_rounded,
-        gradient: const [Color(0xFFFDAA5A), Color(0xFFFF7675)],
-        label: 'Transactions',
-        value: '${expenses.length + incomes.length}',
+        subtitle: 'Est. Mo: ${Formatters.formatCompactCurrency(avgDaily * 30, symbol: currency)}',
+        badge: 'Daily',
       ),
       _QuickStat(
         icon: Icons.bolt_rounded,
@@ -1067,13 +1769,42 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
         value: largestExpense > 0
             ? Formatters.formatCurrency(largestExpense, symbol: currency)
             : '-',
-        subtitle: largestCategory != '-' ? largestCategory : null,
+        subtitle: largestMerchant.isNotEmpty
+            ? largestMerchant
+            : (largestCategory != '-' ? largestCategory : null),
+        badge: largestCategory != '-' ? largestCategory : null,
+      ),
+      _QuickStat(
+        icon: Icons.event_repeat_rounded,
+        gradient: const [Color(0xFFFDAA5A), Color(0xFFFF7675)],
+        label: 'Peak Spend Day',
+        value: peakDayEntry != null ? '$peakDayName (${Formatters.formatCompactCurrency(peakDayAmount, symbol: currency)})' : '-',
+        subtitle: peakDayEntry != null ? 'Highest daily outflow' : null,
+        badge: 'Peak',
       ),
       _QuickStat(
         icon: Icons.repeat_rounded,
         gradient: const [Color(0xFF00B894), Color(0xFF00CEC9)],
         label: 'Top Category',
-        value: mostFrequent,
+        value: mostFrequentEntry?.key ?? '-',
+        subtitle: mostFrequentEntry != null ? '${mostFrequentEntry.value} transactions' : null,
+        badge: 'Frequent',
+      ),
+      _QuickStat(
+        icon: Icons.receipt_long_rounded,
+        gradient: const [Color(0xFF0984E3), Color(0xFF74B9FF)],
+        label: 'Avg Tx Size',
+        value: Formatters.formatCurrency(avgTxSize, symbol: currency),
+        subtitle: '${expenses.length + incomes.length} total txns',
+        badge: '${expenses.length} exp',
+      ),
+      _QuickStat(
+        icon: Icons.savings_rounded,
+        gradient: const [Color(0xFFA29BFE), Color(0xFF6C5CE7)],
+        label: 'Income Retained',
+        value: totalInc > 0 ? '${retentionPct.toStringAsFixed(1)}%' : 'N/A',
+        subtitle: retentionPct >= 0 ? 'Positive Savings' : 'Deficit spend',
+        badge: retentionPct >= 0 ? '🟢 Safe' : '🔴 Alert',
       ),
     ];
 
@@ -1084,7 +1815,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
         crossAxisCount: 2,
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
-        childAspectRatio: 1.55,
+        childAspectRatio: 1.45,
       ),
       itemCount: stats.length,
       itemBuilder: (_, i) => _buildStatCard(context, stats[i], isDark),
@@ -1093,7 +1824,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
 
   Widget _buildStatCard(BuildContext context, _QuickStat s, bool isDark) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1C1C2E) : Colors.white,
         borderRadius: BorderRadius.circular(20),
@@ -1108,48 +1839,75 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(colors: s.gradient),
-              borderRadius: BorderRadius.circular(10),
-              boxShadow: [
-                BoxShadow(
-                  color: s.gradient.first.withValues(alpha: 0.35),
-                  blurRadius: 8,
-                  offset: const Offset(0, 3),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(colors: s.gradient),
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: [
+                    BoxShadow(
+                      color: s.gradient.first.withValues(alpha: 0.35),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            child: Icon(s.icon, color: Colors.white, size: 18),
+                child: Icon(s.icon, color: Colors.white, size: 16),
+              ),
+              if (s.badge != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: s.gradient.first.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    s.badge!,
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                      color: s.gradient.first,
+                    ),
+                  ),
+                ),
+            ],
           ),
           const Spacer(),
           Text(
             s.label,
             style: TextStyle(
-              fontSize: 11,
-              color: isDark ? Colors.white38 : Colors.black38,
+              fontSize: 10.5,
+              color: isDark ? Colors.white54 : Colors.black45,
               fontWeight: FontWeight.w500,
             ),
           ),
           const SizedBox(height: 2),
-          Text(
-            s.value,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-            overflow: TextOverflow.ellipsis,
-            maxLines: 1,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              s.value,
+              style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold),
+              maxLines: 1,
+            ),
           ),
-          if (s.subtitle != null)
+          if (s.subtitle != null) ...[
+            const SizedBox(height: 2),
             Text(
               s.subtitle!,
               style: TextStyle(
-                fontSize: 11,
+                fontSize: 9.5,
                 color: s.gradient.first,
                 fontWeight: FontWeight.w500,
               ),
               overflow: TextOverflow.ellipsis,
+              maxLines: 1,
             ),
+          ],
         ],
       ),
     );
@@ -1259,26 +2017,28 @@ class _DonutPainter extends CustomPainter {
   final double total;
   final List<Color> colors;
   final double animValue;
+  final String? selectedCategory;
 
   _DonutPainter({
     required this.data,
     required this.total,
     required this.colors,
     required this.animValue,
+    this.selectedCategory,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
-    final outerRadius = size.width / 2 - 8;
-    const strokeWidth = 26.0;
+    final outerRadius = size.width / 2 - 10;
+    const baseStrokeWidth = 24.0;
     const gapAngle = 0.03;
 
     // Background track
     final trackPaint = Paint()
       ..color = Colors.grey.withValues(alpha: 0.08)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth
+      ..strokeWidth = baseStrokeWidth
       ..strokeCap = StrokeCap.round;
     canvas.drawCircle(center, outerRadius, trackPaint);
 
@@ -1287,25 +2047,36 @@ class _DonutPainter extends CustomPainter {
     double startAngle = -math.pi / 2;
 
     for (int i = 0; i < data.length; i++) {
+      final catKey = data[i].key;
+      final isSelected = selectedCategory == catKey;
+      final isAnySelected = selectedCategory != null;
+
       final pct = data[i].value / total;
       final sweepAngle = (pct * math.pi * 2 - gapAngle) * animValue;
       if (sweepAngle <= 0) continue;
 
-      final color = i < colors.length ? colors[i] : const Color(0xFF6C5CE7);
+      Color color = i < colors.length ? colors[i] : const Color(0xFF6C5CE7);
+      if (isAnySelected && !isSelected) {
+        color = color.withValues(alpha: 0.3);
+      }
 
-      // Shadow arc
-      final shadowPaint = Paint()
-        ..color = color.withValues(alpha: 0.2)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = strokeWidth + 4
-        ..strokeCap = StrokeCap.round;
-      canvas.drawArc(
-        Rect.fromCircle(center: center, radius: outerRadius),
-        startAngle,
-        sweepAngle,
-        false,
-        shadowPaint,
-      );
+      final strokeWidth = isSelected ? baseStrokeWidth + 6.0 : baseStrokeWidth;
+
+      // Shadow arc for selected
+      if (isSelected) {
+        final shadowPaint = Paint()
+          ..color = color.withValues(alpha: 0.35)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = strokeWidth + 6
+          ..strokeCap = StrokeCap.round;
+        canvas.drawArc(
+          Rect.fromCircle(center: center, radius: outerRadius),
+          startAngle,
+          sweepAngle,
+          false,
+          shadowPaint,
+        );
+      }
 
       // Main arc
       final paint = Paint()
@@ -1327,7 +2098,7 @@ class _DonutPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_DonutPainter old) =>
-      old.animValue != animValue || old.data != data;
+      old.animValue != animValue || old.data != data || old.selectedCategory != selectedCategory;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1347,15 +2118,134 @@ class _QuickStat {
   final String label;
   final String value;
   final String? subtitle;
+  final String? badge;
   const _QuickStat({
     required this.icon,
     required this.gradient,
     required this.label,
     required this.value,
     this.subtitle,
+    this.badge,
   });
 }
 
 extension _DateTimeExt on DateTime {
   int get dayOfYear => difference(DateTime(year, 1, 1)).inDays + 1;
+}
+
+class _ContinuousLinePainter extends CustomPainter {
+  final List<_MonthData> data;
+  final double maxVal;
+  final double animValue;
+  final bool isDark;
+
+  _ContinuousLinePainter({
+    required this.data,
+    required this.maxVal,
+    required this.animValue,
+    required this.isDark,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (data.isEmpty) return;
+
+    final chartH = size.height - 28;
+    final chartW = size.width;
+    final count = data.length;
+    final stepX = count > 1 ? chartW / (count - 1) : chartW;
+
+    final expPoints = <Offset>[];
+    final incPoints = <Offset>[];
+
+    for (int i = 0; i < count; i++) {
+      final x = (count == 1) ? chartW / 2 : i * stepX;
+      final eVal = maxVal > 0 ? (data[i].expense / maxVal * chartH * animValue) : 0.0;
+      final iVal = maxVal > 0 ? (data[i].income / maxVal * chartH * animValue) : 0.0;
+
+      final ey = chartH - eVal + 6;
+      final iy = chartH - iVal + 6;
+
+      expPoints.add(Offset(x, ey));
+      incPoints.add(Offset(x, iy));
+    }
+
+    void drawSmoothCurve(List<Offset> points, Color color) {
+      if (points.isEmpty) return;
+
+      final path = Path();
+      path.moveTo(points[0].dx, points[0].dy);
+
+      for (int i = 0; i < points.length - 1; i++) {
+        final p0 = points[i];
+        final p1 = points[i + 1];
+        final controlX = (p0.dx + p1.dx) / 2;
+        path.cubicTo(controlX, p0.dy, controlX, p1.dy, p1.dx, p1.dy);
+      }
+
+      // Gradient Area fill below curve
+      final fillPath = Path.from(path);
+      fillPath.lineTo(points.last.dx, chartH + 6);
+      fillPath.lineTo(points.first.dx, chartH + 6);
+      fillPath.close();
+
+      final areaPaint = Paint()
+        ..shader = LinearGradient(
+          colors: [color.withValues(alpha: 0.22), color.withValues(alpha: 0.0)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ).createShader(Rect.fromLTWH(0, 0, chartW, chartH + 6))
+        ..style = PaintingStyle.fill;
+
+      canvas.drawPath(fillPath, areaPaint);
+
+      // Curved Line
+      final linePaint = Paint()
+        ..color = color
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.5
+        ..strokeCap = StrokeCap.round;
+
+      canvas.drawPath(path, linePaint);
+
+      // Node Dots
+      final dotPaint = Paint()..color = color;
+      final innerDotPaint = Paint()..color = Colors.white;
+
+      for (final pt in points) {
+        canvas.drawCircle(pt, 3.5, dotPaint);
+        canvas.drawCircle(pt, 1.5, innerDotPaint);
+      }
+    }
+
+    // Draw Income (Purple) and Expense (Red)
+    drawSmoothCurve(incPoints, const Color(0xFF6C5CE7));
+    drawSmoothCurve(expPoints, const Color(0xFFFF7675));
+
+    // X-Axis Labels
+    final textStyle = TextStyle(
+      fontSize: count > 10 ? 8.0 : 9.0,
+      color: isDark ? Colors.white54 : Colors.black45,
+      fontWeight: FontWeight.w500,
+    );
+
+    for (int i = 0; i < count; i++) {
+      final textSpan = TextSpan(text: data[i].label, style: textStyle);
+      final textPainter = TextPainter(
+        text: textSpan,
+        textDirection: TextDirection.ltr,
+      )..layout();
+
+      final x = (count == 1) ? chartW / 2 : i * stepX;
+      final clampedX = (x - textPainter.width / 2).clamp(0.0, chartW - textPainter.width);
+      textPainter.paint(
+        canvas,
+        Offset(clampedX, chartH + 12),
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_ContinuousLinePainter old) =>
+      old.animValue != animValue || old.data != data || old.isDark != isDark;
 }

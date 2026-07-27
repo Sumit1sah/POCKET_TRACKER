@@ -7,6 +7,7 @@ import '../budget/budget_screen.dart';
 import '../expense_income/add_edit_transaction_screen.dart';
 import '../reports/monthly_report_modal.dart';
 import '../../services/local_storage_service.dart';
+import '../../services/sms_auto_capture_service.dart';
 import '../../utils/formatters.dart';
 
 class MainNavigationScreen extends StatefulWidget {
@@ -27,6 +28,18 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         await _showCCOnboardingDialog();
       }
       await _checkAndShowNewMonthBudgetDialog();
+
+      // Scan SMS inbox for the last 15 minutes (optimal privacy & security window on app open)
+      final count = await SmsAutoCaptureService.scanRecentSms(minutes: 15);
+      if (count > 0 && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('📱 Captured $count missed transaction(s) from recent SMS!'),
+            backgroundColor: const Color(0xFF00B894),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     });
   }
 

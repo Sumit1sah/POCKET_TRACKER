@@ -2,6 +2,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:expense_tracker/models/transaction_model.dart';
 import 'package:expense_tracker/models/category_model.dart';
 import 'package:expense_tracker/services/sms_parser_service.dart';
+import 'package:expense_tracker/services/ai_insight_service.dart';
+import 'package:expense_tracker/services/smart_categorizer_service.dart';
 import 'package:expense_tracker/utils/formatters.dart';
 
 void main() {
@@ -191,6 +193,77 @@ void main() {
 
       // 50,000 + 100,000 - 20,000 = 130,000
       expect(totalNetBalance, 130000.0);
+    });
+  });
+
+  group('AIInsightService Money Tips Tests', () {
+    test('Generate 50/30/20 & Money Tips with sample income and expenses', () {
+      final now = DateTime.now();
+      final transactions = [
+        TransactionModel(
+          id: 't_inc',
+          uid: 'u1',
+          type: TransactionType.income,
+          amount: 50000.0,
+          category: 'Salary',
+          paymentMethod: 'Bank Transfer',
+          description: 'Monthly Salary',
+          date: now,
+        ),
+        TransactionModel(
+          id: 't_food',
+          uid: 'u1',
+          type: TransactionType.expense,
+          amount: 15000.0,
+          category: 'Food',
+          paymentMethod: 'UPI',
+          description: 'Dining & Food Orders',
+          date: now,
+        ),
+        TransactionModel(
+          id: 't_bills',
+          uid: 'u1',
+          type: TransactionType.expense,
+          amount: 10000.0,
+          category: 'Bills',
+          paymentMethod: 'Net Banking',
+          description: 'Electricity & Internet',
+          date: now,
+        ),
+      ];
+
+      final insights = AIInsightService.generateInsights(transactions, '₹');
+
+      expect(insights, isNotEmpty);
+      
+      // Verify Money Tips are present
+      final tips = insights.where((i) => i.type == 'tip').toList();
+      expect(tips, isNotEmpty);
+
+      final has503020Tip = tips.any((t) => t.title.contains('50/30/20'));
+      expect(has503020Tip, isTrue);
+
+      final hasBufferTip = tips.any((t) => t.title.contains('Safety Buffer') || t.title.contains('Emergency'));
+      expect(hasBufferTip, isTrue);
+
+      final hasPayFirstTip = tips.any((t) => t.title.contains('Pay Yourself First'));
+      expect(hasPayFirstTip, isTrue);
+    });
+  });
+
+  group('SmartCategorizerService Tests', () {
+    test('Predict categories accurately from merchant/note keywords', () {
+      expect(SmartCategorizerService.predictCategory('Swiggy order dinner', isExpense: true), 'Food');
+      expect(SmartCategorizerService.predictCategory('Blinkit groceries', isExpense: true), 'Groceries');
+      expect(SmartCategorizerService.predictCategory('Uber ride to airport', isExpense: true), 'Transport');
+      expect(SmartCategorizerService.predictCategory('Netflix subscription', isExpense: true), 'Entertainment');
+      expect(SmartCategorizerService.predictCategory('Electricity bill payment', isExpense: true), 'Bills');
+      expect(SmartCategorizerService.predictCategory('Monthly Salary deposit', isExpense: false), 'Salary');
+    });
+
+    test('Return smart category suggestions', () {
+      final suggestions = SmartCategorizerService.getSuggestedCategories('Zomato', isExpense: true);
+      expect(suggestions, contains('Food'));
     });
   });
 }

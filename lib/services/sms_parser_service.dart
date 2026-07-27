@@ -1,4 +1,5 @@
 import '../models/transaction_model.dart';
+import 'smart_categorizer_service.dart';
 
 class SMSParseResult {
   final double amount;
@@ -75,17 +76,22 @@ class SMSParserService {
     // Full-word debit verbs
     'debited', 'deducted', 'spent', 'paid', 'payment done',
     'payment of', 'purchase of', 'withdrawn', 'transferred to',
-    'sent to', 'sent', 'charged', 'auto debited',
+    'sent to', 'sent', 'charged', 'auto debited', 'debit',
     // Full-word credit verbs
     'credited', 'received', 'deposited', 'salary credited',
     'refund of', 'refunded', 'amount added', 'money added',
-    'transfer received',
-    // Bank-standard shorthand abbreviations (BOB, SBI, Kotak, PNB, etc.)
+    'transfer received', 'has sent you', 'has transferred',
+    'credit of', 'credit with', 'credited with', 'credited by',
+    'credited to', 'credited for', 'credited in', 'cashback credited',
+    'cashback of', 'cashback received', 'credit:', 'credit',
+    'money received', 'fund received', 'amount received',
+    'inward transfer', 'neft credit', 'imps credit', 'upi credit',
+    // Bank-standard shorthand abbreviations (BOB, SBI, Kotak, PNB, Canara, etc.)
     ' dr.', ' cr.',        // " Dr. from A/C", " Cr. to VPA"
     'dr. from', 'cr. to',  // more specific BOB/SBI patterns
     'debit:', 'credit:',   // HDFC / Axis colon-prefix style
-    'dr ', 'cr ',          // without dot (some banks omit it)
-    'amount debited', 'amount credited',
+    'dr ', 'cr ', 'cr.', 'dr.',
+    'amount debited', 'amount credited', 'ac credited', 'a/c credited',
   ];
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -143,31 +149,42 @@ class SMSParserService {
       if (lowerMsg.contains(kw)) return null;
     }
 
-    // ── LAYER 5: Extract amount ──────────────────────────────────────────────
-    // Only strict patterns (amount near currency symbol/keyword).
-    // The old "blind number fallback" is intentionally removed — it caused
-    // any SMS with a number (PIN, phone no, date) to be flagged.
+    // ── LAYER 5: Robust Amount Extraction ────────────────────────────────────
     double amount = 0.0;
 
-    // Pattern A: currency keyword → number  e.g. Rs 450, ₹1200, debited 500
-    final regexA = RegExp(
-      r'(?:rs\.?|inr|₹|\$|debited|credited|paid|payment of|refund of|amount of)\s*([\d]+(?:\.[\d]{1,2})?)',
+    // Pattern 1: Currency symbol prefix -> e.g. "Rs. 2500", "INR 1200.50", "₹500", "Rs 5,000"
+    final regexCurrencyPrefix = RegExp(
+      r'(?:rs\.?|inr|₹|\$)\s*([\d]+(?:\.[\d]{1,2})?)',
       caseSensitive: false,
     );
-    final matchA = regexA.firstMatch(cleanMsg);
-    if (matchA != null && matchA.group(1) != null) {
-      amount = double.tryParse(matchA.group(1)!) ?? 0.0;
+    final match1 = regexCurrencyPrefix.firstMatch(cleanMsg);
+    if (match1 != null && match1.group(1) != null) {
+      amount = double.tryParse(match1.group(1)!) ?? 0.0;
     }
 
-    // Pattern B: number → currency keyword  e.g. 450.00 INR, 1200 Rs
+    // Pattern 2: Financial action verb followed by optional connector words (by/with/for/of/to/in/rs/inr/₹) and digits
+    // e.g. "credited by Rs 2500", "credited with INR 1200", "received Rs 500", "credited for 350"
     if (amount <= 0) {
-      final regexB = RegExp(
-        r'([\d]+(?:\.[\d]{1,2})?)\s*(?:rs\.?|inr|₹|\$)',
+      final regexActionPrefix = RegExp(
+        r'(?:debited|credited|received|deposited|paid|refunded|transferred|added|payment|refund|amount|cashback)\s+(?:by|with|for|of|to|in|a\/c|ac|rs\.?|inr|₹|\$|\s)*\s*([\d]+(?:\.[\d]{1,2})?)',
         caseSensitive: false,
       );
-      final matchB = regexB.firstMatch(cleanMsg);
-      if (matchB != null && matchB.group(1) != null) {
-        amount = double.tryParse(matchB.group(1)!) ?? 0.0;
+      final match2 = regexActionPrefix.firstMatch(cleanMsg);
+      if (match2 != null && match2.group(1) != null) {
+        amount = double.tryParse(match2.group(1)!) ?? 0.0;
+      }
+    }
+
+    // Pattern 3: Digits followed by currency symbol or credit/debit keyword
+    // e.g. "2500.00 INR", "1200 Rs", "500.00 credited", "450 debited"
+    if (amount <= 0) {
+      final regexSuffix = RegExp(
+        r'([\d]+(?:\.[\d]{1,2})?)\s*(?:rs\.?|inr|₹|\$|credited|debited|received|deposited|cr\.?|dr\.?)',
+        caseSensitive: false,
+      );
+      final match3 = regexSuffix.firstMatch(cleanMsg);
+      if (match3 != null && match3.group(1) != null) {
+        amount = double.tryParse(match3.group(1)!) ?? 0.0;
       }
     }
 
@@ -239,26 +256,21 @@ class SMSParserService {
     }
 
     // ── Transaction Type ──────────────────────────────────────────────────
-    // Default: expense. Switch to income only for genuine credit-to-user signals.
-    //
-    // For Dr./Cr. shorthand SMS (e.g., BOB):  "Rs.100 Dr. from A/C XXX Cr. to VPA"
-    //   → Dr. = money left OUR account → EXPENSE
-    //   → Both Dr. and Cr. present means we sent money (expense)
-    // For pure Cr. SMS (income):  "Rs.5000 Cr. to A/C XXXX from employer"
-    //   → only Cr. present → INCOME
     TransactionType type = TransactionType.expense;
-    final hasDebitAbbr = lowerMsg.contains(' dr.') || lowerMsg.contains('dr. from') || lowerMsg.contains(' dr ');
-    final hasCreditAbbr = lowerMsg.contains(' cr.') || lowerMsg.contains('cr. to') || lowerMsg.contains(' cr ');
-    const incomeWords = [
-      'credited', 'received', 'deposited', 'refund', 'added',
-      'transfer received', 'salary credited',
-    ];
-    final hasIncomeWord = incomeWords.any((w) => lowerMsg.contains(w));
-    // Income only when credit signal exists WITHOUT a simultaneous debit signal
-    if (hasIncomeWord && !hasDebitAbbr) {
+
+    final hasStrictDebitSignal = RegExp(
+      r'(?:debited|deducted|spent|paid|purchase|withdrawn|charged|dr\.?\s+from|dr\.?\s+to\s+vpa|dr\s+from|dr:\s*|debit:\s*)',
+      caseSensitive: false,
+    ).hasMatch(lowerMsg);
+
+    final hasStrictCreditSignal = RegExp(
+      r'(?:credited|received|deposited|refund|added|salary|cashback|cr\.?\s+to\s+a\/c|cr\.?\s+to\s+account|cr\s+to\s+a\/c|credit:\s*|inward)',
+      caseSensitive: false,
+    ).hasMatch(lowerMsg);
+
+    if (hasStrictCreditSignal && !hasStrictDebitSignal) {
       type = TransactionType.income;
-    } else if (hasCreditAbbr && !hasDebitAbbr) {
-      // Pure " Cr." without " Dr." = money came INTO our account
+    } else if (lowerMsg.contains('cr') && !lowerMsg.contains('dr') && !hasStrictDebitSignal) {
       type = TransactionType.income;
     }
 
@@ -325,7 +337,7 @@ class SMSParserService {
     String category = 'Others';
     String merchant = cardLast4 != null
         ? '$detectedApp Card ••$cardLast4'
-        : '$detectedApp';
+        : detectedApp;
 
     final merchantRegex = RegExp(
       r'(?:at|to|for|vpa)\s+([A-Za-z0-9\s&]+?)(?=\s+(?:via|on|ref|using|from|by|link|bal|a\/c|\.|$))',
@@ -345,53 +357,12 @@ class SMSParserService {
       }
     }
 
-    if (lowerMsg.contains('swiggy') || lowerMsg.contains('zomato') ||
-        lowerMsg.contains('restaurant') || lowerMsg.contains('food') ||
-        lowerMsg.contains('cafe') || lowerMsg.contains('starbucks') ||
-        lowerMsg.contains('dominos') || lowerMsg.contains('mcdonald')) {
-      category = 'Food';
-    } else if (lowerMsg.contains('blinkit') || lowerMsg.contains('zepto') ||
-        lowerMsg.contains('instamart') || lowerMsg.contains('supermarket') ||
-        lowerMsg.contains('grocery') || lowerMsg.contains('bigbasket')) {
-      category = 'Grocery';
-    } else if (lowerMsg.contains('amazon') || lowerMsg.contains('flipkart') ||
-        lowerMsg.contains('myntra') || lowerMsg.contains('shopping') ||
-        lowerMsg.contains('ajio') || lowerMsg.contains('meesho')) {
-      category = 'Shopping';
-    } else if (lowerMsg.contains('petrol') || lowerMsg.contains('fuel') ||
-        lowerMsg.contains('hpcl') || lowerMsg.contains('bpcl') ||
-        lowerMsg.contains('iocl') || lowerMsg.contains('uber') ||
-        lowerMsg.contains('ola') || lowerMsg.contains('rapido')) {
-      category = 'Fuel';
-    } else if (lowerMsg.contains('electric') || lowerMsg.contains('electricity') ||
-        lowerMsg.contains('bill') || lowerMsg.contains('recharge') ||
-        lowerMsg.contains('jio') || lowerMsg.contains('airtel') ||
-        lowerMsg.contains('wifi') || lowerMsg.contains('broadband')) {
-      category = 'Bills';
-    } else if (lowerMsg.contains('rent')) {
-      category = 'Rent';
-    } else if (lowerMsg.contains('salary') || lowerMsg.contains('stipend')) {
-      category = 'Salary';
-    } else if (lowerMsg.contains('repay') || lowerMsg.contains('repayment') ||
-        lowerMsg.contains('return money') || lowerMsg.contains('returned money') ||
-        lowerMsg.contains('lent') || lowerMsg.contains('borrowed')) {
-      category = 'Debt / Repayment';
-    } else if (lowerMsg.contains('medical') || lowerMsg.contains('hospital') ||
-        lowerMsg.contains('pharmacy') || lowerMsg.contains('doctor') ||
-        lowerMsg.contains('apollo') || lowerMsg.contains('practo')) {
-      category = 'Medical';
-    } else if (lowerMsg.contains('school') || lowerMsg.contains('college') ||
-        lowerMsg.contains('university') || lowerMsg.contains('fees') ||
-        lowerMsg.contains('course')) {
-      category = 'Education';
-    } else if (lowerMsg.contains('movie') || lowerMsg.contains('netflix') ||
-        lowerMsg.contains('hotstar') || lowerMsg.contains('spotify') ||
-        lowerMsg.contains('prime')) {
-      category = 'Entertainment';
-    } else if (lowerMsg.contains('travel') || lowerMsg.contains('flight') ||
-        lowerMsg.contains('irctc') || lowerMsg.contains('train') ||
-        lowerMsg.contains('hotel') || lowerMsg.contains('booking')) {
-      category = 'Travel';
+    final smartCat = SmartCategorizerService.predictCategory(
+      message,
+      isExpense: type == TransactionType.expense,
+    );
+    if (smartCat != null) {
+      category = smartCat;
     }
 
     return SMSParseResult(
