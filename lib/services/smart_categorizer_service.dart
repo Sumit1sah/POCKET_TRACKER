@@ -55,17 +55,18 @@ class SmartCategorizerService {
       'school', 'college', 'university', 'fees', 'tuition', 'udemy',
       'coursera', 'books', 'stationery', 'coaching', 'byjus', 'unacademy'
     ],
-    'Debt / Repayment': [
-      'emi', 'loan', 'credit card bill', 'repayment', 'repay', 'borrowed',
-      'returned money', 'lent', 'debt', 'cred pay'
+    'Money Given / Lent': [
+      'money given', 'given money', 'gave money', 'lent', 'borrowed by', 'asked money',
+      'loan given', 'friend loan', 'emi', 'loan', 'credit card bill', 'repayment', 'repay', 'debt'
     ],
   };
 
   static const Map<String, List<String>> _incomeKeywordMap = {
-    'Salary': ['salary', 'stipend', 'payroll', 'monthly salary', 'wages', 'company credit'],
-    'Freelance': ['freelance', 'client payment', 'upwork', 'fiverr', 'contract', 'consulting'],
-    'Investment': ['dividend', 'interest', 'mutual fund', 'stocks', 'returns', 'profit', 'fd interest'],
-    'Gift': ['gift', 'birthday', 'festival', 'bonus', 'rewards', 'cashback', 'prize'],
+    'Salary': ['salary', 'payroll', 'monthly salary', 'wages', 'company credit'],
+    'Pocket Money': ['pocket money', 'pocketmoney', 'monthly pocket money', 'stipend', 'allowance', 'parents', 'dad', 'mom'],
+    'Money Returned': ['money returned', 'returned', 'refund', 'sent back', 'paid back', 'returned money', 'borrowed back', 'repaid', 'repayment'],
+    'Investment Returns': ['dividend', 'interest', 'mutual fund', 'stocks', 'returns', 'profit', 'fd interest'],
+    'Gift / Bonus': ['gift', 'birthday', 'festival', 'bonus', 'rewards', 'cashback', 'prize'],
   };
 
   /// Smartly predicts the category from user-typed description, merchant, or notes.
@@ -96,7 +97,7 @@ class SmartCategorizerService {
     final Map<String, List<String>> map = isExpense ? _expenseKeywordMap : _incomeKeywordMap;
     final defaultList = isExpense
         ? ['Food', 'Shopping', 'Bills', 'Groceries']
-        : ['Salary', 'Freelance', 'Investment', 'Gift'];
+        : ['Salary', 'Pocket Money', 'Money Returned', 'Investment Returns'];
 
     if (input.trim().isEmpty) return defaultList;
 

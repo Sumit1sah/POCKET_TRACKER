@@ -242,7 +242,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   child: const Icon(Icons.add_circle_outline, color: Color(0xFF00B894)),
                 ),
                 title: const Text('Add Income', style: TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: const Text('Log money received from salary, freelance...'),
+                subtitle: const Text('Log money received from salary, investment returns...'),
                 onTap: () {
                   Navigator.pop(modalContext);
                   Navigator.push(

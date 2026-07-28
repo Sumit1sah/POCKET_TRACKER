@@ -4,6 +4,10 @@ import 'package:hive_flutter/hive_flutter.dart';
 import '../models/transaction_model.dart';
 import '../services/local_storage_service.dart';
 
+enum TransactionTypeFilter { all, expense, income }
+enum TransactionSortOrder { newest, oldest, amountHighToLow, amountLowToHigh }
+enum DatePreset { allTime, today, thisWeek, thisMonth, lastMonth, custom }
+
 class TransactionProvider extends ChangeNotifier {
   List<TransactionModel> _transactions = [];
   List<TransactionModel>? _filteredTransactionsCache;
@@ -14,6 +18,11 @@ class TransactionProvider extends ChangeNotifier {
   String _selectedCategoryFilter = 'All';
   String _selectedPaymentMethodFilter = 'All';
   DateTimeRange? _selectedDateRange;
+  TransactionTypeFilter _typeFilter = TransactionTypeFilter.all;
+  TransactionSortOrder _sortOrder = TransactionSortOrder.newest;
+  DatePreset _datePreset = DatePreset.allTime;
+  double? _minAmount;
+  double? _maxAmount;
 
   /// Stream subscription that watches the Hive box for any external writes
   /// (e.g., SMS auto-capture, background isolate) and auto-refreshes the UI.
@@ -24,11 +33,25 @@ class TransactionProvider extends ChangeNotifier {
   String get selectedCategoryFilter => _selectedCategoryFilter;
   String get selectedPaymentMethodFilter => _selectedPaymentMethodFilter;
   DateTimeRange? get selectedDateRange => _selectedDateRange;
-  bool get hasActiveFilters =>
-      _selectedCategoryFilter != 'All' ||
-      _selectedPaymentMethodFilter != 'All' ||
-      _selectedDateRange != null ||
-      _searchQuery.isNotEmpty;
+  TransactionTypeFilter get typeFilter => _typeFilter;
+  TransactionSortOrder get sortOrder => _sortOrder;
+  DatePreset get datePreset => _datePreset;
+  double? get minAmount => _minAmount;
+  double? get maxAmount => _maxAmount;
+
+  int get activeFilterCount {
+    int count = 0;
+    if (_searchQuery.isNotEmpty) count++;
+    if (_selectedCategoryFilter != 'All') count++;
+    if (_selectedPaymentMethodFilter != 'All') count++;
+    if (_typeFilter != TransactionTypeFilter.all) count++;
+    if (_datePreset != DatePreset.allTime || _selectedDateRange != null) count++;
+    if (_minAmount != null || _maxAmount != null) count++;
+    if (_sortOrder != TransactionSortOrder.newest) count++;
+    return count;
+  }
+
+  bool get hasActiveFilters => activeFilterCount > 0;
 
   TransactionProvider() {
     loadTransactions();
@@ -169,25 +192,90 @@ class TransactionProvider extends ChangeNotifier {
     return map;
   }
 
+  double get filteredTotalExpense {
+    return filteredTransactions
+        .where((t) => t.type == TransactionType.expense)
+        .fold(0.0, (sum, t) => sum + t.amount);
+  }
+
+  double get filteredTotalIncome {
+    return filteredTransactions
+        .where((t) => t.type == TransactionType.income)
+        .fold(0.0, (sum, t) => sum + t.amount);
+  }
+
   List<TransactionModel> get filteredTransactions {
     if (_filteredTransactionsCache != null) return _filteredTransactionsCache!;
 
     final lowerQuery = _searchQuery.toLowerCase();
-    _filteredTransactionsCache = _transactions.where((t) {
+    final now = DateTime.now();
+
+    List<TransactionModel> list = _transactions.where((t) {
+      // 1. Search Query
       final matchesQuery = _searchQuery.isEmpty ||
           t.category.toLowerCase().contains(lowerQuery) ||
           t.description.toLowerCase().contains(lowerQuery) ||
+          t.paymentMethod.toLowerCase().contains(lowerQuery) ||
           t.amount.toString().contains(_searchQuery);
 
-      final matchesCategory = _selectedCategoryFilter == 'All' || t.category == _selectedCategoryFilter;
-      final matchesPayment = _selectedPaymentMethodFilter == 'All' || t.paymentMethod == _selectedPaymentMethodFilter;
-      final matchesDate = _selectedDateRange == null ||
-          (t.date.isAfter(_selectedDateRange!.start.subtract(const Duration(days: 1))) &&
-           t.date.isBefore(_selectedDateRange!.end.add(const Duration(days: 1))));
+      // 2. Type Filter (Expense / Income)
+      bool matchesType = true;
+      if (_typeFilter == TransactionTypeFilter.expense) {
+        matchesType = t.type == TransactionType.expense;
+      } else if (_typeFilter == TransactionTypeFilter.income) {
+        matchesType = t.type == TransactionType.income;
+      }
 
-      return matchesQuery && matchesCategory && matchesPayment && matchesDate;
+      // 3. Category Filter
+      final matchesCategory = _selectedCategoryFilter == 'All' || t.category == _selectedCategoryFilter;
+
+      // 4. Payment Method Filter
+      final matchesPayment = _selectedPaymentMethodFilter == 'All' || t.paymentMethod == _selectedPaymentMethodFilter;
+
+      // 5. Date Filter (Presets or Custom Range)
+      bool matchesDate = true;
+      if (_datePreset == DatePreset.today) {
+        matchesDate = t.date.year == now.year && t.date.month == now.month && t.date.day == now.day;
+      } else if (_datePreset == DatePreset.thisWeek) {
+        final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
+        final firstDay = DateTime(startOfWeek.year, startOfWeek.month, startOfWeek.day);
+        matchesDate = t.date.isAfter(firstDay.subtract(const Duration(seconds: 1)));
+      } else if (_datePreset == DatePreset.thisMonth) {
+        matchesDate = t.date.year == now.year && t.date.month == now.month;
+      } else if (_datePreset == DatePreset.lastMonth) {
+        final lastMonth = DateTime(now.year, now.month - 1, 1);
+        matchesDate = t.date.year == lastMonth.year && t.date.month == lastMonth.month;
+      } else if (_selectedDateRange != null) {
+        final start = DateTime(_selectedDateRange!.start.year, _selectedDateRange!.start.month, _selectedDateRange!.start.day);
+        final end = DateTime(_selectedDateRange!.end.year, _selectedDateRange!.end.month, _selectedDateRange!.end.day, 23, 59, 59);
+        matchesDate = t.date.isAfter(start.subtract(const Duration(seconds: 1))) && t.date.isBefore(end.add(const Duration(seconds: 1)));
+      }
+
+      // 6. Amount Range Filter
+      bool matchesAmount = true;
+      if (_minAmount != null && t.amount < _minAmount!) matchesAmount = false;
+      if (_maxAmount != null && t.amount > _maxAmount!) matchesAmount = false;
+
+      return matchesQuery && matchesType && matchesCategory && matchesPayment && matchesDate && matchesAmount;
     }).toList();
 
+    // 7. Sorting Order
+    switch (_sortOrder) {
+      case TransactionSortOrder.newest:
+        list.sort((a, b) => b.date.compareTo(a.date));
+        break;
+      case TransactionSortOrder.oldest:
+        list.sort((a, b) => a.date.compareTo(b.date));
+        break;
+      case TransactionSortOrder.amountHighToLow:
+        list.sort((a, b) => b.amount.compareTo(a.amount));
+        break;
+      case TransactionSortOrder.amountLowToHigh:
+        list.sort((a, b) => a.amount.compareTo(b.amount));
+        break;
+    }
+
+    _filteredTransactionsCache = list;
     return _filteredTransactionsCache!;
   }
 
@@ -214,6 +302,14 @@ class TransactionProvider extends ChangeNotifier {
     }
   }
 
+  void setTypeFilter(TransactionTypeFilter type) {
+    if (_typeFilter != type) {
+      _typeFilter = type;
+      _filteredTransactionsCache = null;
+      notifyListeners();
+    }
+  }
+
   void setCategoryFilter(String category) {
     if (_selectedCategoryFilter != category) {
       _selectedCategoryFilter = category;
@@ -230,12 +326,37 @@ class TransactionProvider extends ChangeNotifier {
     }
   }
 
+  void setDatePreset(DatePreset preset, {DateTimeRange? customRange}) {
+    _datePreset = preset;
+    if (preset == DatePreset.custom) {
+      _selectedDateRange = customRange;
+    } else {
+      _selectedDateRange = null;
+    }
+    _filteredTransactionsCache = null;
+    notifyListeners();
+  }
+
   void setDateRange(DateTimeRange? range) {
-    if (_selectedDateRange != range) {
-      _selectedDateRange = range;
+    _selectedDateRange = range;
+    _datePreset = range != null ? DatePreset.custom : DatePreset.allTime;
+    _filteredTransactionsCache = null;
+    notifyListeners();
+  }
+
+  void setSortOrder(TransactionSortOrder sortOrder) {
+    if (_sortOrder != sortOrder) {
+      _sortOrder = sortOrder;
       _filteredTransactionsCache = null;
       notifyListeners();
     }
+  }
+
+  void setAmountRange(double? min, double? max) {
+    _minAmount = min;
+    _maxAmount = max;
+    _filteredTransactionsCache = null;
+    notifyListeners();
   }
 
   void resetFilters() {
@@ -243,6 +364,11 @@ class TransactionProvider extends ChangeNotifier {
     _selectedCategoryFilter = 'All';
     _selectedPaymentMethodFilter = 'All';
     _selectedDateRange = null;
+    _typeFilter = TransactionTypeFilter.all;
+    _sortOrder = TransactionSortOrder.newest;
+    _datePreset = DatePreset.allTime;
+    _minAmount = null;
+    _maxAmount = null;
     _filteredTransactionsCache = null;
     notifyListeners();
   }

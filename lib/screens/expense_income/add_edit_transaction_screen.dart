@@ -252,7 +252,10 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
 
       final rawCategories = categoryProvider.categories;
       final categories = rawCategories.isNotEmpty ? rawCategories : AppConstants.defaultCategories;
-      final matchingCategories = categories.where((c) => c.isIncome == !_isExpense).toList();
+      final matchingCategories = categories
+          .where((c) => c.isIncome == !_isExpense)
+          .where((c) => !['Business', 'Freelance', 'Rental Income', 'Rental'].contains(c.name))
+          .toList();
       final filteredCategories = matchingCategories.isNotEmpty ? matchingCategories : categories;
 
       final saveCategory = filteredCategories.any((c) => c.name == _selectedCategory)
@@ -327,7 +330,10 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
     final rawCategories = Provider.of<CategoryProvider>(context).categories;
     final categories = rawCategories.isNotEmpty ? rawCategories : AppConstants.defaultCategories;
 
-    final matchingCategories = categories.where((c) => c.isIncome == !_isExpense).toList();
+    final matchingCategories = categories
+        .where((c) => c.isIncome == !_isExpense)
+        .where((c) => !['Business', 'Freelance', 'Rental Income', 'Rental'].contains(c.name))
+        .toList();
     final filteredCategories = matchingCategories.isNotEmpty ? matchingCategories : categories;
 
     final currentCategory = filteredCategories.any((c) => c.name == _selectedCategory)

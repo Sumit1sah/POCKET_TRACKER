@@ -25,8 +25,15 @@ class LocalStorageService {
     // This ensures newly added defaults (e.g., new income categories) appear
     // on existing installs without wiping user-created custom categories.
     final categoriesBox = Hive.box(categoriesBoxName);
+
+    // Remove legacy default income categories if present
+    await categoriesBox.delete('cat_business');
+    await categoriesBox.delete('cat_freelance');
+    await categoriesBox.delete('cat_rental');
+
     for (final cat in AppConstants.defaultCategories) {
-      if (!categoriesBox.containsKey(cat.id)) {
+      // Put/Update system default categories so name updates (e.g. Refund -> Money Returned) take effect
+      if (!categoriesBox.containsKey(cat.id) || cat.isDefault) {
         await categoriesBox.put(cat.id, cat.toMap());
       }
     }

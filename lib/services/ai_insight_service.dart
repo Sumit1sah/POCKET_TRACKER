@@ -454,7 +454,7 @@ class AIInsightService {
     // ══════════════════════════════════════════════
 
     // A. 50/30/20 Budgeting Rule Analysis
-    final needsCategories = {'Bills', 'Groceries', 'Utilities', 'Rent', 'Health', 'Transport', 'Education', 'Insurance', 'Fuel', 'EMI', 'Debt / Repayment'};
+    final needsCategories = {'Bills', 'Groceries', 'Utilities', 'Rent', 'Health', 'Transport', 'Education', 'Insurance', 'Fuel', 'EMI', 'Debt / Repayment', 'Money Given / Lent'};
     final wantsCategories = {'Food', 'Dining', 'Shopping', 'Entertainment', 'Travel', 'Personal Care', 'Electronics', 'Gifts'};
 
     final needsSpend = currentMonthExpenses

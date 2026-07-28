@@ -61,7 +61,8 @@ class MonthlyReportService {
       if (t.type == TransactionType.income) {
         income += t.amount;
       } else if (t.type == TransactionType.expense) {
-        if (t.category.toLowerCase() == 'debt / repayment') continue;
+        final catLower = t.category.toLowerCase();
+        if (catLower == 'debt / repayment' || catLower == 'money given / lent' || catLower == 'money given') continue;
         expense += t.amount;
         categoryMap[t.category] = (categoryMap[t.category] ?? 0.0) + t.amount;
 
