@@ -6,36 +6,96 @@ import '../../models/category_model.dart';
 class CategoriesScreen extends StatelessWidget {
   const CategoriesScreen({super.key});
 
+  static final List<IconData> _availableIcons = [
+    Icons.shopping_bag_rounded,
+    Icons.restaurant_rounded,
+    Icons.local_cafe_rounded,
+    Icons.fastfood_rounded,
+    Icons.movie_rounded,
+    Icons.sports_esports_rounded,
+    Icons.fitness_center_rounded,
+    Icons.medical_services_rounded,
+    Icons.directions_car_rounded,
+    Icons.local_gas_station_rounded,
+    Icons.flight_takeoff_rounded,
+    Icons.home_rounded,
+    Icons.flash_on_rounded,
+    Icons.school_rounded,
+    Icons.laptop_mac_rounded,
+    Icons.pets_rounded,
+    Icons.card_giftcard_rounded,
+    Icons.account_balance_wallet_rounded,
+    Icons.savings_rounded,
+    Icons.trending_up_rounded,
+    Icons.work_rounded,
+    Icons.family_restroom_rounded,
+    Icons.music_note_rounded,
+    Icons.spa_rounded,
+    Icons.build_rounded,
+    Icons.phone_android_rounded,
+    Icons.subscriptions_rounded,
+    Icons.receipt_long_rounded,
+  ];
+
+  static final List<Color> _availableColors = [
+    const Color(0xFF6C5CE7), // Purple / Indigo
+    const Color(0xFFFF7675), // Coral
+    const Color(0xFF00B894), // Emerald Green
+    const Color(0xFF0984E3), // Ocean Blue
+    const Color(0xFFFDCB6E), // Gold
+    const Color(0xFFE84393), // Pink
+    const Color(0xFF00CEC9), // Cyan
+    const Color(0xFF636E72), // Slate
+    const Color(0xFFD63031), // Deep Red
+    const Color(0xFFE17055), // Burnt Orange
+    const Color(0xFFA29BFE), // Lavender
+    const Color(0xFF55EFC4), // Mint
+  ];
+
   @override
   Widget build(BuildContext context) {
     final catProvider = Provider.of<CategoryProvider>(context);
     final expenseCats = catProvider.expenseCategories;
     final incomeCats = catProvider.incomeCategories;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return DefaultTabController(
       length: 2,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Manage Categories'),
+          title: const Text(
+            'Manage Categories',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
           bottom: const TabBar(
+            isScrollable: false,
+            labelPadding: EdgeInsets.symmetric(horizontal: 8),
             tabs: [
-              Tab(icon: Icon(Icons.money_off_rounded), text: 'Expense Categories'),
-              Tab(icon: Icon(Icons.attach_money_rounded), text: 'Income Categories'),
+              Tab(icon: Icon(Icons.money_off_rounded, size: 20), text: 'Expense Categories'),
+              Tab(icon: Icon(Icons.attach_money_rounded, size: 20), text: 'Income Categories'),
             ],
           ),
           actions: [
             IconButton(
-              icon: const Icon(Icons.add_circle_outline),
+              icon: const Icon(Icons.add_circle_outline_rounded),
               tooltip: 'Add Custom Category',
-              onPressed: () => _showAddCategoryDialog(context),
+              onPressed: () => _showAddCategoryModal(context),
             ),
           ],
         ),
         body: TabBarView(
           children: [
-            _buildCategoryList(context, expenseCats, catProvider, isExpenseTab: true),
-            _buildCategoryList(context, incomeCats, catProvider, isExpenseTab: false),
+            _buildCategoryList(context, expenseCats, catProvider, isExpenseTab: true, isDark: isDark),
+            _buildCategoryList(context, incomeCats, catProvider, isExpenseTab: false, isDark: isDark),
           ],
+        ),
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: () => _showAddCategoryModal(context),
+          backgroundColor: const Color(0xFF6C5CE7),
+          foregroundColor: Colors.white,
+          elevation: 4,
+          icon: const Icon(Icons.add_rounded),
+          label: const Text('Add Category', style: TextStyle(fontWeight: FontWeight.bold)),
         ),
       ),
     );
@@ -46,38 +106,64 @@ class CategoriesScreen extends StatelessWidget {
     List<CategoryModel> categories,
     CategoryProvider catProvider, {
     required bool isExpenseTab,
+    required bool isDark,
   }) {
     if (categories.isEmpty) {
-      return const Center(child: Text('No categories found.'));
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.category_outlined, size: 48, color: Colors.grey.shade400),
+            const SizedBox(height: 12),
+            const Text(
+              'No categories found',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.grey),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: () => _showAddCategoryModal(context),
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('Add New Category'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF6C5CE7),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ],
+        ),
+      );
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 80),
       itemCount: categories.length,
       itemBuilder: (context, index) {
         final cat = categories[index];
         final bool isDeducting = cat.deductFromBudget;
 
         return Card(
-          margin: const EdgeInsets.only(bottom: 10),
+          margin: const EdgeInsets.only(bottom: 8),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           elevation: 1.5,
           child: ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             leading: Container(
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.all(9),
               decoration: BoxDecoration(
-                color: cat.color.withValues(alpha: 0.15),
+                color: cat.color.withValues(alpha: 0.18),
                 shape: BoxShape.circle,
               ),
-              child: Icon(cat.iconData, color: cat.color),
+              child: Icon(cat.iconData, color: cat.color, size: 22),
             ),
             title: Text(
               cat.name,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14.5),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
             ),
             subtitle: Padding(
-              padding: const EdgeInsets.only(top: 4),
+              padding: const EdgeInsets.only(top: 2),
               child: isExpenseTab
                   ? Row(
                       children: [
@@ -87,23 +173,36 @@ class CategoriesScreen extends StatelessWidget {
                           color: isDeducting ? Colors.green : Colors.orange,
                         ),
                         const SizedBox(width: 4),
-                        Text(
-                          isDeducting ? 'Deducts from Monthly Budget' : 'Excluded from Monthly Budget',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: isDeducting ? Colors.green.shade700 : Colors.orange.shade800,
-                            fontWeight: FontWeight.w500,
+                        Expanded(
+                          child: Text(
+                            isDeducting ? 'Deducts from Budget' : 'Excluded from Budget',
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              color: isDeducting ? Colors.green.shade700 : Colors.orange.shade800,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
                           ),
                         ),
                       ],
                     )
-                  : const Text('Income Category', style: TextStyle(fontSize: 12)),
+                  : const Text(
+                      'Income Category',
+                      style: TextStyle(fontSize: 11.5),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
             ),
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (isExpenseTab)
                   IconButton(
+                    iconSize: 20,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                    visualDensity: VisualDensity.compact,
                     icon: Icon(
                       isDeducting ? Icons.account_balance_wallet_outlined : Icons.money_off_outlined,
                       color: isDeducting ? Colors.green : Colors.grey,
@@ -112,19 +211,27 @@ class CategoriesScreen extends StatelessWidget {
                     onPressed: () => _toggleBudgetDeduction(context, catProvider, cat),
                   ),
                 IconButton(
+                  iconSize: 20,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                  visualDensity: VisualDensity.compact,
                   icon: const Icon(Icons.edit_outlined, color: Colors.blueAccent),
                   tooltip: 'Edit Category',
-                  onPressed: () => _showEditCategoryDialog(context, catProvider, cat),
+                  onPressed: () => _showEditCategoryModal(context, catProvider, cat),
                 ),
                 if (!cat.isDefault)
                   IconButton(
+                    iconSize: 20,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                    visualDensity: VisualDensity.compact,
                     icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
                     tooltip: 'Delete Category',
-                    onPressed: () => catProvider.deleteCategory(cat.id),
+                    onPressed: () => _confirmDeleteCategory(context, catProvider, cat),
                   ),
               ],
             ),
-            onTap: () => _showEditCategoryDialog(context, catProvider, cat),
+            onTap: () => _showEditCategoryModal(context, catProvider, cat),
           ),
         );
       },
@@ -150,80 +257,396 @@ class CategoriesScreen extends StatelessWidget {
     );
   }
 
-  void _showAddCategoryDialog(BuildContext context) {
+  void _confirmDeleteCategory(
+    BuildContext context,
+    CategoryProvider catProvider,
+    CategoryModel cat,
+  ) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: Text('Delete "${cat.name}"?'),
+        content: const Text('Are you sure you want to delete this custom category? Existing transactions will retain their historical logs.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, foregroundColor: Colors.white),
+            onPressed: () {
+              catProvider.deleteCategory(cat.id);
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Category "${cat.name}" deleted.'),
+                  duration: const Duration(seconds: 2),
+                ),
+              );
+            },
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAddCategoryModal(BuildContext context) {
     final nameController = TextEditingController();
     bool isIncome = false;
     bool deductFromBudget = true;
+    IconData selectedIcon = _availableIcons.first;
+    Color selectedColor = _availableColors.first;
+    String? errorMessage;
 
-    showDialog(
+    showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (context) {
         return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-              title: const Text('Add Custom Category'),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextField(
-                      controller: nameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Category Name',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    SwitchListTile(
-                      title: const Text('Is Income Category'),
-                      subtitle: const Text('Income categories do not deduct from budget'),
-                      value: isIncome,
-                      onChanged: (val) => setState(() {
-                        isIncome = val;
-                        if (val) deductFromBudget = false;
-                      }),
-                    ),
-                    if (!isIncome) ...[
-                      const Divider(),
-                      SwitchListTile(
-                        title: const Text('Deduct from Monthly Budget'),
-                        subtitle: const Text(
-                          'When enabled, expenses in this category count towards your monthly budget limit.',
+          builder: (context, setModalState) {
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+            final bg = isDark ? const Color(0xFF1E1E2E) : Colors.white;
+
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+              ),
+              child: Container(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.85,
+                ),
+                decoration: BoxDecoration(
+                  color: bg,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Drag Handle
+                      Center(
+                        child: Container(
+                          width: 40,
+                          height: 4,
+                          margin: const EdgeInsets.only(bottom: 16),
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.white24 : Colors.black12,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
                         ),
-                        value: deductFromBudget,
-                        onChanged: (val) => setState(() => deductFromBudget = val),
+                      ),
+
+                      // Header Title
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Create Custom Category',
+                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close_rounded),
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Live Preview Banner
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: selectedColor.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: selectedColor.withValues(alpha: 0.3)),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: selectedColor,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(selectedIcon, color: Colors.white, size: 24),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    nameController.text.trim().isEmpty
+                                        ? 'Category Name'
+                                        : nameController.text.trim(),
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: isDark ? Colors.white : Colors.black87,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    isIncome
+                                        ? 'Income Category'
+                                        : (deductFromBudget
+                                            ? 'Expense • Deducts from Budget'
+                                            : 'Expense • Excluded from Budget'),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: isIncome
+                                          ? Colors.green
+                                          : (deductFromBudget ? selectedColor : Colors.orange.shade800),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Category Type Segmented Switch
+                      Row(
+                        children: [
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () => setModalState(() {
+                                isIncome = false;
+                                deductFromBudget = true;
+                              }),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 10),
+                                decoration: BoxDecoration(
+                                  color: !isIncome
+                                      ? const Color(0xFF6C5CE7)
+                                      : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade200),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  'Expense',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: !isIncome ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () => setModalState(() {
+                                isIncome = true;
+                                deductFromBudget = false;
+                                selectedColor = Colors.green;
+                                selectedIcon = Icons.attach_money_rounded;
+                              }),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 10),
+                                decoration: BoxDecoration(
+                                  color: isIncome
+                                      ? const Color(0xFF00B894)
+                                      : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade200),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  'Income',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: isIncome ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Name Text Field
+                      TextField(
+                        controller: nameController,
+                        autofocus: true,
+                        maxLength: 24,
+                        onChanged: (_) => setModalState(() => errorMessage = null),
+                        decoration: InputDecoration(
+                          labelText: 'Category Name',
+                          hintText: 'e.g., Coffee, Gaming, Salary',
+                          errorText: errorMessage,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                          prefixIcon: const Icon(Icons.edit_note_rounded),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Color Selector
+                      const Text(
+                        'Select Color Accent',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      ),
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        height: 44,
+                        child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: _availableColors.length,
+                          itemBuilder: (ctx, i) {
+                            final c = _availableColors[i];
+                            final isSelected = c.value == selectedColor.value;
+
+                            return GestureDetector(
+                              onTap: () => setModalState(() => selectedColor = c),
+                              child: Container(
+                                margin: const EdgeInsets.only(right: 10),
+                                width: 44,
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  color: c,
+                                  shape: BoxShape.circle,
+                                  border: isSelected
+                                      ? Border.all(color: Colors.white, width: 3)
+                                      : null,
+                                  boxShadow: isSelected
+                                      ? [BoxShadow(color: c.withValues(alpha: 0.6), blurRadius: 8, offset: const Offset(0, 2))]
+                                      : null,
+                                ),
+                                child: isSelected
+                                    ? const Icon(Icons.check_rounded, color: Colors.white, size: 22)
+                                    : null,
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Icon Selector
+                      const Text(
+                        'Select Category Icon',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      ),
+                      const SizedBox(height: 8),
+                      GridView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 6,
+                          crossAxisSpacing: 8,
+                          mainAxisSpacing: 8,
+                        ),
+                        itemCount: _availableIcons.length,
+                        itemBuilder: (ctx, i) {
+                          final icon = _availableIcons[i];
+                          final isSelected = icon.codePoint == selectedIcon.codePoint;
+
+                          return GestureDetector(
+                            onTap: () => setModalState(() => selectedIcon = icon),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 150),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? selectedColor
+                                    : (isDark ? Colors.white.withValues(alpha: 0.06) : Colors.grey.shade100),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? selectedColor
+                                      : Colors.transparent,
+                                  width: 2,
+                                ),
+                              ),
+                              child: Icon(
+                                icon,
+                                color: isSelected
+                                    ? Colors.white
+                                    : (isDark ? Colors.white70 : Colors.black54),
+                                size: 22,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+
+                      if (!isIncome) ...[
+                        const SizedBox(height: 16),
+                        const Divider(),
+                        SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('Deduct from Monthly Budget', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                          subtitle: const Text('Expenses in this category count towards your spending limit.', style: TextStyle(fontSize: 12)),
+                          value: deductFromBudget,
+                          onChanged: (val) => setModalState(() => deductFromBudget = val),
+                        ),
+                      ],
+
+                      const SizedBox(height: 20),
+
+                      // Create Button
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: selectedColor,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            elevation: 3,
+                          ),
+                          onPressed: () {
+                            final name = nameController.text.trim();
+                            if (name.isEmpty) {
+                              setModalState(() => errorMessage = 'Please enter a category name');
+                              return;
+                            }
+
+                            final catProvider = Provider.of<CategoryProvider>(context, listen: false);
+                            final exists = catProvider.categories.any(
+                                (c) => c.name.toLowerCase() == name.toLowerCase() && c.isIncome == isIncome);
+                            if (exists) {
+                              setModalState(() => errorMessage = 'Category "$name" already exists');
+                              return;
+                            }
+
+                            catProvider.addCategory(
+                              CategoryModel(
+                                id: 'cat_${DateTime.now().millisecondsSinceEpoch}',
+                                uid: 'local_user',
+                                name: name,
+                                iconCodePoint: selectedIcon.codePoint,
+                                colorValue: selectedColor.toARGB32(),
+                                isIncome: isIncome,
+                                deductFromBudget: isIncome ? false : deductFromBudget,
+                              ),
+                            );
+
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Category "$name" created successfully!'),
+                                backgroundColor: selectedColor,
+                                duration: const Duration(seconds: 2),
+                              ),
+                            );
+                          },
+                          child: const Text('Save Category', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        ),
                       ),
                     ],
-                  ],
+                  ),
                 ),
               ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel'),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    if (nameController.text.trim().isNotEmpty) {
-                      final catProvider = Provider.of<CategoryProvider>(context, listen: false);
-                      catProvider.addCategory(
-                        CategoryModel(
-                          id: 'cat_${DateTime.now().millisecondsSinceEpoch}',
-                          uid: 'local_user',
-                          name: nameController.text.trim(),
-                          iconCodePoint: isIncome ? Icons.attach_money.codePoint : Icons.category.codePoint,
-                          colorValue: isIncome ? Colors.green.toARGB32() : Colors.purple.toARGB32(),
-                          isIncome: isIncome,
-                          deductFromBudget: isIncome ? false : deductFromBudget,
-                        ),
-                      );
-                      Navigator.pop(context);
-                    }
-                  },
-                  child: const Text('Add'),
-                ),
-              ],
             );
           },
         );
@@ -231,79 +654,288 @@ class CategoriesScreen extends StatelessWidget {
     );
   }
 
-  void _showEditCategoryDialog(
+  void _showEditCategoryModal(
     BuildContext context,
     CategoryProvider catProvider,
     CategoryModel cat,
   ) {
     final nameController = TextEditingController(text: cat.name);
     bool deductFromBudget = cat.deductFromBudget;
+    IconData selectedIcon = cat.iconData;
+    Color selectedColor = cat.color;
+    String? errorMessage;
 
-    showDialog(
+    showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (context) {
         return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-              title: Text('Edit "${cat.name}"'),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (!cat.isDefault)
-                      TextField(
-                        controller: nameController,
-                        decoration: const InputDecoration(
-                          labelText: 'Category Name',
-                          border: OutlineInputBorder(),
-                        ),
-                      )
-                    else
-                      ListTile(
-                        title: Text(cat.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                        subtitle: const Text('Default system category'),
-                        leading: CircleAvatar(
-                          backgroundColor: cat.color.withValues(alpha: 0.2),
-                          child: Icon(cat.iconData, color: cat.color),
+          builder: (context, setModalState) {
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+            final bg = isDark ? const Color(0xFF1E1E2E) : Colors.white;
+
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+              ),
+              child: Container(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.85,
+                ),
+                decoration: BoxDecoration(
+                  color: bg,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 40,
+                          height: 4,
+                          margin: const EdgeInsets.only(bottom: 16),
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.white24 : Colors.black12,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
                         ),
                       ),
-                    const SizedBox(height: 12),
-                    if (!cat.isIncome) ...[
-                      const Divider(),
-                      SwitchListTile(
-                        title: const Text('Deduct from Monthly Budget'),
-                        subtitle: const Text(
-                          'When enabled, expenses in this category are deducted from your monthly budget limit.',
+
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Edit "${cat.name}"',
+                            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close_rounded),
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Live Preview Banner
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: selectedColor.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: selectedColor.withValues(alpha: 0.3)),
                         ),
-                        value: deductFromBudget,
-                        onChanged: (val) => setState(() => deductFromBudget = val),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: selectedColor,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(selectedIcon, color: Colors.white, size: 24),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    cat.isDefault ? cat.name : (nameController.text.trim().isEmpty ? cat.name : nameController.text.trim()),
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: isDark ? Colors.white : Colors.black87,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    cat.isIncome
+                                        ? 'Income Category'
+                                        : (deductFromBudget
+                                            ? 'Expense • Deducts from Budget'
+                                            : 'Expense • Excluded from Budget'),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: cat.isIncome
+                                          ? Colors.green
+                                          : (deductFromBudget ? selectedColor : Colors.orange.shade800),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+
+                      if (!cat.isDefault) ...[
+                        TextField(
+                          controller: nameController,
+                          maxLength: 24,
+                          onChanged: (_) => setModalState(() => errorMessage = null),
+                          decoration: InputDecoration(
+                            labelText: 'Category Name',
+                            errorText: errorMessage,
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                            prefixIcon: const Icon(Icons.edit_note_rounded),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+
+                      // Color Selector
+                      const Text(
+                        'Select Color Accent',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      ),
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        height: 44,
+                        child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: _availableColors.length,
+                          itemBuilder: (ctx, i) {
+                            final c = _availableColors[i];
+                            final isSelected = c.value == selectedColor.value;
+
+                            return GestureDetector(
+                              onTap: () => setModalState(() => selectedColor = c),
+                              child: Container(
+                                margin: const EdgeInsets.only(right: 10),
+                                width: 44,
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  color: c,
+                                  shape: BoxShape.circle,
+                                  border: isSelected
+                                      ? Border.all(color: Colors.white, width: 3)
+                                      : null,
+                                  boxShadow: isSelected
+                                      ? [BoxShadow(color: c.withValues(alpha: 0.6), blurRadius: 8, offset: const Offset(0, 2))]
+                                      : null,
+                                ),
+                                child: isSelected
+                                    ? const Icon(Icons.check_rounded, color: Colors.white, size: 22)
+                                    : null,
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Icon Selector
+                      const Text(
+                        'Select Category Icon',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      ),
+                      const SizedBox(height: 8),
+                      GridView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 6,
+                          crossAxisSpacing: 8,
+                          mainAxisSpacing: 8,
+                        ),
+                        itemCount: _availableIcons.length,
+                        itemBuilder: (ctx, i) {
+                          final icon = _availableIcons[i];
+                          final isSelected = icon.codePoint == selectedIcon.codePoint;
+
+                          return GestureDetector(
+                            onTap: () => setModalState(() => selectedIcon = icon),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 150),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? selectedColor
+                                    : (isDark ? Colors.white.withValues(alpha: 0.06) : Colors.grey.shade100),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? selectedColor
+                                      : Colors.transparent,
+                                  width: 2,
+                                ),
+                              ),
+                              child: Icon(
+                                icon,
+                                color: isSelected
+                                    ? Colors.white
+                                    : (isDark ? Colors.white70 : Colors.black54),
+                                size: 22,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+
+                      if (!cat.isIncome) ...[
+                        const SizedBox(height: 16),
+                        const Divider(),
+                        SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('Deduct from Monthly Budget', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                          subtitle: const Text('Expenses in this category count towards your spending limit.', style: TextStyle(fontSize: 12)),
+                          value: deductFromBudget,
+                          onChanged: (val) => setModalState(() => deductFromBudget = val),
+                        ),
+                      ],
+
+                      const SizedBox(height: 20),
+
+                      // Save Button
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: selectedColor,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            elevation: 3,
+                          ),
+                          onPressed: () {
+                            final newName = cat.isDefault ? cat.name : nameController.text.trim();
+                            if (newName.isEmpty) {
+                              setModalState(() => errorMessage = 'Please enter a category name');
+                              return;
+                            }
+
+                            catProvider.updateCategory(
+                              cat.copyWith(
+                                name: newName,
+                                iconCodePoint: selectedIcon.codePoint,
+                                colorValue: selectedColor.toARGB32(),
+                                deductFromBudget: cat.isIncome ? false : deductFromBudget,
+                              ),
+                            );
+
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Category "$newName" updated!'),
+                                backgroundColor: selectedColor,
+                                duration: const Duration(seconds: 2),
+                              ),
+                            );
+                          },
+                          child: const Text('Save Changes', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        ),
                       ),
                     ],
-                  ],
+                  ),
                 ),
               ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel'),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    final newName = cat.isDefault ? cat.name : nameController.text.trim();
-                    if (newName.isNotEmpty) {
-                      catProvider.updateCategory(
-                        cat.copyWith(
-                          name: newName,
-                          deductFromBudget: cat.isIncome ? false : deductFromBudget,
-                        ),
-                      );
-                      Navigator.pop(context);
-                    }
-                  },
-                  child: const Text('Save'),
-                ),
-              ],
             );
           },
         );

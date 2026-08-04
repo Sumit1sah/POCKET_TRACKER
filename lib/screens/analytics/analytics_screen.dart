@@ -7,6 +7,7 @@ import '../../providers/theme_currency_provider.dart';
 import '../../models/transaction_model.dart';
 import '../../utils/formatters.dart';
 import '../../utils/constants.dart';
+import '../reports/monthly_report_modal.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Analytics Screen — Advanced Financial Intelligence & Interactive Dashboard
@@ -629,23 +630,51 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
               ],
             ),
             const Spacer(),
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF6C5CE7), Color(0xFF8E7CFE)],
-                ),
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF6C5CE7).withValues(alpha: 0.35),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
+            Tooltip(
+              message: 'View Monthly Performance Report',
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => MonthlyReportModal.show(context, month: _selectedMonth),
+                  borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF6C5CE7), Color(0xFF8E7CFE)],
+                      ),
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF6C5CE7).withValues(alpha: 0.35),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.assessment_rounded,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                        SizedBox(width: 6),
+                        Text(
+                          'Report',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ],
+                ),
               ),
-              child: const Icon(Icons.auto_graph_rounded,
-                  color: Colors.white, size: 22),
             ),
           ],
         ),
@@ -658,117 +687,90 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
     final selected = _selectedMonth;
     final monthText = Formatters.formatMonthYear(selected);
 
-    String cycleBadgeText = 'ACTIVE CYCLE';
+    String cycleBadgeText = 'ACTIVE';
     Color cycleBadgeColor = const Color(0xFF00B894);
     if (_isPastMonth) {
-      cycleBadgeText = 'CLOSED CYCLE';
+      cycleBadgeText = 'CLOSED';
       cycleBadgeColor = Colors.blueGrey;
     } else if (_isFutureMonth) {
-      cycleBadgeText = 'UPCOMING CYCLE';
+      cycleBadgeText = 'UPCOMING';
       cycleBadgeColor = const Color(0xFF6C5CE7);
     }
 
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E1E2E) : Colors.white,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: cycleBadgeColor.withValues(alpha: 0.3),
-          width: 1.5,
+          color: cycleBadgeColor.withValues(alpha: 0.25),
+          width: 1,
         ),
         boxShadow: [
           BoxShadow(
             color: isDark
-                ? Colors.black.withValues(alpha: 0.3)
-                : cycleBadgeColor.withValues(alpha: 0.08),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
+                ? Colors.black.withValues(alpha: 0.2)
+                : cycleBadgeColor.withValues(alpha: 0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.chevron_left_rounded, size: 26),
-                      tooltip: 'Previous Month',
-                      onPressed: _previousMonth,
-                    ),
-                  ],
+                IconButton(
+                  icon: const Icon(Icons.chevron_left_rounded, size: 20),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                  tooltip: 'Previous Month',
+                  onPressed: _previousMonth,
                 ),
                 Expanded(
                   child: InkWell(
                     onTap: () => _showProfessionalMonthPicker(context),
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(10),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Container(
-                            padding: const EdgeInsets.all(7),
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [Color(0xFF6C5CE7), Color(0xFF8E7CFE)],
-                              ),
-                              borderRadius: BorderRadius.circular(10),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: const Color(0xFF6C5CE7).withValues(alpha: 0.3),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
+                          const Icon(Icons.calendar_month_rounded,
+                              color: Color(0xFF6C5CE7), size: 15),
+                          const SizedBox(width: 6),
+                          Text(
+                            monthText,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                              letterSpacing: -0.2,
                             ),
-                            child: const Icon(Icons.calendar_month_rounded, color: Colors.white, size: 16),
                           ),
-                          const SizedBox(width: 10),
-                          Flexible(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      monthText,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
-                                        letterSpacing: -0.3,
-                                      ),
-                                    ),
-                                    const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.grey, size: 20),
-                                  ],
-                                ),
-                                const SizedBox(height: 2),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: cycleBadgeColor.withValues(alpha: 0.15),
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: Text(
-                                    cycleBadgeText,
-                                    style: TextStyle(
-                                      color: cycleBadgeColor,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 9,
-                                      letterSpacing: 0.5,
-                                    ),
-                                  ),
-                                ),
-                              ],
+                          const SizedBox(width: 4),
+                          Icon(Icons.keyboard_arrow_down_rounded,
+                              color: isDark ? Colors.white54 : Colors.black45, size: 16),
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                            decoration: BoxDecoration(
+                              color: cycleBadgeColor.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(5),
+                            ),
+                            child: Text(
+                              cycleBadgeText,
+                              style: TextStyle(
+                                color: cycleBadgeColor,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 8.5,
+                                letterSpacing: 0.4,
+                              ),
                             ),
                           ),
                         ],
@@ -780,23 +782,33 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     if (!_isCurrentMonth)
-                      Padding(
-                        padding: const EdgeInsets.only(right: 2),
-                        child: TextButton.icon(
-                          onPressed: _resetToCurrentMonth,
-                          style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            visualDensity: VisualDensity.compact,
-                            backgroundColor: const Color(0xFF00B894).withValues(alpha: 0.12),
-                            foregroundColor: const Color(0xFF00B894),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      InkWell(
+                        onTap: _resetToCurrentMonth,
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                          margin: const EdgeInsets.only(right: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF00B894).withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(6),
                           ),
-                          icon: const Icon(Icons.today_rounded, size: 14),
-                          label: const Text('Today', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                          child: const Row(
+                            children: [
+                              Icon(Icons.today_rounded, size: 11, color: Color(0xFF00B894)),
+                              SizedBox(width: 2),
+                              Text('Today',
+                                  style: TextStyle(
+                                      fontSize: 9.5,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF00B894))),
+                            ],
+                          ),
                         ),
                       ),
                     IconButton(
-                      icon: const Icon(Icons.chevron_right_rounded, size: 26),
+                      icon: const Icon(Icons.chevron_right_rounded, size: 20),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
                       tooltip: 'Next Month',
                       onPressed: _nextMonth,
                     ),
@@ -819,8 +831,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
 
     final months = [prev, current, next];
 
-    return Container(
-      padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 0, 4, 3),
       child: Row(
         children: months.map((m) {
           final isSelected = _selectedMonth.year == m.year &&
@@ -829,24 +841,24 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
 
           return Expanded(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 3),
+              padding: const EdgeInsets.symmetric(horizontal: 2),
               child: InkWell(
                 onTap: () => _setSelectedMonth(m),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(6),
                 child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  duration: const Duration(milliseconds: 180),
+                  padding: const EdgeInsets.symmetric(vertical: 3.5),
                   decoration: BoxDecoration(
                     color: isSelected
                         ? const Color(0xFF6C5CE7)
-                        : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.withValues(alpha: 0.1)),
-                    borderRadius: BorderRadius.circular(10),
+                        : (isDark ? Colors.white.withValues(alpha: 0.04) : Colors.grey.withValues(alpha: 0.08)),
+                    borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
-                    isCurrentMonth ? '${DateFormat('MMM').format(m)} (Active)' : DateFormat('MMM yyyy').format(m),
+                    isCurrentMonth ? '${DateFormat('MMM').format(m)} (Active)' : DateFormat('MMM').format(m),
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 10,
                       fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                       color: isSelected
                           ? Colors.white
