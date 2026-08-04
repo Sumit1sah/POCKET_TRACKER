@@ -28,6 +28,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         await _showCCOnboardingDialog();
       }
       await _checkAndShowNewMonthBudgetDialog();
+      await _checkAndAutoShowMonthlyReport();
 
       // Scan SMS inbox for the last 15 minutes (optimal privacy & security window on app open)
       final count = await SmsAutoCaptureService.scanRecentSms(minutes: 15);
@@ -440,6 +441,48 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     );
   }
 
+  // ─── Auto-show last month's report on the 1st of each new month after 9 AM ──
+  Future<void> _checkAndAutoShowMonthlyReport() async {
+    if (!mounted) return;
+
+    final now = DateTime.now();
+
+    // Only fire on the 1st day of the month AND after 09:00 AM.
+    final isFirstDay = now.day == 1;
+    final isAfter9am = now.hour >= 9;
+    if (!isFirstDay || !isAfter9am) return;
+
+    // Use the current month key as the guard — we only auto-show once per month-start.
+    final currentMonthKey = '${now.year}-${now.month.toString().padLeft(2, '0')}';
+    final alreadyShown = LocalStorageService.getLastMonthReportShownMonth();
+    if (alreadyShown == currentMonthKey) return;
+
+    // Build the previous month date.
+    final lastMonth = DateTime(now.year, now.month - 1, 1);
+    final lastMonthName = Formatters.formatMonthYear(lastMonth);
+
+    // Mark as shown before navigating, so a crash / back press doesn't re-trigger.
+    await LocalStorageService.setLastMonthReportShownMonth(currentMonthKey);
+
+    if (!mounted) return;
+
+    // Brief toast so the user knows what's opening.
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('📊 Opening $lastMonthName report…'),
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: const Color(0xFF6C5CE7),
+      ),
+    );
+
+    // Small delay so the snack-bar is visible before navigation.
+    await Future.delayed(const Duration(milliseconds: 600));
+    if (!mounted) return;
+
+    MonthlyReportModal.show(context, month: lastMonth);
+  }
+
   Future<void> _checkAndShowNewMonthBudgetDialog() async {
     if (!mounted) return;
 
@@ -508,7 +551,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
               // Subtitle
               Text(
-                'Welcome to $monthName! Your monthly spending has automatically reset to ₹0. Would you like to set or review your budget targets for $monthName?',
+                'Welcome to $monthName! Would you like to set or review your budget targets for the new month?',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 13,

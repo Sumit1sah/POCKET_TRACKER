@@ -234,7 +234,7 @@ class _CreditCardSummaryWidgetState extends State<CreditCardSummaryWidget> {
     final currency =
         Provider.of<ThemeCurrencyProvider>(context).currency;
 
-    // Per-card spent this month from transactions
+    // Per-card cumulative unpaid balance from transactions
     final cardSpentMap = txProvider.creditCardSpendingByCard;
     // Total CC spent
     final totalSpent = txProvider.totalCreditCardSpent;

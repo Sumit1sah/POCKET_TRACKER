@@ -495,27 +495,6 @@ class _FilterChipItem extends StatelessWidget {
   }
 }
 
-class _SummaryPill extends StatelessWidget {
-  final String label;
-  final Color color;
-  const _SummaryPill({required this.label, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(left: 4),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Text(label,
-          style: const TextStyle(
-              color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-    );
-  }
-}
-
 class _SectionHeader extends StatelessWidget {
   final String label;
   final Color color;

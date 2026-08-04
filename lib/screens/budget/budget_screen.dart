@@ -18,6 +18,7 @@ class BudgetScreen extends StatelessWidget {
     final txProvider = Provider.of<TransactionProvider>(context);
     final currency = Provider.of<ThemeCurrencyProvider>(context).currency;
     final categories = Provider.of<CategoryProvider>(context).categories;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final overallStatus = budgetProvider.getOverallBudgetStatus(txProvider.transactions);
     final categoryStatuses = budgetProvider.getCategoryBudgetStatuses(txProvider.transactions);
@@ -30,25 +31,39 @@ class BudgetScreen extends StatelessWidget {
     final exceededCount = categoryStatuses.where((s) => s.isExceeded).length;
     final warningCount = categoryStatuses.where((s) => s.isWarning).length;
 
+    final now = DateTime.now();
+    final daysInMonth = DateTime(budgetProvider.selectedMonth.year, budgetProvider.selectedMonth.month + 1, 0).day;
+    final currentDay = budgetProvider.isCurrentMonth ? now.day : daysInMonth;
+    final remainingDays = (daysInMonth - currentDay) > 1 ? (daysInMonth - currentDay) : 1;
+    final remainingBudget = mathMax(0.0, overallStatus.remaining);
+    final dailyPace = remainingDays > 0 ? (remainingBudget / remainingDays) : 0.0;
+
     return Scaffold(
+      backgroundColor: isDark ? const Color(0xFF0A0A14) : const Color(0xFFF0F2FA),
       appBar: AppBar(
-        title: const Text('Budget Allocation & Planning'),
+        backgroundColor: isDark ? const Color(0xFF0A0A14) : const Color(0xFFF0F2FA),
+        elevation: 0,
+        title: const Text(
+          'Budget Planning',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.restart_alt_rounded),
+            icon: const Icon(Icons.restart_alt_rounded, color: Color(0xFF6C5CE7)),
             tooltip: 'Fresh Month Options',
             onPressed: () => _showFreshMonthOptions(context, budgetProvider, overallLimit),
           ),
           IconButton(
-            icon: const Icon(Icons.auto_awesome_rounded),
+            icon: const Icon(Icons.auto_awesome_rounded, color: Color(0xFF6C5CE7)),
             tooltip: 'Smart Budget Allocator',
             onPressed: () => _showAutoAllocateDialog(context, overallLimit > 0 ? overallLimit : 30000.0),
           ),
+          const SizedBox(width: 4),
         ],
       ),
       body: SingleChildScrollView(
         physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-        padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 90),
+        padding: const EdgeInsets.only(left: 16, right: 16, top: 8, bottom: 90),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -62,16 +77,30 @@ class BudgetScreen extends StatelessWidget {
             if (exceededCount > 0 || overallStatus.isExceeded)
               Container(
                 margin: const EdgeInsets.only(bottom: 16),
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
                   color: const Color(0xFFFF7675).withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFFF7675).withValues(alpha: 0.3)),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: const Color(0xFFFF7675).withValues(alpha: 0.35)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFFF7675).withValues(alpha: 0.08),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.warning_amber_rounded, color: Color(0xFFFF7675)),
-                    const SizedBox(width: 10),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFF7675).withValues(alpha: 0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.warning_amber_rounded, color: Color(0xFFFF7675), size: 20),
+                    ),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         overallStatus.isExceeded
@@ -80,7 +109,7 @@ class BudgetScreen extends StatelessWidget {
                         style: const TextStyle(
                           color: Color(0xFFFF7675),
                           fontWeight: FontWeight.bold,
-                          fontSize: 12,
+                          fontSize: 12.5,
                         ),
                       ),
                     ),
@@ -90,25 +119,32 @@ class BudgetScreen extends StatelessWidget {
             else if (warningCount > 0)
               Container(
                 margin: const EdgeInsets.only(bottom: 16),
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
                   color: const Color(0xFFFDCB6E).withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(18),
                   border: Border.all(color: const Color(0xFFFDCB6E).withValues(alpha: 0.4)),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.info_outline_rounded, color: Color(0xFFE67E22)),
-                    const SizedBox(width: 10),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFDCB6E).withValues(alpha: 0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.info_outline_rounded, color: Color(0xFFE67E22), size: 20),
+                    ),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         'Attention: $warningCount category budget(s) reached 80%+ capacity.',
                         style: TextStyle(
-                          color: Theme.of(context).brightness == Brightness.dark
+                          color: isDark
                               ? const Color(0xFFFDCB6E)
                               : const Color(0xFFD35400),
                           fontWeight: FontWeight.bold,
-                          fontSize: 12,
+                          fontSize: 12.5,
                         ),
                       ),
                     ),
@@ -123,6 +159,8 @@ class BudgetScreen extends StatelessWidget {
               totalAllocated: totalAllocated,
               unallocatedBuffer: unallocatedBuffer,
               allocationRatio: allocationRatio,
+              dailyPace: dailyPace,
+              remainingDays: remainingDays,
               currency: currency,
               categories: categories,
             ),
@@ -134,33 +172,53 @@ class BudgetScreen extends StatelessWidget {
               children: [
                 const Expanded(
                   child: Text(
-                    'Category Budget Allocations',
+                    'Category Allocations',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     overflow: TextOverflow.ellipsis,
                     maxLines: 1,
                   ),
                 ),
-                TextButton.icon(
-                  onPressed: () => _showAddBudgetDialog(context, categories, initialCategory: categories.first.name),
-                  icon: const Icon(Icons.add, size: 18),
-                  label: const Text('Add Category'),
+                ElevatedButton.icon(
+                  onPressed: () => _showAddBudgetDialog(context, categories, initialCategory: categories.isNotEmpty ? categories.first.name : 'Food'),
+                  icon: const Icon(Icons.add_rounded, size: 16),
+                  label: const Text('Add Category', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF6C5CE7),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
 
             if (categoryStatuses.isEmpty)
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(32),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).cardColor,
-                  borderRadius: BorderRadius.circular(20),
+                  color: isDark ? const Color(0xFF1C1C2E) : Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
                 ),
                 child: Column(
                   children: [
-                    Icon(Icons.pie_chart_outline_rounded, size: 56, color: Colors.grey.withValues(alpha: 0.5)),
-                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF6C5CE7).withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.pie_chart_outline_rounded, size: 48, color: Color(0xFF6C5CE7)),
+                    ),
+                    const SizedBox(height: 14),
                     const Text(
                       'No category budget allocations set.',
                       style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
@@ -169,18 +227,19 @@ class BudgetScreen extends StatelessWidget {
                     Text(
                       'Allocate your monthly budget across Food, Shopping, Bills, Fuel & more.',
                       textAlign: TextAlign.center,
-                      style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 12),
+                      style: TextStyle(color: isDark ? Colors.white54 : Colors.black45, fontSize: 12.5),
                     ),
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        ElevatedButton.icon(
-                          onPressed: () => _showAutoAllocateDialog(context, overallLimit > 0 ? overallLimit : 30000.0),
-                          icon: const Icon(Icons.auto_awesome),
-                          label: const Text('Smart Auto-Allocate'),
-                        ),
-                      ],
+                    const SizedBox(height: 18),
+                    ElevatedButton.icon(
+                      onPressed: () => _showAutoAllocateDialog(context, overallLimit > 0 ? overallLimit : 30000.0),
+                      icon: const Icon(Icons.auto_awesome, size: 16),
+                      label: const Text('Smart Auto-Allocate', style: TextStyle(fontWeight: FontWeight.bold)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF6C5CE7),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      ),
                     ),
                   ],
                 ),
@@ -208,10 +267,26 @@ class BudgetScreen extends StatelessWidget {
                 }
 
                 final double categorySharePct = overallLimit > 0 ? (b.monthlyLimit / overallLimit) * 100 : 0.0;
+                final remainingCategory = mathMax(0.0, status.remaining);
+                final catDailyPace = remainingDays > 0 ? (remainingCategory / remainingDays) : 0.0;
 
-                return Card(
+                return Container(
                   margin: const EdgeInsets.only(bottom: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF1C1C2E) : Colors.white,
+                    borderRadius: BorderRadius.circular(22),
+                    border: Border.all(
+                      color: progressColor.withValues(alpha: 0.25),
+                      width: 1.2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
+                        blurRadius: 16,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
                   child: Padding(
                     padding: const EdgeInsets.all(16),
                     child: Column(
@@ -220,14 +295,14 @@ class BudgetScreen extends StatelessWidget {
                         Row(
                           children: [
                             Container(
-                              padding: const EdgeInsets.all(8),
+                              padding: const EdgeInsets.all(10),
                               decoration: BoxDecoration(
                                 color: catMatch.color.withValues(alpha: 0.15),
-                                shape: BoxShape.circle,
+                                borderRadius: BorderRadius.circular(14),
                               ),
                               child: Icon(catMatch.iconData, color: catMatch.color, size: 20),
                             ),
-                            const SizedBox(width: 10),
+                            const SizedBox(width: 12),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -237,44 +312,65 @@ class BudgetScreen extends StatelessWidget {
                                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                                   ),
                                   Text(
-                                    '${categorySharePct.toStringAsFixed(1)}% of total budget',
-                                    style: TextStyle(fontSize: 11, color: Theme.of(context).textTheme.bodySmall?.color),
+                                    '${categorySharePct.toStringAsFixed(1)}% of total budget • ~${Formatters.formatCurrency(catDailyPace, symbol: currency)}/day left',
+                                    style: TextStyle(fontSize: 11, color: isDark ? Colors.white54 : Colors.black45),
                                   ),
                                 ],
                               ),
                             ),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                               decoration: BoxDecoration(
                                 color: progressColor.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(10),
                               ),
                               child: Text(
                                 alertBadgeText,
-                                style: TextStyle(color: progressColor, fontWeight: FontWeight.bold, fontSize: 11),
+                                style: TextStyle(color: progressColor, fontWeight: FontWeight.bold, fontSize: 10.5),
                               ),
                             ),
-                            IconButton(
-                              icon: const Icon(Icons.edit_outlined, color: Colors.grey, size: 18),
-                              onPressed: () {
-                                _showAddBudgetDialog(context, categories, initialCategory: b.category, initialAmount: b.monthlyLimit);
+                            const SizedBox(width: 4),
+                            PopupMenuButton<String>(
+                              icon: const Icon(Icons.more_vert_rounded, size: 18, color: Colors.grey),
+                              onSelected: (val) {
+                                if (val == 'edit') {
+                                  _showAddBudgetDialog(context, categories, initialCategory: b.category, initialAmount: b.monthlyLimit);
+                                } else if (val == 'delete') {
+                                  budgetProvider.deleteBudget(b.id);
+                                }
                               },
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete_outline, color: Colors.grey, size: 18),
-                              onPressed: () {
-                                budgetProvider.deleteBudget(b.id);
-                              },
+                              itemBuilder: (_) => [
+                                const PopupMenuItem(
+                                  value: 'edit',
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.edit_rounded, size: 16, color: Color(0xFF6C5CE7)),
+                                      SizedBox(width: 8),
+                                      Text('Edit Limit', style: TextStyle(fontSize: 12)),
+                                    ],
+                                  ),
+                                ),
+                                const PopupMenuItem(
+                                  value: 'delete',
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.delete_rounded, size: 16, color: Color(0xFFFF7675)),
+                                      SizedBox(width: 8),
+                                      Text('Delete', style: TextStyle(fontSize: 12, color: Color(0xFFFF7675))),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 12),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
                               'Spent: ${Formatters.formatCurrency(status.spent, symbol: currency)}',
-                              style: const TextStyle(fontSize: 13),
+                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: progressColor),
                             ),
                             Text(
                               'Limit: ${Formatters.formatCurrency(b.monthlyLimit, symbol: currency)}',
@@ -287,8 +383,8 @@ class BudgetScreen extends StatelessWidget {
                           borderRadius: BorderRadius.circular(8),
                           child: LinearProgressIndicator(
                             value: status.percentage.clamp(0.0, 1.0),
-                            minHeight: 10,
-                            backgroundColor: Colors.grey.withValues(alpha: 0.15),
+                            minHeight: 8,
+                            backgroundColor: progressColor.withValues(alpha: 0.12),
                             valueColor: AlwaysStoppedAnimation<Color>(progressColor),
                           ),
                         ),
@@ -309,6 +405,8 @@ class BudgetScreen extends StatelessWidget {
     required double totalAllocated,
     required double unallocatedBuffer,
     required double allocationRatio,
+    required double dailyPace,
+    required int remainingDays,
     required String currency,
     required List categories,
   }) {
@@ -316,22 +414,19 @@ class BudgetScreen extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        gradient: LinearGradient(
-          colors: [
-            Theme.of(context).primaryColor,
-            const Color(0xFF4834DF),
-          ],
+        borderRadius: BorderRadius.circular(28),
+        gradient: const LinearGradient(
+          colors: [Color(0xFF6C5CE7), Color(0xFF8A4FE8), Color(0xFF5A4FCF)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         boxShadow: [
           BoxShadow(
-            color: Theme.of(context).primaryColor.withValues(alpha: 0.3),
-            blurRadius: 15,
-            offset: const Offset(0, 8),
+            color: const Color(0xFF6C5CE7).withValues(alpha: 0.45),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
@@ -356,7 +451,7 @@ class BudgetScreen extends StatelessWidget {
                 ],
               ),
               IconButton(
-                icon: const Icon(Icons.edit_note, color: Colors.white),
+                icon: const Icon(Icons.edit_note_rounded, color: Colors.white, size: 24),
                 tooltip: 'Edit Overall Budget',
                 onPressed: () => _showAddBudgetDialog(context, categories, initialCategory: 'Overall', initialAmount: overallLimit),
               ),
@@ -375,7 +470,7 @@ class BudgetScreen extends StatelessWidget {
                     overallLimit > 0
                         ? Formatters.formatCurrency(overallLimit, symbol: currency)
                         : 'Not Configured',
-                    style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+                    style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800),
                   ),
                 ],
               ),
@@ -385,7 +480,7 @@ class BudgetScreen extends StatelessWidget {
                   Text('Allocated to Categories', style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 12)),
                   Text(
                     Formatters.formatCurrency(totalAllocated, symbol: currency),
-                    style: const TextStyle(color: Color(0xFF00CEC9), fontSize: 18, fontWeight: FontWeight.bold),
+                    style: const TextStyle(color: Color(0xFF55EFC4), fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                 ],
               ),
@@ -420,12 +515,34 @@ class BudgetScreen extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8),
                 child: LinearProgressIndicator(
                   value: allocationRatio.clamp(0.0, 1.0),
-                  minHeight: 10,
+                  minHeight: 8,
                   backgroundColor: Colors.white.withValues(alpha: 0.2),
-                  valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF00CEC9)),
+                  valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF55EFC4)),
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 14),
+
+          // Daily Pace Indicator Pill
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.speed_rounded, color: Color(0xFF55EFC4), size: 16),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Safe Daily Pace: ${Formatters.formatCurrency(dailyPace, symbol: currency)}/day for $remainingDays days left',
+                    style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 16),
 
@@ -438,9 +555,9 @@ class BudgetScreen extends StatelessWidget {
                   label: const Text('Smart Auto-Allocate', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,
-                    foregroundColor: Theme.of(context).primaryColor,
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    foregroundColor: const Color(0xFF6C5CE7),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   ),
                 ),
               ),
@@ -450,10 +567,10 @@ class BudgetScreen extends StatelessWidget {
                 style: OutlinedButton.styleFrom(
                   foregroundColor: Colors.white,
                   side: const BorderSide(color: Colors.white),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 ),
-                child: const Text('Edit Limit', style: TextStyle(color: Colors.white, fontSize: 12)),
+                child: const Text('Edit Limit', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
               ),
             ],
           ),
@@ -462,12 +579,13 @@ class BudgetScreen extends StatelessWidget {
     );
   }
 
+  static double mathMax(double a, double b) => a > b ? a : b;
+
   void _showAutoAllocateDialog(BuildContext context, double currentOverallLimit) {
     final limitController = TextEditingController(
       text: currentOverallLimit > 0 ? currentOverallLimit.toStringAsFixed(0) : '30000',
     );
 
-    // Initial percentage configuration
     final Map<String, TextEditingController> percentControllers = {
       'Investment': TextEditingController(text: '20'),
       'Grocery': TextEditingController(text: '20'),
@@ -495,7 +613,6 @@ class BudgetScreen extends StatelessWidget {
           builder: (context, setState) {
             final overallLimit = double.tryParse(limitController.text) ?? 0.0;
 
-            // Compute total percentage sum
             double totalPercent = 0.0;
             final Map<String, double> currentPercentages = {};
 
@@ -508,7 +625,7 @@ class BudgetScreen extends StatelessWidget {
             final bool isValidTotal = (totalPercent - 100.0).abs() < 0.1;
 
             return AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
               title: Row(
                 children: [
                   Container(
@@ -521,7 +638,7 @@ class BudgetScreen extends StatelessWidget {
                   ),
                   const SizedBox(width: 10),
                   const Expanded(
-                    child: Text('Smart Budget Allocator', style: TextStyle(fontSize: 16)),
+                    child: Text('Smart Budget Allocator', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   ),
                 ],
               ),
@@ -538,7 +655,6 @@ class BudgetScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 12),
 
-                      // Overall Budget Input
                       TextField(
                         controller: limitController,
                         keyboardType: TextInputType.number,
@@ -551,7 +667,6 @@ class BudgetScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 16),
 
-                      // Percentage Sum Chip
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -580,7 +695,6 @@ class BudgetScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 10),
 
-                      // Category Percentage List
                       ...percentControllers.entries.map((entry) {
                         final catName = entry.key;
                         final ctrl = entry.value;
@@ -635,7 +749,6 @@ class BudgetScreen extends StatelessWidget {
               actions: [
                 TextButton(
                   onPressed: () {
-                    // Reset to default 50/30/20 rules
                     percentControllers['Investment']?.text = '20';
                     percentControllers['Grocery']?.text = '20';
                     percentControllers['Bills']?.text = '15';
@@ -651,6 +764,7 @@ class BudgetScreen extends StatelessWidget {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF6C5CE7),
                     foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                   onPressed: () {
                     final target = double.tryParse(limitController.text);
@@ -701,14 +815,15 @@ class BudgetScreen extends StatelessWidget {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text(selectedCategory == 'Overall' ? 'Set Overall Monthly Budget' : 'Set Category Budget'),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: Text(selectedCategory == 'Overall' ? 'Set Overall Monthly Budget' : 'Set Category Budget', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 DropdownButtonFormField<String>(
                   initialValue: targetOptions.contains(selectedCategory) ? selectedCategory : targetOptions.first,
-                  decoration: const InputDecoration(labelText: 'Budget Scope / Category'),
+                  decoration: const InputDecoration(labelText: 'Budget Scope / Category', border: OutlineInputBorder()),
                   items: targetOptions.map<DropdownMenuItem<String>>((name) {
                     return DropdownMenuItem(
                       value: name,
@@ -725,6 +840,7 @@ class BudgetScreen extends StatelessWidget {
                   keyboardType: TextInputType.number,
                   decoration: const InputDecoration(
                     labelText: 'Monthly Limit Amount',
+                    prefixText: '₹ ',
                     border: OutlineInputBorder(),
                   ),
                 ),
@@ -734,6 +850,11 @@ class BudgetScreen extends StatelessWidget {
           actions: [
             TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
             ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF6C5CE7),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
               onPressed: () {
                 final limit = double.tryParse(limitController.text);
                 if (limit != null && limit > 0) {
@@ -798,10 +919,15 @@ class BudgetScreen extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                IconButton(
-                  icon: const Icon(Icons.chevron_left_rounded, size: 26),
-                  tooltip: 'Previous Month',
-                  onPressed: () => budgetProvider.previousMonth(),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.chevron_left_rounded, size: 26),
+                      tooltip: 'Previous Month',
+                      onPressed: () => budgetProvider.previousMonth(),
+                    ),
+                  ],
                 ),
                 Expanded(
                   child: InkWell(

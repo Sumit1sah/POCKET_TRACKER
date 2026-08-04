@@ -32,9 +32,14 @@ class LocalStorageService {
     await categoriesBox.delete('cat_rental');
 
     for (final cat in AppConstants.defaultCategories) {
-      // Put/Update system default categories so name updates (e.g. Refund -> Money Returned) take effect
-      if (!categoriesBox.containsKey(cat.id) || cat.isDefault) {
+      if (!categoriesBox.containsKey(cat.id)) {
         await categoriesBox.put(cat.id, cat.toMap());
+      } else {
+        final existingMap = Map<dynamic, dynamic>.from(categoriesBox.get(cat.id));
+        if (!existingMap.containsKey('deductFromBudget')) {
+          existingMap['deductFromBudget'] = cat.deductFromBudget;
+          await categoriesBox.put(cat.id, existingMap);
+        }
       }
     }
   }
@@ -228,5 +233,32 @@ class LocalStorageService {
   static Future<void> setLastBudgetPromptMonth(String monthKey) async {
     final box = Hive.box(settingsBoxName);
     await box.put('last_budget_prompt_month', monthKey);
+  }
+
+  // --- Auto Monthly Report Shown Tracking ---
+  /// Returns the month-key ("yyyy-MM") for which the auto report was last shown.
+  static String? getLastMonthReportShownMonth() {
+    final box = Hive.box(settingsBoxName);
+    return box.get('last_month_report_shown') as String?;
+  }
+
+  /// Persist the month-key so the auto report is not shown again this month.
+  static Future<void> setLastMonthReportShownMonth(String monthKey) async {
+    final box = Hive.box(settingsBoxName);
+    await box.put('last_month_report_shown', monthKey);
+  }
+
+  // --- Biometric / PIN Lock ---
+
+  /// Returns true if the user has enabled biometric/PIN lock.
+  static bool getBiometricEnabled() {
+    final box = Hive.box(settingsBoxName);
+    return box.get('biometric_enabled', defaultValue: false) as bool;
+  }
+
+  /// Persists the biometric lock preference.
+  static Future<void> setBiometricEnabled(bool enabled) async {
+    final box = Hive.box(settingsBoxName);
+    await box.put('biometric_enabled', enabled);
   }
 }

@@ -1,5 +1,7 @@
 import '../models/transaction_model.dart';
 import '../models/budget_model.dart';
+import '../models/category_model.dart';
+import 'local_storage_service.dart';
 
 class MonthlyReportData {
   final DateTime month;
@@ -57,12 +59,28 @@ class MonthlyReportService {
     final Map<String, double> categoryMap = {};
     TransactionModel? maxExpenseTx;
 
+    final categoryList = LocalStorageService.getCategories();
+    bool shouldDeduct(String catName) {
+      final match = categoryList.firstWhere(
+        (c) => c.name.toLowerCase() == catName.toLowerCase(),
+        orElse: () => CategoryModel(
+          id: '',
+          uid: '',
+          name: catName,
+          iconCodePoint: 0,
+          colorValue: 0,
+          deductFromBudget: catName.toLowerCase() != 'debt / repayment' &&
+              catName.toLowerCase() != 'money given / lent',
+        ),
+      );
+      return match.deductFromBudget;
+    }
+
     for (final t in monthTxs) {
       if (t.type == TransactionType.income) {
         income += t.amount;
       } else if (t.type == TransactionType.expense) {
-        final catLower = t.category.toLowerCase();
-        if (catLower == 'debt / repayment' || catLower == 'money given / lent' || catLower == 'money given') continue;
+        if (!shouldDeduct(t.category)) continue;
         expense += t.amount;
         categoryMap[t.category] = (categoryMap[t.category] ?? 0.0) + t.amount;
 

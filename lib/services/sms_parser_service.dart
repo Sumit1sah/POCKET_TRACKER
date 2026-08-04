@@ -100,7 +100,7 @@ class SMSParserService {
   // transaction has NOT completed yet (future/scheduled/marketing context).
   // ─────────────────────────────────────────────────────────────────────────
   static const _contextBlockKeywords = [
-    'due on', 'due date', 'minimum due', 'outstanding',
+    'due on', 'due date', 'minimum due',
     'statement', 'bill generated',
     'will be debited', 'will be charged',
     'scheduled for', 'auto-renewal', 'auto renewal',
@@ -120,7 +120,7 @@ class SMSParserService {
     // extraction so the account balance never gets picked up as the transaction
     // amount. Bank SMS format:  Rs.100.00 Dr. … AvlBal:Rs21048.53
     final balanceStripRegex = RegExp(
-      r'(?:avlbal|avl\s*bal|available\s*bal(?:ance)?|bal(?:ance)?)[:\s]*rs\.?\s*[\d,]+(?:\.\d{1,2})?',
+      r'(?:avlbal|avl\s*bal|available\s*bal(?:ance)?|total\s*bal(?:ance)?|bal(?:ance)?)[:\s]*(?:rs\.?|inr|₹|\$)?\s*[\d,]+(?:\.\d{1,2})?',
       caseSensitive: false,
     );
     final msgForAmount = message.replaceAll(balanceStripRegex, '');
@@ -258,20 +258,31 @@ class SMSParserService {
     // ── Transaction Type ──────────────────────────────────────────────────
     TransactionType type = TransactionType.expense;
 
-    final hasStrictDebitSignal = RegExp(
-      r'(?:debited|deducted|spent|paid|purchase|withdrawn|charged|dr\.?\s+from|dr\.?\s+to\s+vpa|dr\s+from|dr:\s*|debit:\s*)',
+    final hasCreditVerb = RegExp(
+      r'(?:credited|credited\s+with|credited\s+by|credited\s+to|credited\s+in|credited\s+into|credited\s+for|a\/c\s+credited|account\s+credited|received|deposited|salary|refund|refunded|cashback|inward|added\s+to|sent\s+you|transfer\s+received|money\s+received|fund\s+received|payment\s+received|cr\.?\s+to|cr\.?\s+in|cr\.?\s+for|cr\.?\s+by|credit\s+of|credit\s+with|credit:|\bcr\.?\b)',
       caseSensitive: false,
     ).hasMatch(lowerMsg);
 
-    final hasStrictCreditSignal = RegExp(
-      r'(?:credited|received|deposited|refund|added|salary|cashback|cr\.?\s+to\s+a\/c|cr\.?\s+to\s+account|cr\s+to\s+a\/c|credit:\s*|inward)',
+    final hasDebitVerb = RegExp(
+      r'(?:debited|debited\s+from|debited\s+for|deducted|spent|paid\s+to|paid\s+for|purchase|purchased|withdrawn|charged|dr\.?\s+from|dr\.?\s+to\s+vpa|dr\s+from|debit:|\bdr\.?\b)',
       caseSensitive: false,
     ).hasMatch(lowerMsg);
 
-    if (hasStrictCreditSignal && !hasStrictDebitSignal) {
+    if (hasCreditVerb && !hasDebitVerb) {
       type = TransactionType.income;
-    } else if (lowerMsg.contains('cr') && !lowerMsg.contains('dr') && !hasStrictDebitSignal) {
-      type = TransactionType.income;
+    } else if (hasCreditVerb && hasDebitVerb) {
+      // Both verbs matched (e.g. "Rs 500 credited to A/c for payment received")
+      final creditIdx = lowerMsg.indexOf(RegExp(
+        r'(?:credited|received|deposited|salary|refund|cashback|cr\.?\s+to|cr\.?\s+in|credit:)',
+        caseSensitive: false,
+      ));
+      final debitIdx = lowerMsg.indexOf(RegExp(
+        r'(?:debited|spent|purchase|withdrawn|dr\.?\s+from|debit:)',
+        caseSensitive: false,
+      ));
+      if (creditIdx != -1 && (debitIdx == -1 || creditIdx < debitIdx)) {
+        type = TransactionType.income;
+      }
     }
 
     // ── Payment Method ────────────────────────────────────────────────────
@@ -311,11 +322,45 @@ class SMSParserService {
       caseSensitive: false,
     ).hasMatch(message);
 
+    // ── CC Bill Payment detection ─────────────────────────────────────────
+    // Matches bank/CC-company SMS confirming that a bill payment was received
+    // TOWARDS the credit card — e.g.:
+    //   "Payment of Rs 5000 received for your HDFC SuperCard 2235"
+    //   "Rs 10000 credited to your SBI Credit Card account"
+    //   "Thank you for payment of INR 8000 towards ICICI Bank Card"
+    //   "CRED: Rs 3000 paid towards your Axis Credit Card"
+    //   "Your credit card payment of Rs 5000 has been processed"
+    final isCcBillPayment = RegExp(
+      r'(?:'                                           // open outer group
+      r'payment\s+(?:of\s+)?(?:rs\.?|inr|₹|\$)?\s*[\d,]+(?:\.\d{1,2})?\s*'
+        r'(?:received|processed|credited|confirmed|successful|accepted)\s*'
+        r'(?:towards?|for|against|to)?\s*'
+        r'(?:your\s+)?(?:credit card|cc|supercard|card|creditcard)'  // card mention
+      r'|'                                             // OR
+      r'(?:rs\.?|inr|₹|\$)?\s*[\d,]+(?:\.\d{1,2})?'
+        r'\s+(?:credited|received|processed)\s+'
+        r'(?:towards?|for|against|to)?\s*'
+        r'(?:your\s+)?(?:credit card|cc|supercard|creditcard)'       // card mention
+      r'|'                                             // OR
+      r'thank(?:s|\s+you)?\s+for\s+(?:the\s+)?payment'
+        r'[^.]{0,80}'
+        r'(?:credit card|supercard|cc\s+card|creditcard|card ending|card no\.?\s*\d{4})'
+      r'|'                                             // OR
+      r'(?:credit card|supercard)\s+(?:bill\s+)?payment\s+'
+        r'(?:of\s+)?(?:rs\.?|inr|₹)?\s*[\d,]+'
+        r'\s*(?:has\s+been\s+)?(?:processed|received|successful|credited|accepted)'
+      r'|'                                             // OR — CRED/app style
+      r'paid\s+(?:rs\.?|inr|₹)?\s*[\d,]+[^.]{0,60}'
+        r'(?:credit card|cc\s+card|supercard|card\s+ending|card\s+no)'
+      r')',
+      caseSensitive: false,
+    ).hasMatch(message);
+
     String paymentMethod;
     if (isDebitCardPattern) {
       paymentMethod = 'Debit Card';
-    } else if (isCcRefundToCard || (cardLast4 != null && !isDebitCardPattern)) {
-      // Refund to CC  OR  a card-number was found and it's not a debit card
+    } else if (isCcBillPayment || isCcRefundToCard || (cardLast4 != null && !isDebitCardPattern)) {
+      // CC bill payment, refund to CC, or any card-number found → tag as Credit Card
       paymentMethod = 'Credit Card';
     } else if (lowerMsg.contains('credit card') || lowerMsg.contains(' cc ')) {
       paymentMethod = 'Credit Card';
@@ -327,14 +372,18 @@ class SMSParserService {
       paymentMethod = 'UPI';
     } else if (lowerMsg.contains('cash')) {
       paymentMethod = 'Cash';
-    } else if (hasUpiVpa) {
-      paymentMethod = 'UPI';
     } else {
       paymentMethod = 'Bank Transfer';
     }
 
     // ── Merchant & Category ───────────────────────────────────────────────
-    String category = 'Others';
+    String category = type == TransactionType.income ? 'Other Income' : 'Others';
+
+    // Override category immediately for CC bill payment SMS before smart categorizer
+    if (isCcBillPayment && type == TransactionType.income) {
+      category = 'Credit Card Payment';
+    }
+
     String merchant = cardLast4 != null
         ? '$detectedApp Card ••$cardLast4'
         : detectedApp;
@@ -357,12 +406,15 @@ class SMSParserService {
       }
     }
 
-    final smartCat = SmartCategorizerService.predictCategory(
-      message,
-      isExpense: type == TransactionType.expense,
-    );
-    if (smartCat != null) {
-      category = smartCat;
+    // Smart categorizer — skip if category is already pinned (CC bill payment)
+    if (category != 'Credit Card Payment') {
+      final smartCat = SmartCategorizerService.predictCategory(
+        message,
+        isExpense: type == TransactionType.expense,
+      );
+      if (smartCat != null) {
+        category = smartCat;
+      }
     }
 
     return SMSParseResult(

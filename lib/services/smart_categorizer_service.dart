@@ -1,5 +1,3 @@
-import '../models/transaction_model.dart';
-
 class SmartCategorizerService {
   static const Map<String, List<String>> _expenseKeywordMap = {
     'Food': [
@@ -57,16 +55,34 @@ class SmartCategorizerService {
     ],
     'Money Given / Lent': [
       'money given', 'given money', 'gave money', 'lent', 'borrowed by', 'asked money',
-      'loan given', 'friend loan', 'emi', 'loan', 'credit card bill', 'repayment', 'repay', 'debt'
+      'loan given', 'friend loan', 'emi', 'loan', 'repayment', 'repay', 'debt'
+    ],
+    'Credit Card Bill': [
+      'credit card bill', 'cc bill', 'credit card payment', 'card bill', 'card due',
+      'card outstanding', 'credit card due', 'cc payment', 'credit card emi',
+      'cc emi', 'hdfc card', 'sbi card', 'icici card', 'axis card', 'kotak card',
+      'amex', 'indusind card', 'yes card', 'idfc card', 'au card'
     ],
   };
 
   static const Map<String, List<String>> _incomeKeywordMap = {
     'Salary': ['salary', 'payroll', 'monthly salary', 'wages', 'company credit'],
     'Pocket Money': ['pocket money', 'pocketmoney', 'monthly pocket money', 'stipend', 'allowance', 'parents', 'dad', 'mom'],
-    'Money Returned': ['money returned', 'returned', 'refund', 'sent back', 'paid back', 'returned money', 'borrowed back', 'repaid', 'repayment'],
+    'Money Returned': ['money returned', 'returned', 'sent back', 'paid back', 'returned money', 'borrowed back', 'repaid', 'repayment'],
     'Investment Returns': ['dividend', 'interest', 'mutual fund', 'stocks', 'returns', 'profit', 'fd interest'],
-    'Gift / Bonus': ['gift', 'birthday', 'festival', 'bonus', 'rewards', 'cashback', 'prize'],
+    'Gift / Bonus': ['gift', 'birthday', 'festival', 'bonus', 'rewards', 'prize'],
+    'Credit Card Payment': [
+      'credit card payment', 'cc payment', 'card payment', 'paid cc bill', 'paid card bill',
+      'credit card bill paid', 'card bill paid', 'cc bill paid', 'credit limit restored',
+      'card limit restored', 'cc limit', 'paid outstanding', 'cleared card',
+    ],
+    'CC Cashback / Refund': [
+      'cashback', 'cash back', 'cc cashback', 'credit card cashback', 'card cashback',
+      'card refund', 'credit card refund', 'cc refund', 'card reversal', 'cc reversal',
+      'reward credit', 'reward points', 'hdfc cashback', 'sbi cashback', 'icici cashback',
+      'axis cashback', 'amex credit', 'card credit', 'refund to card', 'refunded to card',
+      'credited to card', 'merchant refund'
+    ],
   };
 
   /// Smartly predicts the category from user-typed description, merchant, or notes.

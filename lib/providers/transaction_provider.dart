@@ -128,30 +128,26 @@ class TransactionProvider extends ChangeNotifier {
 
   // ── Credit Card Analytics ────────────────────────────────────────────────
 
-  /// CC expense transactions this month (purchases, charges).
+  /// CC expense transactions across all time (purchases, charges).
+  /// Balances persist across month boundaries until paid via bill payment or refund.
   List<TransactionModel> get creditCardTransactions {
-    final now = DateTime.now();
     return _transactions.where((t) =>
       t.type == TransactionType.expense &&
-      t.paymentMethod == 'Credit Card' &&
-      t.date.year == now.year &&
-      t.date.month == now.month,
+      t.paymentMethod == 'Credit Card',
     ).toList();
   }
 
-  /// CC refund transactions this month — income credited BACK to the credit
-  /// card (e.g. Flipkart/Amazon returns). These reduce the card's spent total.
+  /// CC refund and bill payment transactions — income credited BACK to the credit
+  /// card (e.g. Flipkart/Amazon returns, or credit card bill payment). These reduce the card's spent total.
   List<TransactionModel> get creditCardRefundTransactions {
-    final now = DateTime.now();
     return _transactions.where((t) =>
       t.type == TransactionType.income &&
-      t.paymentMethod == 'Credit Card' &&
-      t.date.year == now.year &&
-      t.date.month == now.month,
+      t.paymentMethod == 'Credit Card',
     ).toList();
   }
 
-  /// Net spent via credit card this month = purchases − refunds (≥ 0).
+  /// Net spent / outstanding balance via credit card = purchases − refunds/payments (≥ 0).
+  /// Persists across month changes until cleared by a bill payment or refund.
   double get totalCreditCardSpent {
     final purchases =
         creditCardTransactions.fold(0.0, (s, t) => s + t.amount);

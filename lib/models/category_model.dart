@@ -8,6 +8,7 @@ class CategoryModel {
   final int colorValue;
   final bool isIncome;
   final bool isDefault;
+  final bool deductFromBudget;
 
   CategoryModel({
     required this.id,
@@ -17,6 +18,7 @@ class CategoryModel {
     required this.colorValue,
     this.isIncome = false,
     this.isDefault = false,
+    this.deductFromBudget = true,
   });
 
   // ignore: non_const_argument_for_const_parameter
@@ -32,6 +34,7 @@ class CategoryModel {
       'colorValue': colorValue,
       'isIncome': isIncome,
       'isDefault': isDefault,
+      'deductFromBudget': deductFromBudget,
     };
   }
 
@@ -44,6 +47,29 @@ class CategoryModel {
       colorValue: map['colorValue'] ?? Colors.blue.toARGB32(),
       isIncome: map['isIncome'] ?? false,
       isDefault: map['isDefault'] ?? false,
+      deductFromBudget: map['deductFromBudget'] ?? true,
+    );
+  }
+
+  CategoryModel copyWith({
+    String? id,
+    String? uid,
+    String? name,
+    int? iconCodePoint,
+    int? colorValue,
+    bool? isIncome,
+    bool? isDefault,
+    bool? deductFromBudget,
+  }) {
+    return CategoryModel(
+      id: id ?? this.id,
+      uid: uid ?? this.uid,
+      name: name ?? this.name,
+      iconCodePoint: iconCodePoint ?? this.iconCodePoint,
+      colorValue: colorValue ?? this.colorValue,
+      isIncome: isIncome ?? this.isIncome,
+      isDefault: isDefault ?? this.isDefault,
+      deductFromBudget: deductFromBudget ?? this.deductFromBudget,
     );
   }
 }

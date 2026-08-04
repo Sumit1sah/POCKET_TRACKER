@@ -36,7 +36,7 @@ class SmsAutoCaptureService {
     final isDuplicate = existingTxs.any((t) =>
         t.amount == result.amount &&
         t.type == result.type &&
-        (t.date.difference(txDate).inMinutes.abs() < 5 || t.description.contains(result.merchant)));
+        t.date.difference(txDate).inMinutes.abs() < 5);
 
     if (isDuplicate) return null;
 
@@ -55,10 +55,10 @@ class SmsAutoCaptureService {
     return transaction;
   }
 
-  /// Scans recent SMS inbox messages received in the last [minutes] minutes (default: 15 mins)
+  /// Scans recent SMS inbox messages received in the last [minutes] minutes (default: 60 mins)
   /// (e.g., while unlocking the phone or launching the app) and automatically
   /// captures any missed transaction alerts. Returns the count of newly saved transactions.
-  static Future<int> scanRecentSms({int minutes = 15}) async {
+  static Future<int> scanRecentSms({int minutes = 60}) async {
     try {
       final List<dynamic>? rawList =
           await _smsChannel.invokeMethod('fetchRecentSms', {'minutes': minutes});

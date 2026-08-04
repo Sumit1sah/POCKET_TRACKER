@@ -142,9 +142,10 @@ class AIInsightService {
 
     int creditScoreComponent = 15;
     if (totalCreditLimit != null && totalCreditLimit > 0) {
-      final ccSpent = currentMonthExpenses
+      final ccSpent = transactions
           .where((t) => t.paymentMethod == 'Credit Card')
-          .fold(0.0, (s, t) => s + t.amount);
+          .fold(0.0, (s, t) => s + (t.type == TransactionType.expense ? t.amount : -t.amount))
+          .clamp(0.0, double.infinity);
       final util = ccSpent / totalCreditLimit;
       if (util <= 0.30) {
         creditScoreComponent = 15;
@@ -301,9 +302,10 @@ class AIInsightService {
     // 5. CREDIT CARD UTILIZATION & INTEREST RISK
     // ══════════════════════════════════════════════
     if (totalCreditLimit != null && totalCreditLimit > 0) {
-      final ccExpenses = currentMonthExpenses
+      final ccExpenses = transactions
           .where((t) => t.paymentMethod == 'Credit Card')
-          .fold(0.0, (s, t) => s + t.amount);
+          .fold(0.0, (s, t) => s + (t.type == TransactionType.expense ? t.amount : -t.amount))
+          .clamp(0.0, double.infinity);
       final utilRatio = ccExpenses / totalCreditLimit;
 
       if (utilRatio > 0.70) {

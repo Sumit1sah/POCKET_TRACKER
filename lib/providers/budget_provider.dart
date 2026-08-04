@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/budget_model.dart';
+import '../models/category_model.dart';
 import '../models/transaction_model.dart';
 import '../services/local_storage_service.dart';
 
@@ -83,12 +84,36 @@ class BudgetProvider extends ChangeNotifier {
         .fold(0.0, (sum, b) => sum + b.monthlyLimit);
   }
 
+  /// Checks whether a given category is configured to deduct from monthly budget.
+  bool shouldCategoryDeductFromBudget(String categoryName, [List<CategoryModel>? categories]) {
+    final catList = categories ?? LocalStorageService.getCategories();
+    final match = catList.firstWhere(
+      (c) => c.name.toLowerCase() == categoryName.toLowerCase(),
+      orElse: () => CategoryModel(
+        id: '',
+        uid: '',
+        name: categoryName,
+        iconCodePoint: 0,
+        colorValue: 0,
+        deductFromBudget: categoryName.toLowerCase() != 'debt / repayment' &&
+            categoryName.toLowerCase() != 'money given / lent',
+      ),
+    );
+    return match.deductFromBudget;
+  }
+
   // Get overall monthly budget status for a given month (defaults to _selectedMonth)
-  BudgetStatus getOverallBudgetStatus(List<TransactionModel> transactions, {DateTime? month}) {
+  BudgetStatus getOverallBudgetStatus(
+    List<TransactionModel> transactions, {
+    DateTime? month,
+    List<CategoryModel>? categories,
+  }) {
     final targetMonth = month ?? _selectedMonth;
+    final catList = categories ?? LocalStorageService.getCategories();
+
     final targetExpenses = transactions.where((t) =>
         t.type == TransactionType.expense &&
-        t.category.toLowerCase() != 'debt / repayment' &&
+        shouldCategoryDeductFromBudget(t.category, catList) &&
         t.date.year == targetMonth.year &&
         t.date.month == targetMonth.month).toList();
 
@@ -123,11 +148,17 @@ class BudgetProvider extends ChangeNotifier {
   }
 
   // Get category-wise budget statuses for a given month (defaults to _selectedMonth)
-  List<BudgetStatus> getCategoryBudgetStatuses(List<TransactionModel> transactions, {DateTime? month}) {
+  List<BudgetStatus> getCategoryBudgetStatuses(
+    List<TransactionModel> transactions, {
+    DateTime? month,
+    List<CategoryModel>? categories,
+  }) {
     final targetMonth = month ?? _selectedMonth;
+    final catList = categories ?? LocalStorageService.getCategories();
+
     final targetExpenses = transactions.where((t) =>
         t.type == TransactionType.expense &&
-        t.category.toLowerCase() != 'debt / repayment' &&
+        shouldCategoryDeductFromBudget(t.category, catList) &&
         t.date.year == targetMonth.year &&
         t.date.month == targetMonth.month).toList();
 

@@ -43,4 +43,12 @@ class Formatters {
       return '$symbol${amount.toInt()}';
     }
   }
+
+  static String formatPercentage(double value, {int maxDecimals = 2}) {
+    if (value % 1 == 0) {
+      return '${value.toInt()}%';
+    }
+    final formatted = value.toStringAsFixed(maxDecimals);
+    return '${formatted.replaceAll(RegExp(r'\.?0+$'), '')}%';
+  }
 }

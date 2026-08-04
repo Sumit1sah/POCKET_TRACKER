@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart' hide TextDirection;
 import 'package:provider/provider.dart';
 import '../../providers/transaction_provider.dart';
 import '../../providers/theme_currency_provider.dart';
@@ -8,7 +9,7 @@ import '../../utils/formatters.dart';
 import '../../utils/constants.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Analytics Screen
+// Analytics Screen — Advanced Financial Intelligence & Interactive Dashboard
 // ─────────────────────────────────────────────────────────────────────────────
 class AnalyticsScreen extends StatefulWidget {
   const AnalyticsScreen({super.key});
@@ -20,10 +21,66 @@ class AnalyticsScreen extends StatefulWidget {
 class _AnalyticsScreenState extends State<AnalyticsScreen>
     with TickerProviderStateMixin {
   String _selectedPeriod = 'This Month';
-  String _chartStyle = 'bar';
+  String _chartStyle = 'bar'; // 'bar' | 'continuous'
   String? _selectedBreakdownCategory;
   DateTime? _selectedSingleDate;
   DateTimeRange? _selectedCustomRange;
+  DateTime _selectedMonth = DateTime(DateTime.now().year, DateTime.now().month, 1);
+  int? _hoveredChartIndex;
+
+  bool get _isCurrentMonth {
+    final now = DateTime.now();
+    return _selectedMonth.year == now.year && _selectedMonth.month == now.month;
+  }
+
+  bool get _isPastMonth {
+    final now = DateTime.now();
+    final currentFirst = DateTime(now.year, now.month, 1);
+    return _selectedMonth.isBefore(currentFirst);
+  }
+
+  bool get _isFutureMonth {
+    final now = DateTime.now();
+    final currentFirst = DateTime(now.year, now.month, 1);
+    return _selectedMonth.isAfter(currentFirst);
+  }
+
+  void _previousMonth() {
+    setState(() {
+      _selectedMonth = DateTime(_selectedMonth.year, _selectedMonth.month - 1, 1);
+      _selectedPeriod = 'This Month';
+      _hoveredChartIndex = null;
+    });
+    _resetAndAnimate();
+  }
+
+  void _nextMonth() {
+    setState(() {
+      _selectedMonth = DateTime(_selectedMonth.year, _selectedMonth.month + 1, 1);
+      _selectedPeriod = 'This Month';
+      _hoveredChartIndex = null;
+    });
+    _resetAndAnimate();
+  }
+
+  void _resetToCurrentMonth() {
+    final now = DateTime.now();
+    setState(() {
+      _selectedMonth = DateTime(now.year, now.month, 1);
+      _selectedPeriod = 'This Month';
+      _hoveredChartIndex = null;
+    });
+    _resetAndAnimate();
+  }
+
+  void _setSelectedMonth(DateTime date) {
+    setState(() {
+      _selectedMonth = DateTime(date.year, date.month, 1);
+      _selectedPeriod = 'This Month';
+      _hoveredChartIndex = null;
+    });
+    _resetAndAnimate();
+  }
 
   final List<String> _periods = [
     'Today',
@@ -77,7 +134,10 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
   }
 
   void _changePeriod(String period) {
-    setState(() => _selectedPeriod = period);
+    setState(() {
+      _selectedPeriod = period;
+      _hoveredChartIndex = null;
+    });
     _resetAndAnimate();
   }
 
@@ -93,6 +153,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
         setState(() {
           _selectedSingleDate = picked;
           _selectedPeriod = period;
+          _hoveredChartIndex = null;
         });
         _resetAndAnimate();
       }
@@ -111,6 +172,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
         setState(() {
           _selectedCustomRange = picked;
           _selectedPeriod = period;
+          _hoveredChartIndex = null;
         });
         _resetAndAnimate();
       }
@@ -142,7 +204,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
           final start = DateTime(now.year, now.month, now.day).subtract(const Duration(days: 7));
           return t.date.isAfter(start.subtract(const Duration(seconds: 1)));
         case 'This Month':
-          return t.date.year == now.year && t.date.month == now.month;
+          return t.date.year == _selectedMonth.year && t.date.month == _selectedMonth.month;
         case 'Last Month':
           final lastMonth = DateTime(now.year, now.month - 1, 1);
           return t.date.year == lastMonth.year && t.date.month == lastMonth.month;
@@ -150,7 +212,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
           final start = DateTime(now.year, now.month, now.day).subtract(const Duration(days: 30));
           return t.date.isAfter(start.subtract(const Duration(seconds: 1)));
         case 'This Year':
-          return t.date.year == now.year;
+          return t.date.year == _selectedMonth.year;
         case 'Single Date':
           if (_selectedSingleDate == null) return true;
           return t.date.year == _selectedSingleDate!.year &&
@@ -205,10 +267,9 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
 
     final totalExpense = expenses.fold(0.0, (s, t) => s + t.amount);
     final totalIncome = incomes.fold(0.0, (s, t) => s + t.amount);
-    final totalCreditLimit = txProvider.totalCreditLimit;
-    final netBalance = totalIncome + totalCreditLimit - totalExpense;
+    final netBalance = totalIncome - totalExpense;
     final savingsRate =
-        totalIncome > 0 ? (netBalance / totalIncome * 100) : 0.0;
+        totalIncome > 0 ? (netBalance / totalIncome * 100.0) : (netBalance > 0 ? 100.0 : 0.0);
 
     // Category totals
     final Map<String, double> catTotals = {};
@@ -272,8 +333,9 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
       });
 
     } else if (_selectedPeriod == 'This Month' || _selectedPeriod == 'Last Month' || _selectedPeriod == 'Last 30 Days') {
-      chartTitle = '📊 Weekly Trend';
-      chartSubtitle = 'Breakdown by week';
+      final selectedMonthName = Formatters.formatMonthYear(_selectedMonth);
+      chartTitle = '📊 Weekly Trend ($selectedMonthName)';
+      chartSubtitle = 'Breakdown by week for $selectedMonthName';
 
       chartData = List.generate(4, (w) {
         final startDay = w * 7 + 1;
@@ -286,16 +348,16 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
       });
 
     } else if (_selectedPeriod == 'This Year') {
-      chartTitle = '📊 Monthly Trend';
-      chartSubtitle = 'Breakdown by month of ${now.year}';
+      chartTitle = '📊 Monthly Trend (${_selectedMonth.year})';
+      chartSubtitle = 'Breakdown by month of ${_selectedMonth.year}';
 
       chartData = List.generate(12, (i) {
         final monthNum = i + 1;
         final mExp = txProvider.transactions
-            .where((t) => t.type == TransactionType.expense && t.date.year == now.year && t.date.month == monthNum)
+            .where((t) => t.type == TransactionType.expense && t.date.year == _selectedMonth.year && t.date.month == monthNum)
             .fold(0.0, (s, t) => s + t.amount);
         final mInc = txProvider.transactions
-            .where((t) => t.type == TransactionType.income && t.date.year == now.year && t.date.month == monthNum)
+            .where((t) => t.type == TransactionType.income && t.date.year == _selectedMonth.year && t.date.month == monthNum)
             .fold(0.0, (s, t) => s + t.amount);
         return _MonthData(label: _monthShort(monthNum), expense: mExp, income: mInc);
       });
@@ -329,6 +391,11 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
           // ── Sticky Header ─────────────────────────────────────────────────
           SliverToBoxAdapter(
             child: _buildHeader(context, isDark),
+          ),
+
+          // ── Calendar Month Selector ───────────────────────────────────────
+          SliverToBoxAdapter(
+            child: _buildMonthSelector(context, isDark),
           ),
 
           // ── Period Chips ──────────────────────────────────────────────────
@@ -366,6 +433,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                 ),
               ),
             ),
+
 
             // ── Dynamic Bar / Continuous Line Chart ──────────────────────────
             SliverToBoxAdapter(
@@ -472,7 +540,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
               ),
             ),
 
-            // ── Donut + Category ──────────────────────────────────────────
+            // ── Donut + Category Breakdown ──────────────────────────────────
             if (sortedCats.isNotEmpty) ...[
               SliverToBoxAdapter(
                 child: Padding(
@@ -585,7 +653,415 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
     );
   }
 
-  // ── PERIOD CHIPS (Today, This Week, This Month, Custom Range in front + Filter Icon) ────
+  // ── CALENDAR MONTH SELECTOR ───────────────────────────────────────────────
+  Widget _buildMonthSelector(BuildContext context, bool isDark) {
+    final selected = _selectedMonth;
+    final monthText = Formatters.formatMonthYear(selected);
+
+    String cycleBadgeText = 'ACTIVE CYCLE';
+    Color cycleBadgeColor = const Color(0xFF00B894);
+    if (_isPastMonth) {
+      cycleBadgeText = 'CLOSED CYCLE';
+      cycleBadgeColor = Colors.blueGrey;
+    } else if (_isFutureMonth) {
+      cycleBadgeText = 'UPCOMING CYCLE';
+      cycleBadgeColor = const Color(0xFF6C5CE7);
+    }
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E1E2E) : Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: cycleBadgeColor.withValues(alpha: 0.3),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: isDark
+                ? Colors.black.withValues(alpha: 0.3)
+                : cycleBadgeColor.withValues(alpha: 0.08),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.chevron_left_rounded, size: 26),
+                      tooltip: 'Previous Month',
+                      onPressed: _previousMonth,
+                    ),
+                  ],
+                ),
+                Expanded(
+                  child: InkWell(
+                    onTap: () => _showProfessionalMonthPicker(context),
+                    borderRadius: BorderRadius.circular(16),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(7),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFF6C5CE7), Color(0xFF8E7CFE)],
+                              ),
+                              borderRadius: BorderRadius.circular(10),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF6C5CE7).withValues(alpha: 0.3),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(Icons.calendar_month_rounded, color: Colors.white, size: 16),
+                          ),
+                          const SizedBox(width: 10),
+                          Flexible(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      monthText,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                        letterSpacing: -0.3,
+                                      ),
+                                    ),
+                                    const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.grey, size: 20),
+                                  ],
+                                ),
+                                const SizedBox(height: 2),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: cycleBadgeColor.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    cycleBadgeText,
+                                    style: TextStyle(
+                                      color: cycleBadgeColor,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 9,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (!_isCurrentMonth)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 2),
+                        child: TextButton.icon(
+                          onPressed: _resetToCurrentMonth,
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            visualDensity: VisualDensity.compact,
+                            backgroundColor: const Color(0xFF00B894).withValues(alpha: 0.12),
+                            foregroundColor: const Color(0xFF00B894),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                          icon: const Icon(Icons.today_rounded, size: 14),
+                          label: const Text('Today', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                    IconButton(
+                      icon: const Icon(Icons.chevron_right_rounded, size: 26),
+                      tooltip: 'Next Month',
+                      onPressed: _nextMonth,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          _buildQuickMonthSegmentBar(context, isDark),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickMonthSegmentBar(BuildContext context, bool isDark) {
+    final now = DateTime.now();
+    final current = DateTime(now.year, now.month, 1);
+    final prev = DateTime(now.year, now.month - 1, 1);
+    final next = DateTime(now.year, now.month + 1, 1);
+
+    final months = [prev, current, next];
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
+      child: Row(
+        children: months.map((m) {
+          final isSelected = _selectedMonth.year == m.year &&
+              _selectedMonth.month == m.month;
+          final isCurrentMonth = m.year == now.year && m.month == now.month;
+
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 3),
+              child: InkWell(
+                onTap: () => _setSelectedMonth(m),
+                borderRadius: BorderRadius.circular(10),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? const Color(0xFF6C5CE7)
+                        : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.withValues(alpha: 0.1)),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    isCurrentMonth ? '${DateFormat('MMM').format(m)} (Active)' : DateFormat('MMM yyyy').format(m),
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                      color: isSelected
+                          ? Colors.white
+                          : (isDark ? Colors.white70 : Colors.black87),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  void _showProfessionalMonthPicker(BuildContext context) {
+    int tempYear = _selectedMonth.year;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final now = DateTime.now();
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+
+            final monthNames = [
+              'January', 'February', 'March', 'April',
+              'May', 'June', 'July', 'August',
+              'September', 'October', 'November', 'December'
+            ];
+
+            return Container(
+              decoration: BoxDecoration(
+                color: Theme.of(context).scaffoldBackgroundColor,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+              ),
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(Icons.calendar_month_rounded, color: Color(0xFF6C5CE7)),
+                          SizedBox(width: 8),
+                          Text(
+                            'Select Analytics Month',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                          ),
+                        ],
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded, size: 20),
+                        onPressed: () => Navigator.pop(ctx),
+                      ),
+                    ],
+                  ),
+                  const Divider(height: 20),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.grey[900] : Colors.grey[100],
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.chevron_left_rounded),
+                          onPressed: () => setSheetState(() => tempYear--),
+                        ),
+                        Text(
+                          '$tempYear',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF6C5CE7)),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.chevron_right_rounded),
+                          onPressed: () => setSheetState(() => tempYear++),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 3,
+                      childAspectRatio: 2.2,
+                      crossAxisSpacing: 10,
+                      mainAxisSpacing: 10,
+                    ),
+                    itemCount: 12,
+                    itemBuilder: (context, index) {
+                      final monthNumber = index + 1;
+                      final isSelected = tempYear == _selectedMonth.year &&
+                          monthNumber == _selectedMonth.month;
+                      final isCurrentMonth = tempYear == now.year && monthNumber == now.month;
+
+                      return InkWell(
+                        onTap: () {
+                          _setSelectedMonth(DateTime(tempYear, monthNumber, 1));
+                          Navigator.pop(ctx);
+                        },
+                        borderRadius: BorderRadius.circular(14),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          decoration: BoxDecoration(
+                            gradient: isSelected
+                                ? const LinearGradient(
+                                    colors: [Color(0xFF6C5CE7), Color(0xFF8E7CFE)],
+                                  )
+                                : null,
+                            color: isSelected
+                                ? null
+                                : (isCurrentMonth
+                                    ? const Color(0xFF00B894).withValues(alpha: 0.12)
+                                    : (isDark ? Colors.grey[900] : Colors.grey[100])),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: isSelected
+                                  ? const Color(0xFF6C5CE7)
+                                  : (isCurrentMonth
+                                      ? const Color(0xFF00B894)
+                                      : Colors.transparent),
+                              width: isCurrentMonth || isSelected ? 1.5 : 1.0,
+                            ),
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                monthNames[index].substring(0, 3).toUpperCase(),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                  color: isSelected
+                                      ? Colors.white
+                                      : (isCurrentMonth
+                                          ? const Color(0xFF00B894)
+                                          : (isDark ? Colors.white : Colors.black87)),
+                                ),
+                              ),
+                              if (isCurrentMonth)
+                                Text(
+                                  'ACTIVE',
+                                  style: TextStyle(
+                                    fontSize: 8,
+                                    fontWeight: FontWeight.bold,
+                                    color: isSelected ? Colors.white70 : const Color(0xFF00B894),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          onPressed: () {
+                            _resetToCurrentMonth();
+                            Navigator.pop(ctx);
+                          },
+                          icon: const Icon(Icons.today_rounded, size: 16),
+                          label: const Text('Current Month', style: TextStyle(fontSize: 12)),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF6C5CE7),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          onPressed: () => Navigator.pop(ctx),
+                          icon: const Icon(Icons.check_rounded, size: 16),
+                          label: const Text('Done', style: TextStyle(fontSize: 12)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // ── PERIOD CHIPS ──────────────────────────────────────────────────────────
   Widget _buildPeriodChips(BuildContext context, bool isDark) {
     const primaryFrontPeriods = ['Today', 'This Week', 'This Month', 'Custom Range'];
     final visibleChips = List<String>.from(primaryFrontPeriods);
@@ -810,7 +1286,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Net Balance
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -882,7 +1357,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
             ],
           ),
           const SizedBox(height: 20),
-          // Income / Expense row
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
@@ -967,6 +1441,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
     );
   }
 
+
   // ── PREMIUM BAR CHART ──────────────────────────────────────────────────────
   Widget _buildPremiumBarChart(
     BuildContext context,
@@ -1008,7 +1483,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header Row: Legend + Money Range Badge
           Row(
             children: [
               Container(
@@ -1041,12 +1515,10 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
           ),
           const SizedBox(height: 16),
 
-          // Chart with Y-Axis Money Scale and Bars
           SizedBox(
             height: barMaxH + 52,
             child: Row(
               children: [
-                // Left Y-Axis Money Scale
                 SizedBox(
                   width: 38,
                   height: barMaxH + 52,
@@ -1087,11 +1559,9 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                 ),
                 const SizedBox(width: 4),
 
-                // Bars with Grid Lines background
                 Expanded(
                   child: Stack(
                     children: [
-                      // Grid Lines (Top, Mid, Bottom)
                       Positioned.fill(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1107,103 +1577,108 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                         ),
                       ),
 
-                      // Bar Columns
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.end,
-                        children: data.map((m) {
+                        children: data.asMap().entries.map((entry) {
+                          final idx = entry.key;
+                          final m = entry.value;
                           final incH = maxVal > 0 ? (m.income / maxVal * barMaxH * animValue) : 0.0;
                           final expH = maxVal > 0 ? (m.expense / maxVal * barMaxH * animValue) : 0.0;
                           final highestVal = math.max(m.income, m.expense);
                           final isCurrentMonth = m.label == _monthShort(DateTime.now().month);
+                          final isHovered = _hoveredChartIndex == idx;
 
                           return Expanded(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                // Top Value Badge if non-zero
-                                SizedBox(
-                                  height: 14,
-                                  child: highestVal > 0
-                                      ? FittedBox(
-                                          fit: BoxFit.scaleDown,
-                                          child: Text(
-                                            Formatters.formatCompactCurrency(highestVal, symbol: currency),
-                                            style: TextStyle(
-                                              fontSize: isVeryMany ? 7.5 : 8.5,
-                                              fontWeight: FontWeight.bold,
-                                              color: m.expense >= m.income
-                                                  ? const Color(0xFFFF7675)
-                                                  : const Color(0xFF6C5CE7),
+                            child: GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _hoveredChartIndex = isHovered ? null : idx;
+                                });
+                              },
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  SizedBox(
+                                    height: 14,
+                                    child: highestVal > 0
+                                        ? FittedBox(
+                                            fit: BoxFit.scaleDown,
+                                            child: Text(
+                                              Formatters.formatCompactCurrency(highestVal, symbol: currency),
+                                              style: TextStyle(
+                                                fontSize: isVeryMany ? 7.5 : 8.5,
+                                                fontWeight: FontWeight.bold,
+                                                color: m.expense >= m.income
+                                                    ? const Color(0xFFFF7675)
+                                                    : const Color(0xFF6C5CE7),
+                                              ),
                                             ),
-                                          ),
-                                        )
-                                      : const SizedBox.shrink(),
-                                ),
-                                const SizedBox(height: 2),
-
-                                // Bars
-                                SizedBox(
-                                  height: barMaxH,
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    crossAxisAlignment: CrossAxisAlignment.end,
-                                    children: [
-                                      // Income bar
-                                      Container(
-                                        width: barW,
-                                        height: incH.clamp(2.0, barMaxH),
-                                        decoration: BoxDecoration(
-                                          gradient: const LinearGradient(
-                                            colors: [Color(0xFF6C5CE7), Color(0xFF8E7CFE)],
-                                            begin: Alignment.bottomCenter,
-                                            end: Alignment.topCenter,
-                                          ),
-                                          borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
-                                        ),
-                                      ),
-                                      SizedBox(width: gapW),
-                                      // Expense bar
-                                      Container(
-                                        width: barW,
-                                        height: expH.clamp(2.0, barMaxH),
-                                        decoration: BoxDecoration(
-                                          gradient: const LinearGradient(
-                                            colors: [Color(0xFFFF6B6B), Color(0xFFFF8E53)],
-                                            begin: Alignment.bottomCenter,
-                                            end: Alignment.topCenter,
-                                          ),
-                                          borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
-                                        ),
-                                      ),
-                                    ],
+                                          )
+                                        : const SizedBox.shrink(),
                                   ),
-                                ),
-                                const SizedBox(height: 6),
-                                Container(
-                                  padding: EdgeInsets.symmetric(horizontal: chipPaddingH, vertical: 2),
-                                  decoration: isCurrentMonth
-                                      ? BoxDecoration(
-                                          color: const Color(0xFF6C5CE7).withValues(alpha: 0.15),
-                                          borderRadius: BorderRadius.circular(6),
-                                        )
-                                      : null,
-                                  child: FittedBox(
-                                    fit: BoxFit.scaleDown,
-                                    child: Text(
-                                      m.label,
-                                      maxLines: 1,
-                                      softWrap: false,
-                                      style: TextStyle(
-                                        fontSize: fontSize,
-                                        fontWeight: isCurrentMonth ? FontWeight.bold : FontWeight.w500,
-                                        color: isCurrentMonth
-                                            ? const Color(0xFF6C5CE7)
-                                            : (isDark ? Colors.white54 : Colors.black45),
+                                  const SizedBox(height: 2),
+
+                                  SizedBox(
+                                    height: barMaxH,
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      crossAxisAlignment: CrossAxisAlignment.end,
+                                      children: [
+                                        Container(
+                                          width: barW,
+                                          height: incH.clamp(2.0, barMaxH),
+                                          decoration: BoxDecoration(
+                                            gradient: const LinearGradient(
+                                              colors: [Color(0xFF6C5CE7), Color(0xFF8E7CFE)],
+                                              begin: Alignment.bottomCenter,
+                                              end: Alignment.topCenter,
+                                            ),
+                                            borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+                                          ),
+                                        ),
+                                        SizedBox(width: gapW),
+                                        Container(
+                                          width: barW,
+                                          height: expH.clamp(2.0, barMaxH),
+                                          decoration: BoxDecoration(
+                                            gradient: const LinearGradient(
+                                              colors: [Color(0xFFFF6B6B), Color(0xFFFF8E53)],
+                                              begin: Alignment.bottomCenter,
+                                              end: Alignment.topCenter,
+                                            ),
+                                            borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Container(
+                                    padding: EdgeInsets.symmetric(horizontal: chipPaddingH, vertical: 2),
+                                    decoration: isCurrentMonth || isHovered
+                                        ? BoxDecoration(
+                                            color: const Color(0xFF6C5CE7).withValues(alpha: 0.15),
+                                            borderRadius: BorderRadius.circular(6),
+                                          )
+                                        : null,
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Text(
+                                        m.label,
+                                        maxLines: 1,
+                                        softWrap: false,
+                                        style: TextStyle(
+                                          fontSize: fontSize,
+                                          fontWeight: isCurrentMonth || isHovered ? FontWeight.bold : FontWeight.w500,
+                                          color: isCurrentMonth || isHovered
+                                              ? const Color(0xFF6C5CE7)
+                                              : (isDark ? Colors.white54 : Colors.black45),
+                                        ),
                                       ),
                                     ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           );
                         }).toList(),
@@ -1215,7 +1690,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
             ),
           ),
 
-          // Horizontal grid line at bottom
           const SizedBox(height: 4),
           Divider(
               height: 1,
@@ -1260,7 +1734,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header Row: Legend + Money Range Badge
           Row(
             children: [
               Container(
@@ -1293,12 +1766,10 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
           ),
           const SizedBox(height: 16),
 
-          // Chart with Y-Axis Money Scale and Continuous Spline Painter
           SizedBox(
             height: chartHeight + 40,
             child: Row(
               children: [
-                // Left Y-Axis Money Scale
                 SizedBox(
                   width: 38,
                   height: chartHeight + 40,
@@ -1339,11 +1810,9 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                 ),
                 const SizedBox(width: 4),
 
-                // Continuous Line & Area Painter
                 Expanded(
                   child: Stack(
                     children: [
-                      // Grid Lines
                       Positioned.fill(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1359,7 +1828,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                         ),
                       ),
 
-                      // Spline CustomPainter
                       Positioned.fill(
                         child: CustomPaint(
                           painter: _ContinuousLinePainter(
@@ -1400,7 +1868,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
     }
   }
 
-  // ── BREAKDOWN CARD (Donut + Interactive Category Insights) ───────────
+  // ── BREAKDOWN CARD ────────────────────────────────────────────────────────
   Widget _buildBreakdownCard(
     BuildContext context,
     List<MapEntry<String, double>> sorted,
@@ -1413,7 +1881,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
     final cardColor = isDark ? const Color(0xFF1C1C2E) : Colors.white;
     final catColors = _getCategoryColors(sorted);
 
-    // Selected breakdown item details
     MapEntry<String, double>? selectedEntry;
     if (_selectedBreakdownCategory != null) {
       for (final e in sorted) {
@@ -1448,7 +1915,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Donut Chart Container
           Center(
             child: SizedBox(
               height: 190,
@@ -1465,7 +1931,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                       selectedCategory: _selectedBreakdownCategory,
                     ),
                   ),
-                  // Center label with dynamic selected info
                   GestureDetector(
                     onTap: () {
                       setState(() => _selectedBreakdownCategory = null);
@@ -1518,7 +1983,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
           ),
           const SizedBox(height: 18),
 
-          // Smart Insight Banner
           if (sorted.isNotEmpty) ...[
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -1554,7 +2018,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                   : Colors.black.withValues(alpha: 0.06)),
           const SizedBox(height: 16),
 
-          // Advanced Category rows
           ...displayList.asMap().entries.map((entry) {
             final idx = entry.key;
             final cat = entry.value;
@@ -1562,131 +2025,189 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
             final color = catColors[idx % catColors.length];
             final isSelected = _selectedBreakdownCategory == cat.key;
             final meta = _getCategoryMeta(cat.key);
-            final txCount = expenses.where((t) => t.category == cat.key).length;
+            final categoryTransactions = expenses.where((t) => t.category == cat.key).toList();
+            final txCount = categoryTransactions.length;
 
-            return GestureDetector(
-              onTap: () {
-                setState(() {
-                  if (_selectedBreakdownCategory == cat.key) {
-                    _selectedBreakdownCategory = null;
-                  } else {
-                    _selectedBreakdownCategory = cat.key;
-                  }
-                });
-              },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? color.withValues(alpha: 0.12)
-                      : (isDark ? const Color(0xFF252538) : const Color(0xFFF8F9FE)),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: isSelected ? color : Colors.transparent,
-                    width: 1.5,
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    // Category Icon Circle
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: color.withValues(alpha: 0.15),
-                        shape: BoxShape.circle,
+            return Column(
+              children: [
+                GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      if (_selectedBreakdownCategory == cat.key) {
+                        _selectedBreakdownCategory = null;
+                      } else {
+                        _selectedBreakdownCategory = cat.key;
+                      }
+                    });
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? color.withValues(alpha: 0.12)
+                          : (isDark ? const Color(0xFF252538) : const Color(0xFFF8F9FE)),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isSelected ? color : Colors.transparent,
+                        width: 1.5,
                       ),
-                      child: Icon(meta['icon'] as IconData, size: 16, color: color),
                     ),
-                    const SizedBox(width: 12),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: color.withValues(alpha: 0.15),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(meta['icon'] as IconData, size: 16, color: color),
+                        ),
+                        const SizedBox(width: 12),
 
-                    // Label, Tag & Progress
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
+                                  Row(
+                                    children: [
+                                      Text(
+                                        cat.key,
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                        decoration: BoxDecoration(
+                                          color: (meta['color'] as Color).withValues(alpha: 0.15),
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: Text(
+                                          meta['tag'] as String,
+                                          style: TextStyle(
+                                            fontSize: 9,
+                                            fontWeight: FontWeight.bold,
+                                            color: meta['color'] as Color,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                   Text(
-                                    cat.key,
+                                    Formatters.formatCurrency(cat.value, symbol: currency),
                                     style: TextStyle(
                                       fontSize: 13,
-                                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                                    decoration: BoxDecoration(
-                                      color: (meta['color'] as Color).withValues(alpha: 0.15),
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: Text(
-                                      meta['tag'] as String,
-                                      style: TextStyle(
-                                        fontSize: 9,
-                                        fontWeight: FontWeight.bold,
-                                        color: meta['color'] as Color,
-                                      ),
+                                      fontWeight: FontWeight.bold,
+                                      color: color,
                                     ),
                                   ),
                                 ],
                               ),
-                              Text(
-                                Formatters.formatCurrency(cat.value, symbol: currency),
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.bold,
-                                  color: color,
-                                ),
+                              const SizedBox(height: 6),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(4),
+                                      child: LinearProgressIndicator(
+                                        value: pct * animValue,
+                                        minHeight: 5,
+                                        backgroundColor: color.withValues(alpha: 0.12),
+                                        valueColor: AlwaysStoppedAnimation<Color>(color),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Text(
+                                    '${(pct * 100).toStringAsFixed(1)}%',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: isDark ? Colors.white54 : Colors.black45,
+                                    ),
+                                  ),
+                                  if (txCount > 0) ...[
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      '• $txCount txns',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: isDark ? Colors.white38 : Colors.black38,
+                                      ),
+                                    ),
+                                  ],
+                                ],
                               ),
                             ],
                           ),
-                          const SizedBox(height: 6),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(4),
-                                  child: LinearProgressIndicator(
-                                    value: pct * animValue,
-                                    minHeight: 5,
-                                    backgroundColor: color.withValues(alpha: 0.12),
-                                    valueColor: AlwaysStoppedAnimation<Color>(color),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Text(
-                                '${(pct * 100).toStringAsFixed(1)}%',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                  color: isDark ? Colors.white54 : Colors.black45,
-                                ),
-                              ),
-                              if (txCount > 0) ...[
-                                const SizedBox(width: 6),
-                                Text(
-                                  '• $txCount txns',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: isDark ? Colors.white38 : Colors.black38,
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
+
+                if (isSelected && categoryTransactions.isNotEmpty)
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 12, left: 8, right: 8),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1E1E2E) : Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: color.withValues(alpha: 0.2)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Transactions in ${cat.key}',
+                              style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: color),
+                            ),
+                            Text(
+                              '${categoryTransactions.length} entries',
+                              style: const TextStyle(fontSize: 10, color: Colors.grey),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        ...categoryTransactions.take(4).map((tx) => Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Row(
+                            children: [
+                              Icon(Icons.receipt_rounded, size: 12, color: color),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  tx.description.isNotEmpty ? tx.description : tx.paymentMethod,
+                                  style: const TextStyle(fontSize: 11),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              Text(
+                                Formatters.formatShortDate(tx.date),
+                                style: const TextStyle(fontSize: 9.5, color: Colors.grey),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                '-$currency${Formatters.formatCurrency(tx.amount, symbol: "")}',
+                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFFF7675)),
+                              ),
+                            ],
+                          ),
+                        )),
+                      ],
+                    ),
+                  ),
+              ],
             );
           }),
         ],
@@ -1717,7 +2238,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
     final avgDaily = daysInPeriod > 0 ? totalExpense / daysInPeriod : 0.0;
     final avgTxSize = expenses.isNotEmpty ? totalExpense / expenses.length : 0.0;
 
-    // Largest Expense
     double largestExpense = 0;
     String largestCategory = '-';
     String largestMerchant = '';
@@ -1729,7 +2249,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
       }
     }
 
-    // Most Frequent Category
     final Map<String, int> catFreq = {};
     for (final t in expenses) {
       catFreq[t.category] = (catFreq[t.category] ?? 0) + 1;
@@ -1738,7 +2257,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
         ? catFreq.entries.reduce((a, b) => a.value > b.value ? a : b)
         : null;
 
-    // Peak Spend Day
     final Map<int, double> dayTotals = {};
     for (final t in expenses) {
       dayTotals[t.date.weekday] = (dayTotals[t.date.weekday] ?? 0.0) + t.amount;
@@ -1749,7 +2267,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
     final peakDayName = peakDayEntry != null ? _dayShort(peakDayEntry.key) : '-';
     final peakDayAmount = peakDayEntry != null ? peakDayEntry.value : 0.0;
 
-    // Income Retention
     final totalInc = incomes.fold(0.0, (s, t) => s + t.amount);
     final retentionPct = totalInc > 0 ? ((totalInc - totalExpense) / totalInc * 100) : 0.0;
 
@@ -2034,7 +2551,6 @@ class _DonutPainter extends CustomPainter {
     const baseStrokeWidth = 24.0;
     const gapAngle = 0.03;
 
-    // Background track
     final trackPaint = Paint()
       ..color = Colors.grey.withValues(alpha: 0.08)
       ..style = PaintingStyle.stroke
@@ -2062,7 +2578,6 @@ class _DonutPainter extends CustomPainter {
 
       final strokeWidth = isSelected ? baseStrokeWidth + 6.0 : baseStrokeWidth;
 
-      // Shadow arc for selected
       if (isSelected) {
         final shadowPaint = Paint()
           ..color = color.withValues(alpha: 0.35)
@@ -2078,7 +2593,6 @@ class _DonutPainter extends CustomPainter {
         );
       }
 
-      // Main arc
       final paint = Paint()
         ..color = color
         ..style = PaintingStyle.stroke
@@ -2183,7 +2697,6 @@ class _ContinuousLinePainter extends CustomPainter {
         path.cubicTo(controlX, p0.dy, controlX, p1.dy, p1.dx, p1.dy);
       }
 
-      // Gradient Area fill below curve
       final fillPath = Path.from(path);
       fillPath.lineTo(points.last.dx, chartH + 6);
       fillPath.lineTo(points.first.dx, chartH + 6);
@@ -2199,7 +2712,6 @@ class _ContinuousLinePainter extends CustomPainter {
 
       canvas.drawPath(fillPath, areaPaint);
 
-      // Curved Line
       final linePaint = Paint()
         ..color = color
         ..style = PaintingStyle.stroke
@@ -2208,7 +2720,6 @@ class _ContinuousLinePainter extends CustomPainter {
 
       canvas.drawPath(path, linePaint);
 
-      // Node Dots
       final dotPaint = Paint()..color = color;
       final innerDotPaint = Paint()..color = Colors.white;
 
@@ -2218,11 +2729,9 @@ class _ContinuousLinePainter extends CustomPainter {
       }
     }
 
-    // Draw Income (Purple) and Expense (Red)
     drawSmoothCurve(incPoints, const Color(0xFF6C5CE7));
     drawSmoothCurve(expPoints, const Color(0xFFFF7675));
 
-    // X-Axis Labels
     final textStyle = TextStyle(
       fontSize: count > 10 ? 8.0 : 9.0,
       color: isDark ? Colors.white54 : Colors.black45,

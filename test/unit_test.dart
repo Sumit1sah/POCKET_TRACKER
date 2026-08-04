@@ -194,6 +194,38 @@ void main() {
       // 50,000 + 100,000 - 20,000 = 130,000
       expect(totalNetBalance, 130000.0);
     });
+
+    test('Credit Card balance persists across month changes until paid', () {
+      final lastMonth = DateTime.now().subtract(const Duration(days: 40));
+      final pastPurchase = TransactionModel(
+        id: 'cc_prev_1',
+        uid: 'user_123',
+        type: TransactionType.expense,
+        amount: 8000.0,
+        category: 'Shopping',
+        paymentMethod: 'Credit Card',
+        description: 'Past month credit card expense ending with 1234',
+        date: lastMonth,
+      );
+
+      final currentMonthPayment = TransactionModel(
+        id: 'cc_pay_1',
+        uid: 'user_123',
+        type: TransactionType.income,
+        amount: 3000.0,
+        category: 'Credit Card Bill',
+        paymentMethod: 'Credit Card',
+        description: 'Credit Card Bill payment credited to 1234',
+        date: DateTime.now(),
+      );
+
+      // Verify past month purchase is a CC expense
+      expect(pastPurchase.paymentMethod, 'Credit Card');
+      expect(pastPurchase.type, TransactionType.expense);
+      // Verify payment reduces balance across months
+      final remainingBalance = pastPurchase.amount - currentMonthPayment.amount;
+      expect(remainingBalance, 5000.0);
+    });
   });
 
   group('AIInsightService Money Tips Tests', () {

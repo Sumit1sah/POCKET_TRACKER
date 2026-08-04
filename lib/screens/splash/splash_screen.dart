@@ -6,6 +6,8 @@ import 'package:permission_handler/permission_handler.dart';
 import '../authentication/login_screen.dart';
 import '../dashboard/main_navigation_screen.dart';
 import '../../providers/auth_provider.dart';
+import '../../services/biometric_service.dart';
+import '../../services/local_storage_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -36,6 +38,8 @@ class _SplashScreenState extends State<SplashScreen>
   late AnimationController _floatCtrl;
   late Animation<double> _floatY;
 
+  bool _authFailed = false;
+
   @override
   void initState() {
     super.initState();
@@ -45,10 +49,10 @@ class _SplashScreenState extends State<SplashScreen>
       statusBarIconBrightness: Brightness.light,
     ));
 
-    // ── Logo entrance (0 → 700ms) ────────────────────────────────────────
+    // ── Logo entrance (0 → 500ms) ────────────────────────────────────────
     _logoCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 700),
+      duration: const Duration(milliseconds: 500),
     );
     _logoScale = Tween<double>(begin: 0.55, end: 1.0).animate(
       CurvedAnimation(parent: _logoCtrl, curve: Curves.easeOutBack),
@@ -60,32 +64,32 @@ class _SplashScreenState extends State<SplashScreen>
       CurvedAnimation(parent: _logoCtrl, curve: const Interval(0.4, 1.0)),
     );
 
-    // ── Text slide-up (500 → 1100ms) ────────────────────────────────────
+    // ── Text entrance (250ms → 700ms) ────────────────────────────────────
     _textCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 600),
+      duration: const Duration(milliseconds: 450),
     );
     _textOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _textCtrl, curve: Curves.easeOut),
     );
     _textSlide = Tween<Offset>(
-      begin: const Offset(0, 0.35),
+      begin: const Offset(0, 0.25),
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _textCtrl, curve: Curves.easeOutCubic));
 
-    // ── Continuous logo float ────────────────────────────────────────────
+    // ── Float looping ───────────────────────────────────────────────────
     _floatCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 2200),
     )..repeat(reverse: true);
-    _floatY = Tween<double>(begin: -5, end: 5).animate(
+    _floatY = Tween<double>(begin: 0.0, end: -8.0).animate(
       CurvedAnimation(parent: _floatCtrl, curve: Curves.easeInOut),
     );
 
-    // ── Loading bar (fills over 2s total) ───────────────────────────────
+    // ── Loading bar (0 → 750ms) ───────────────────────────────────────────
     _barCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 2000),
+      duration: const Duration(milliseconds: 750),
     );
     _barWidth = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _barCtrl, curve: Curves.easeInOut),
@@ -96,7 +100,7 @@ class _SplashScreenState extends State<SplashScreen>
       _textCtrl.forward();
     });
     _barCtrl.forward().then((_) {
-      Future.delayed(const Duration(milliseconds: 200), _navigateNext);
+      Future.delayed(const Duration(milliseconds: 100), _navigateNext);
     });
   }
 
@@ -110,6 +114,20 @@ class _SplashScreenState extends State<SplashScreen>
     }
     if (!mounted) return;
     final auth = Provider.of<AuthProvider>(context, listen: false);
+
+    if (auth.isAuthenticated && LocalStorageService.getBiometricEnabled()) {
+      final authenticated = await BiometricService.authenticate(
+        reason: 'Authenticate to unlock Pocketify',
+      );
+      if (!authenticated) {
+        if (mounted) {
+          setState(() => _authFailed = true);
+        }
+        return;
+      }
+    }
+
+    if (!mounted) return;
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         transitionDuration: const Duration(milliseconds: 600),
@@ -317,17 +335,55 @@ class _SplashScreenState extends State<SplashScreen>
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Padding(
-                      padding: const EdgeInsets.only(bottom: 52),
-                      child: Text(
-                        'Loading your finances...',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.white.withValues(alpha: 0.25),
-                          letterSpacing: 0.8,
-                          fontWeight: FontWeight.w400,
-                        ),
-                      ),
+                      padding: const EdgeInsets.only(bottom: 40),
+                      child: _authFailed
+                          ? Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                ElevatedButton.icon(
+                                  onPressed: () {
+                                    setState(() => _authFailed = false);
+                                    _navigateNext();
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF6C5CE7),
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 24, vertical: 12),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                  ),
+                                  icon: const Icon(Icons.fingerprint_rounded,
+                                      size: 20),
+                                  label: const Text(
+                                    'Unlock Pocketify',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Biometric / PIN authentication required',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.white.withValues(alpha: 0.4),
+                                  ),
+                                ),
+                              ],
+                            )
+                          : Text(
+                              'Loading your finances...',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.white.withValues(alpha: 0.25),
+                                letterSpacing: 0.8,
+                                fontWeight: FontWeight.w400,
+                              ),
+                            ),
                     ),
                     // Full-width gradient bar
                     Container(
