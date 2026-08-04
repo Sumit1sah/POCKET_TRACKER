@@ -18,11 +18,13 @@
   - [🤖 AI-Powered Financial Insights Engine](#-ai-powered-financial-insights-engine)
   - [📲 Automatic SMS Transaction Capture (Android Native)](#-automatic-sms-transaction-capture-android-native)
   - [💡 Smart Categorizer & Machine Heuristics](#-smart-categorizer--machine-heuristics)
-  - [🎙️ Voice Input & OCR Receipt Scanning](#️-voice-input--ocr-receipt-scanning)
+  - [🎙️ Hands-Free Voice Input & OCR Receipt Scanning](#️-hands-free-voice-input--ocr-receipt-scanning)
   - [💡 Category Budget Capping & Overspend Alerts](#-category-budget-capping--overspend-alerts)
   - [🎯 Savings Goals & Milestone Tracker](#-savings-goals--milestone-tracker)
-  - [📑 PDF & CSV Statement Generation](#-pdf--csv-statement-generation)
-  - [🛡️ Privacy-First Architecture & Security](#-privacy-first-architecture--security)
+  - [💳 Virtual Credit Cards & Payment Method Manager](#-virtual-credit-cards--payment-method-manager)
+  - [📑 Comprehensive Financial Reports & Multi-Format Exports](#-comprehensive-financial-reports--multi-format-exports)
+  - [🛡️ Biometric Security & Privacy-First Architecture](#-biometric-security--privacy-first-architecture)
+  - [🔔 Animated In-App Notification & Toast System](#-animated-in-app-notification--toast-system)
   - [🎨 Personalization, Dynamic Themes & Multi-Currency](#-personalization-dynamic-themes--multi-currency)
 - [🛠️ Tech Stack & Architecture](#️-tech-stack--architecture)
 - [📁 Project Folder Structure](#-project-folder-structure)
@@ -32,7 +34,7 @@
 - [📦 Production Build & Release](#-production-build--release)
 - [🧪 Testing & Code Quality](#-testing--code-quality)
 - [🔧 Troubleshooting & FAQ](#-troubleshooting--faq)
-- [🗺️ Future Roadmap](#️-future-roadmap)
+- [🗺️ Future Roadmap](#-future-roadmap)
 - [📄 License & Contributing](#-license--contributing)
 
 ---
@@ -40,54 +42,67 @@
 ## ✨ Key Features
 
 ### 📊 Smart Dashboard & Analytics
-- **Real-Time Financial Summary**: Instant visibility into total net balance, monthly income, monthly expenses, and net savings.
-- **Interactive Visualizations**: High-performance interactive charts powered by `fl_chart`, including spending timeline graphs, income vs. expense comparisons, and category distribution pie charts.
-- **Calendar Spending View**: Interactive calendar mode to review day-by-day financial logs and track spending spikes.
-- **Recent Transactions & Quick Actions**: Easy access to recent transaction logs with instant search, filter, and quick addition capabilities.
+- **Real-Time Net Worth & Financial Overview**: Live tracking of total net balance, monthly income, monthly expenses, net savings, and credit liabilities.
+- **Interactive Visualizations (`fl_chart`)**: High-performance interactive charts including spending timeline line graphs, income vs. expense bar comparisons, and category distribution pie charts.
+- **Deep-Dive Analytics View**: Filter transaction data by period (This Month, Last Month, Last 30 Days, Custom Range), track spending trends, top expense channels, and average transaction values.
+- **Calendar Spending View**: Interactive daily calendar grid displaying income/expense markers and day-by-day financial log breakdown.
+- **Advanced Ledger & Multi-Criteria Filtering**: Search transactions by title/notes, filter by type (Income vs. Expense), category, date ranges, and payment methods with multi-option sorting.
 
 ### 🤖 AI-Powered Financial Insights Engine
-- **Automated Health Scores**: Computes a dynamic financial health score based on debt, savings ratio, and spending trends.
-- **Anomaly & Spike Detection**: Identifies unexpected spending spikes and warns users before financial strain occurs.
-- **Predictive Budget Alerts**: Proactively alerts users when spending trends indicate budget limits will be breached before the month ends.
-- **Personalized Savings Recommendations**: Generates tailored actionable recommendations based on income-to-expense ratios.
+- **Automated Financial Health Score**: Algorithmic scoring (0–100) evaluating savings rate, budget compliance, debt ratio, emergency reserve buffer, and spending consistency.
+- **Subscription & Recurring Payment Detector**: Scans transactions for recurring monthly subscriptions (Netflix, Spotify, Cloud Storage, Gym, software) to forecast upcoming recurring overheads.
+- **Anomaly & Spending Spike Alerts**: Detects unusual transactions and unexpected spending spikes compared to historical category averages.
+- **Predictive End-of-Month Forecast**: Predicts end-of-month spending based on current daily burn rate to prevent cash crunches before month-end.
+- **Personalized Actionable Recommendations**: Context-aware advisory cards providing actionable financial advice (budget adjustments, savings contributions) with direct action routes.
 
 ### 📲 Automatic SMS Transaction Capture (Android Native)
-- **Zero-Touch Expense Logging**: Intercepts bank and UPI SMS alerts in real-time via a custom Android `MethodChannel` (`com.pocketify.expensetracker/sms`).
-- **Comprehensive Bank & UPI Support**: Parses transactional SMS notifications from major institutions (HDFC, SBI, ICICI, Axis, PNB, Kotak, Paytm, PhonePe, Google Pay, CRED, etc.).
-- **Smart Entity Extraction**: Automatically extracts transaction amount, type (Debit/Credit), merchant/payee name, date, card/account number last 4 digits, and payment mode.
-- **Spam & OTP Filtering**: Advanced multi-tier filter blocks promotional messages, OTPs, balance inquiries, and non-transactional alerts.
+- **Zero-Touch Expense Logging**: Native Kotlin `MethodChannel` (`com.pocketify.expensetracker/sms`) and `SmsReceiver` for real-time background SMS interception.
+- **Comprehensive Bank & UPI Support**: Built-in regex parsers for major financial institutions and UPI apps (HDFC, SBI, ICICI, Axis, PNB, Kotak, Paytm, PhonePe, Google Pay, CRED, Amazon Pay, etc.).
+- **Smart Entity Extraction**: Automatically extracts transaction amount, type (Debit vs. Credit), merchant/payee name, timestamp, last 4 digits of card/account, and payment mode.
+- **Spam, OTP & Non-Financial Message Filter**: Multi-tier filter blocks OTPs, promotional alerts, balance inquiries, and marketing spam.
 
 ### 💡 Smart Categorizer & Machine Heuristics
-- **Automatic Category Assignment**: Intelligent keyword matching assigns transactions to pre-defined categories (e.g., Food & Dining, Shopping, Bills & Utilities, Transportation, Entertainment, Health).
-- **Customizable Rules**: Smart heuristics adjust over time based on user adjustments and manual overrides.
+- **Automatic Category Assignment**: Intelligent keyword matching assigns transactions to pre-defined categories (Food & Dining, Shopping, Bills & Utilities, Transportation, Entertainment, Health, Groceries, Travel, Investments, Income, etc.).
+- **Self-Learning User Adjustments**: Smart heuristics adapt over time based on user edits and manual category overrides.
 
-### 🎙️ Voice Input & OCR Receipt Scanning
+### 🎙️ Hands-Free Voice Input & OCR Receipt Scanning
 - **Voice Transaction Logger**: Dictate expenses on the go with hands-free speech-to-text processing (`voice_service.dart`).
 - **OCR Receipt Scanner**: Extract vendor, total amount, and line items directly from camera snapshots or gallery images (`ocr_service.dart`).
 
 ### 💡 Category Budget Capping & Overspend Alerts
-- **Monthly Spending Caps**: Set strict monthly budget limits per category (e.g., $300/month for Dining).
-- **Visual Progress Indicators**: Color-coded progress bars (Green, Yellow, Red) reflect real-time budget utilization.
-- **Over-Budget Warnings**: Local push notifications (`flutter_local_notifications`) notify users when reaching 80%, 90%, or 100% of budgeted limits.
+- **Monthly Category Spending Caps**: Set strict monthly budget limits per category (e.g., $300/month for Dining).
+- **Visual Progress Indicators**: Color-coded progress indicators (Green, Yellow, Red) reflect real-time budget utilization.
+- **Proactive Over-Budget Warnings**: Local push notifications (`flutter_local_notifications`) notify users when reaching 80%, 90%, or 100% of category caps.
+- **Budget Compliance Analytics**: Review overall monthly budget compliance rates in interactive reports.
 
 ### 🎯 Savings Goals & Milestone Tracker
-- **Target Creation**: Define savings targets for emergency funds, vacations, new gadgets, vehicles, or home down payments.
-- **Contribution Tracking**: Log regular contributions and track current progress percentages against target deadlines.
-- **Milestone Celebrations**: Visual badges and celebration triggers upon completing goals.
+- **Custom Savings Target Creation**: Define target goals for emergency funds, vacations, new gadgets, vehicles, or home down payments.
+- **Contribution Logging**: Log periodic contributions with custom notes and track progress percentages against target deadlines.
+- **Milestone & Celebration Triggers**: Visual milestone badges and celebratory animations upon completing goals.
 
-### 📑 PDF & CSV Statement Generation
-- **Professional PDF Reports**: Export monthly and annual financial statements with custom date ranges, branded headers, category summaries, and chart snapshots (`pdf`, `printing`).
-- **CSV Data Export**: Export full transaction ledgers in CSV format compatible with Microsoft Excel, Google Sheets, or tax filing tools (`csv`).
+### 💳 Virtual Credit Cards & Payment Method Manager
+- **Virtual Credit Card & Utilization Tracker**: Manage multiple virtual credit cards, set individual credit limits, track spend vs. available limit, and view utilization progress bars (`credit_card_summary_widget.dart`).
+- **Automated Card Matching**: Matches incoming SMS transactions with registered credit cards via last 4 account digits.
+- **Multi-Payment Method Categorization**: Classify expenses by payment mode (UPI, Credit Card, Debit Card, Net Banking, Cash) to track liquidity across all financial channels.
 
-### 🛡️ Privacy-First Architecture & Security
+### 📑 Comprehensive Financial Reports & Multi-Format Exports
+- **Interactive Monthly Report Modal**: Multi-tab report viewer (`monthly_report_modal.dart`) featuring Overview, Categories, Daily Breakdown, Payment Methods, Budget Compliance, and Financial KPIs.
+- **Branded PDF Export**: Generate polished monthly and annual financial statements with custom date ranges, branded headers, category summaries, and chart snapshots (`pdf`, `printing`).
+- **CSV Data Export**: Export full transaction ledgers in CSV format compatible with Microsoft Excel, Google Sheets, or tax tools (`csv`).
+
+### 🛡️ Biometric Security & Privacy-First Architecture
 - **100% Local NoSQL Storage**: All financial records, profiles, and settings are saved locally using **Hive**. Zero data leaves your device.
-- **PIN Lock Authentication**: Secure the application with a 4-digit PIN lock screen (`auth_provider.dart`, `pin_lock_screen.dart`).
-- **Multi-Profile Support**: Support for multi-tenant local user profiles (`user_profile_model.dart`).
+- **Biometric Authentication**: Secure app access with Fingerprint scanner, Face ID, or system credentials (`biometric_service.dart`).
+- **Custom 4-Digit Security PIN**: Protect app entry with a customizable 4-digit PIN lock screen (`auth_provider.dart`, `pin_lock_screen.dart`).
+- **Multi-Tenant Local User Profiles**: Support for multiple local user profiles with personalized names, avatars, and settings (`user_profile_model.dart`).
+
+### 🔔 Animated In-App Notification & Toast System
+- **Custom Push Alerts & Toasts**: Non-intrusive animated in-app notifications (`transaction_notification.dart`) with action chips, timer auto-dismissal, and swipe actions.
 
 ### 🎨 Personalization, Dynamic Themes & Multi-Currency
-- **Dark & Light Themes**: Sleek dark theme designed with glassmorphism and modern colors, alongside an accessible light mode (`theme_currency_provider.dart`).
+- **Dark & Light Glassmorphism Themes**: Premium dark mode designed with glassmorphism and modern glow accents, alongside an accessible light mode (`app_theme.dart`).
 - **Multi-Currency Support**: Switch between global currency symbols (`₹`, `$`, `€`, `£`, `¥`, `A$`, `C$`, etc.) with instant formatting updates.
-- **Custom Categories**: Create, edit, and personalize transaction categories with custom icons and color pickers.
+- **Custom Category Manager**: Create, edit, and personalize transaction categories with custom Flutter icon selectors and color pickers.
 
 ---
 
