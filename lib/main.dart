@@ -22,12 +22,34 @@ void main() async {
   await LocalStorageService.init();
 
   if (!kIsWeb) {
-    // Listen for SMS events pushed from native Android SmsReceiver
+    // Listen for SMS events pushed from native Android SmsReceiver.
+    // The updated SmsReceiver sends a Map<String, dynamic> with body/address/date
+    // when the app is open, falling back to a plain String for compatibility.
     _smsChannel.setMethodCallHandler((call) async {
       if (call.method == 'onSmsReceived') {
-        final smsBody = call.arguments as String?;
+        final args = call.arguments;
+        String? smsBody;
+        String? senderAddress;
+        DateTime? smsDate;
+
+        if (args is Map) {
+          smsBody       = args['body'] as String?;
+          senderAddress = args['address'] as String?;
+          final dateMs  = args['date'];
+          if (dateMs is int && dateMs > 0) {
+            smsDate = DateTime.fromMillisecondsSinceEpoch(dateMs);
+          }
+        } else if (args is String) {
+          // Legacy fallback: plain string body
+          smsBody = args;
+        }
+
         if (smsBody != null && smsBody.isNotEmpty) {
-          await SmsAutoCaptureService.captureFromSms(smsBody);
+          await SmsAutoCaptureService.captureFromSms(
+            smsBody,
+            smsDate: smsDate,
+            senderAddress: senderAddress,
+          );
         }
       }
     });

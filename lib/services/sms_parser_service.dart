@@ -55,7 +55,10 @@ class SMSParserService {
     'increase your limit', 'credit card offer',
 
     // Reward / Points (not real money)
-    'reward points', 'cashback will be', 'cashback credited within',
+    // NOTE: keep these specific — some CC cashback SMS mention "reward points" as
+    // bonus info alongside a real credited amount (e.g. "Rs 200 cashback credited.
+    // 50 reward points also added."). Only block if the SMS is ONLY about points.
+    'cashback will be', 'cashback credited within',
     'points earned', 'bonus points',
 
     // Marketing footers
@@ -77,6 +80,20 @@ class SMSParserService {
     'debited', 'deducted', 'spent', 'paid', 'payment done',
     'payment of', 'purchase of', 'withdrawn', 'transferred to',
     'sent to', 'sent', 'charged', 'auto debited', 'debit',
+    // Passive-voice debit (BOB / SBI / PNB format: "A/c XX1234 is Debited by Rs.500")
+    'is debited', 'has been debited', 'a/c debited', 'ac debited',
+    // ── Credit Card purchase verbs (most commonly missed) ─────────────────
+    // HDFC CC: "Your HDFC Bank Credit Card XX 1234 has been used for Rs 5000 at AMAZON"
+    'has been used', 'been used',
+    // ICICI / Axis CC: "ICICI Credit Card XX1234 used at SWIGGY for Rs.500"
+    'used at', 'used for', 'used on',
+    // SBI Card: "Your SBI Credit Card has been availed for Rs.2000 at FLIPKART"
+    'availed', 'has been availed',
+    // Generic CC purchase phrases
+    'purchase made', 'purchase at', 'purchase for',
+    'transaction made', 'tran of', 'txn of', 'txn at', 'txn for',
+    // Some banks prefix with "Alert!" — the alert itself is the action indicator
+    // Handled via presence of card pattern + amount, not via this list alone.
     // Full-word credit verbs
     'credited', 'received', 'deposited', 'salary credited',
     'refund of', 'refunded', 'amount added', 'money added',
@@ -86,12 +103,19 @@ class SMSParserService {
     'cashback of', 'cashback received', 'credit:', 'credit',
     'money received', 'fund received', 'amount received',
     'inward transfer', 'neft credit', 'imps credit', 'upi credit',
+    // Passive-voice credit (formal bank style)
+    'is credited', 'has been credited', 'a/c credited', 'ac credited',
     // Bank-standard shorthand abbreviations (BOB, SBI, Kotak, PNB, Canara, etc.)
     ' dr.', ' cr.',        // " Dr. from A/C", " Cr. to VPA"
     'dr. from', 'cr. to',  // more specific BOB/SBI patterns
     'debit:', 'credit:',   // HDFC / Axis colon-prefix style
     'dr ', 'cr ', 'cr.', 'dr.',
-    'amount debited', 'amount credited', 'ac credited', 'a/c credited',
+    // Kotak / Yes Bank without dot: "INR 1000 Dr from your Kotak A/c"
+    'dr from', 'cr to', 'cr from',
+    'amount debited', 'amount credited',
+    // Transaction-style phrases used by some private banks
+    'transaction of', 'transaction for', 'transfer of',
+    'upi debit', 'upi txn',
   ];
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -101,7 +125,12 @@ class SMSParserService {
   // ─────────────────────────────────────────────────────────────────────────
   static const _contextBlockKeywords = [
     'due on', 'due date', 'minimum due',
-    'statement', 'bill generated',
+    // "statement" alone is too broad — Axis/ICICI CC purchase SMS sometimes append
+    // "Avl Stmt Bal" or "Outstanding Stmt Bal" as secondary info.
+    // Block only the actual billing statement notification phrases:
+    'statement generated', 'monthly statement', 'card statement',
+    'billing statement', 'e-statement',
+    'bill generated',
     'will be debited', 'will be charged',
     'scheduled for', 'auto-renewal', 'auto renewal',
     'get rs', 'earn rs', 'save rs', 'win rs',
@@ -164,14 +193,30 @@ class SMSParserService {
 
     // Pattern 2: Financial action verb followed by optional connector words (by/with/for/of/to/in/rs/inr/₹) and digits
     // e.g. "credited by Rs 2500", "credited with INR 1200", "received Rs 500", "credited for 350"
+    // Also matches passive: "is debited by Rs 500", "has been credited with INR 1000"
     if (amount <= 0) {
       final regexActionPrefix = RegExp(
-        r'(?:debited|credited|received|deposited|paid|refunded|transferred|added|payment|refund|amount|cashback)\s+(?:by|with|for|of|to|in|a\/c|ac|rs\.?|inr|₹|\$|\s)*\s*([\d]+(?:\.[\d]{1,2})?)',
+        r'(?:debited|credited|received|deposited|paid|refunded|transferred|added|payment|refund|amount|cashback|transaction|transfer)'
+        r'\s+(?:is\s+|has\s+been\s+)?'
+        r'(?:by|with|for|of|to|in|a\/c|ac|rs\.?|inr|₹|\$|\s)*\s*([\d]+(?:\.[\d]{1,2})?)',
         caseSensitive: false,
       );
       final match2 = regexActionPrefix.firstMatch(cleanMsg);
       if (match2 != null && match2.group(1) != null) {
         amount = double.tryParse(match2.group(1)!) ?? 0.0;
+      }
+    }
+
+    // Pattern 2b: "is Debited by Rs.500" / "is Credited with INR 1000" (BOB/SBI passive style)
+    // The verb comes AFTER "is" but before the currency
+    if (amount <= 0) {
+      final regexPassive = RegExp(
+        r'is\s+(?:debited|credited)\s+(?:by|with|for|of)?\s*(?:rs\.?|inr|₹|\$)?\s*([\d]+(?:\.[\d]{1,2})?)',
+        caseSensitive: false,
+      );
+      final matchPassive = regexPassive.firstMatch(cleanMsg);
+      if (matchPassive != null && matchPassive.group(1) != null) {
+        amount = double.tryParse(matchPassive.group(1)!) ?? 0.0;
       }
     }
 
@@ -259,12 +304,35 @@ class SMSParserService {
     TransactionType type = TransactionType.expense;
 
     final hasCreditVerb = RegExp(
-      r'(?:credited|credited\s+with|credited\s+by|credited\s+to|credited\s+in|credited\s+into|credited\s+for|a\/c\s+credited|account\s+credited|received|deposited|salary|refund|refunded|cashback|inward|added\s+to|sent\s+you|transfer\s+received|money\s+received|fund\s+received|payment\s+received|cr\.?\s+to|cr\.?\s+in|cr\.?\s+for|cr\.?\s+by|credit\s+of|credit\s+with|credit:|\bcr\.?\b)',
+      r'(?:credited|credited\s+with|credited\s+by|credited\s+to|credited\s+in|credited\s+into|credited\s+for'
+      r'|a\/c\s+credited|ac\s+credited|account\s+credited'
+      r'|is\s+credited|has\s+been\s+credited'
+      r'|received|deposited|salary|refund|refunded|cashback'
+      r'|inward|added\s+to|sent\s+you|transfer\s+received'
+      r'|money\s+received|fund\s+received|payment\s+received'
+      r'|cr\.?\s+to|cr\.?\s+in|cr\.?\s+for|cr\.?\s+by|cr\s+from'
+      r'|credit\s+of|credit\s+with|credit:|\bcr\.?\b)',
       caseSensitive: false,
     ).hasMatch(lowerMsg);
 
     final hasDebitVerb = RegExp(
-      r'(?:debited|debited\s+from|debited\s+for|deducted|spent|paid\s+to|paid\s+for|purchase|purchased|withdrawn|charged|dr\.?\s+from|dr\.?\s+to\s+vpa|dr\s+from|debit:|\bdr\.?\b)',
+      r'(?:debited|debited\s+from|debited\s+for|deducted|spent'
+      r'|paid\s+to|paid\s+for|purchase|purchased|withdrawn|charged'
+      r'|is\s+debited|has\s+been\s+debited'
+      r'|a\/c\s+debited|ac\s+debited'
+      // ── Credit Card purchase verbs ──────────────────────────────────────
+      // HDFC: "has been used for Rs 5000 at AMAZON"
+      r'|has\s+been\s+used|been\s+used'
+      // ICICI/Axis: "used at SWIGGY", "used for Rs 500", "used on"
+      r'|used\s+(?:at|for|on)'
+      // SBI Card: "availed for Rs 2000 at FLIPKART"
+      r'|availed|has\s+been\s+availed'
+      // Generic CC purchase phrases
+      r'|purchase\s+(?:made|at|for)'
+      r'|transaction\s+made|tran\s+of|txn\s+(?:of|at|for)'
+      // Bank abbreviation shorthands
+      r'|dr\.?\s+from|dr\.?\s+to\s+vpa|dr\s+from|dr\s+to'
+      r'|debit:|upi\s+debit|upi\s+txn|\bdr\.?\b)',
       caseSensitive: false,
     ).hasMatch(lowerMsg);
 
@@ -388,14 +456,20 @@ class SMSParserService {
         ? '$detectedApp Card ••$cardLast4'
         : detectedApp;
 
+    // Primary merchant regex: captures merchant after "at / to / for / vpa / used at / availed at"
+    // Covers:
+    //   "paid to AMAZON"           → AMAZON
+    //   "used at SWIGGY"           → SWIGGY   (CC ICICI/Axis)
+    //   "availed at FLIPKART"      → FLIPKART  (CC SBI Card)
+    //   "has been used for Rs 5000 at AMAZON"  → AMAZON (CC HDFC)
     final merchantRegex = RegExp(
-      r'(?:at|to|for|vpa)\s+([A-Za-z0-9\s&]+?)(?=\s+(?:via|on|ref|using|from|by|link|bal|a\/c|\.|$))',
+      r'(?:used\s+at|availed\s+at|purchase\s+at|txn\s+at|at|to|for|vpa)\s+([A-Za-z0-9\s&\-\.]+?)(?=\s+(?:via|on|ref|using|from|by|link|bal|a\/c|\.|$))',
       caseSensitive: false,
     );
     final mMatch = merchantRegex.firstMatch(message);
     if (mMatch?.group(1) != null) {
       final extracted = mMatch!.group(1)!.trim();
-      if (extracted.isNotEmpty && extracted.length < 30) {
+      if (extracted.isNotEmpty && extracted.length < 35) {
         if (cardLast4 != null) {
           merchant = '$extracted ($detectedApp Card ••$cardLast4)';
         } else if (detectedApp != 'Bank Alert' && detectedApp != 'UPI Payment') {

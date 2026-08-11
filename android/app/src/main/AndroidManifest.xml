@@ -6,6 +6,8 @@
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
     <uses-permission android:name="android.permission.USE_FINGERPRINT"/>
+    <!-- Keeps CPU awake while processing SMS in background -->
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
 
     <application
         android:label="Pocketify"
@@ -30,11 +32,17 @@
             </intent-filter>
         </activity>
 
-        <!-- Native SMS Receiver: intercepts GPay/Paytm/PhonePe/Bank SMS automatically -->
+        <!--
+            Native SMS Receiver: intercepts GPay/Paytm/PhonePe/Bank SMS automatically.
+            NOTE: android:permission is intentionally OMITTED here.
+            Adding android:permission="android.permission.BROADCAST_SMS" would cause
+            the receiver to be silently skipped on MIUI/Realme/Oppo/ColorOS ROMs because
+            the telephony service on those ROMs broadcasts without that token.
+            RECEIVE_SMS in <uses-permission> above is the correct guard.
+        -->
         <receiver
             android:name=".SmsReceiver"
-            android:exported="true"
-            android:permission="android.permission.BROADCAST_SMS">
+            android:exported="true">
             <intent-filter android:priority="999">
                 <action android:name="android.provider.Telephony.SMS_RECEIVED"/>
             </intent-filter>
