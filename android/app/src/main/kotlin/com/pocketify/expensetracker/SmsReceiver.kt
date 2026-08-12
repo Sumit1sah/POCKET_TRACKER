@@ -89,7 +89,7 @@ class SmsReceiver : BroadcastReceiver() {
             for (sms in messages) {
                 val body = sms.messageBody ?: continue
                 val address = sms.originatingAddress ?: ""
-                val dateMillis = System.currentTimeMillis()
+                val dateMillis = sms.timestampMillis
 
                 Log.d("PocketifySMS", "Received SMS from=$address body=$body")
 

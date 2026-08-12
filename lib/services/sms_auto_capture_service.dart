@@ -19,9 +19,30 @@ class SmsAutoCaptureService {
     String smsBody, {
     DateTime? smsDate,
     String? senderAddress,
+    bool forceCapture = false,
   }) async {
+    // ── Check User Preference Setting ───────────────────────────────────────
+    if (!forceCapture && !LocalStorageService.getSmsAutoCaptureEnabled()) {
+      debugPrint('[SmsCapture] Suppressed: SMS auto capture disabled in Settings');
+      return null;
+    }
+
     final result = SMSParserService.parseSMS(smsBody, senderAddress: senderAddress);
-    if (result == null) return null;
+    if (result == null) {
+      // Log promo / non-financial SMS if sender was provided
+      if (senderAddress != null && senderAddress.isNotEmpty) {
+        await LocalStorageService.addSmsCaptureLog({
+          'id': 'log_${DateTime.now().millisecondsSinceEpoch}',
+          'body': smsBody,
+          'sender': senderAddress,
+          'date': (smsDate ?? DateTime.now()).toIso8601String(),
+          'status': 'promo_blocked',
+          'amount': 0.0,
+          'reason': 'Non-financial or promo SMS',
+        });
+      }
+      return null;
+    }
 
     // Ensure Hive boxes are open (needed in case we're called early in app lifecycle)
     if (!Hive.isBoxOpen(LocalStorageService.settingsBoxName)) {
@@ -34,26 +55,82 @@ class SmsAutoCaptureService {
     final uid = savedUser?.uid ?? 'local_user';
     final txDate = smsDate ?? DateTime.now();
 
-    // ── Deduplication ────────────────────────────────────────────────────────
-    // A transaction is a duplicate only if ALL of these match:
-    //   • Same amount
-    //   • Same type (expense / income)
-    //   • Same payment method
-    //   • Within a 2-minute window (real duplicate) not 5-minute (too aggressive)
-    //
-    // We intentionally do NOT compare merchant/category because SMS description
-    // wording varies slightly between retries/resends.
+    // ── Duplicate Mode Check ──────────────────────────────────────────────────
+    final dupMode = LocalStorageService.getDuplicateMode(); // 'smart', 'allow_all', 'flag_review'
+    final windowMinutes = LocalStorageService.getDeduplicationWindowMinutes();
+    final windowSeconds = windowMinutes * 60;
     final existingTxs = LocalStorageService.getTransactions(uid: uid);
-    final isDuplicate = existingTxs.any((t) =>
-        t.amount == result.amount &&
-        t.type == result.type &&
-        t.paymentMethod == result.paymentMethod &&
-        t.date.difference(txDate).inSeconds.abs() < 120); // 2-minute window
 
-    if (isDuplicate) {
-      debugPrint('[SmsCapture] Duplicate suppressed: ${result.amount} via ${result.paymentMethod}');
+    bool isDuplicate = false;
+    if (!forceCapture && dupMode != 'allow_all') {
+      isDuplicate = existingTxs.any((t) {
+        final sameAmount = t.amount == result.amount;
+        final sameType = t.type == result.type;
+        final isWithinWindow = t.date.difference(txDate).inSeconds.abs() < windowSeconds;
+
+        if (!sameAmount || !sameType || !isWithinWindow) return false;
+
+        // Clean merchant names for comparison
+        final existingMerchant = t.description.replaceAll(RegExp(r'^[^:]+:\s*'), '').trim().toLowerCase();
+        final newMerchant = result.merchant.trim().toLowerCase();
+
+        // 1. If merchants are distinctly DIFFERENT (e.g. Starbucks at 10:12 vs Uber at 10:14):
+        //    They are two separate real transactions! NOT a duplicate!
+        if (existingMerchant.isNotEmpty &&
+            newMerchant.isNotEmpty &&
+            existingMerchant != newMerchant &&
+            !existingMerchant.contains('others') &&
+            !newMerchant.contains('others')) {
+          return false;
+        }
+
+        // 2. Cross-SMS CC Bill Payment match (Bank debit + CC provider confirmation)
+        final isExistingCcRelated = t.category == 'Credit Card Bill' ||
+            t.paymentMethod == 'Credit Card' ||
+            t.description.toLowerCase().contains('supercard') ||
+            t.description.toLowerCase().contains('credit card');
+        final isNewCcRelated = result.category == 'Credit Card Bill' ||
+            result.paymentMethod == 'Credit Card' ||
+            smsBody.toLowerCase().contains('supercard') ||
+            smsBody.toLowerCase().contains('credit card');
+
+        if (isExistingCcRelated && isNewCcRelated) return true;
+
+        // 3. Same payment method & same merchant within 3 minutes → Duplicate SMS
+        if (t.paymentMethod == result.paymentMethod) return true;
+
+        return false;
+      });
+    }
+
+    // Handle duplicate suppression in 'smart' mode
+    if (isDuplicate && dupMode == 'smart' && !forceCapture) {
+      debugPrint('[SmsCapture] Duplicate suppressed: ₹${result.amount} via ${result.paymentMethod}');
+      await LocalStorageService.addSmsCaptureLog({
+        'id': 'log_${DateTime.now().millisecondsSinceEpoch}',
+        'body': smsBody,
+        'sender': senderAddress ?? result.detectedApp,
+        'date': txDate.toIso8601String(),
+        'status': 'duplicate_suppressed',
+        'amount': result.amount,
+        'reason': 'Duplicate detected (₹${result.amount} within 3 mins)',
+      });
       return null;
     }
+
+    // Description text (add [Duplicate ⚠️] prefix if flag_review mode)
+    String descText = '${result.detectedApp}: ${result.merchant}';
+    if (isDuplicate && dupMode == 'flag_review') {
+      descText = '[Possible Duplicate ⚠️] $descText';
+    }
+
+    // Find matching existing transaction for smart linking
+    TransactionModel? matchingTx;
+    try {
+      matchingTx = existingTxs.firstWhere((t) =>
+          t.amount == result.amount &&
+          t.date.difference(txDate).inSeconds.abs() < 300);
+    } catch (_) {}
 
     final transaction = TransactionModel(
       id: 'sms_${txDate.millisecondsSinceEpoch}_${result.amount.toInt()}_${result.paymentMethod.hashCode.abs()}',
@@ -62,11 +139,23 @@ class SmsAutoCaptureService {
       amount: result.amount,
       category: result.category,
       paymentMethod: result.paymentMethod,
-      description: '${result.detectedApp}: ${result.merchant}',
+      description: descText,
       date: txDate,
+      linkedTransactionId: matchingTx?.id,
+      isDuplicate: isDuplicate,
     );
 
     await LocalStorageService.saveTransaction(transaction);
+    await LocalStorageService.addSmsCaptureLog({
+      'id': 'log_${DateTime.now().millisecondsSinceEpoch}',
+      'body': smsBody,
+      'sender': senderAddress ?? result.detectedApp,
+      'date': txDate.toIso8601String(),
+      'status': isDuplicate ? 'flagged_duplicate' : 'captured',
+      'amount': result.amount,
+      'reason': 'Saved to transactions as ${result.type.name}',
+    });
+
     debugPrint('[SmsCapture] Saved: ${transaction.type.name} ₹${transaction.amount} via ${transaction.paymentMethod}');
     return transaction;
   }
@@ -74,7 +163,7 @@ class SmsAutoCaptureService {
   /// Drains the SharedPreferences pending-SMS queue that was written by
   /// the native SmsReceiver when the app was closed.
   /// Returns the count of newly saved transactions.
-  /// Call this on every app launch (before or alongside [scanRecentSms]).
+  /// Call this on every app launch to recover pending SMS queued while app was closed.
   static Future<int> drainPendingQueue() async {
     if (kIsWeb) return 0;
     try {

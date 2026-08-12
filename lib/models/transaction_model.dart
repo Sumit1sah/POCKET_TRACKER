@@ -13,6 +13,8 @@ class TransactionModel {
   final String? receiptPath;
   final DateTime date;
   final bool isRecurring;
+  final String? linkedTransactionId;
+  final bool isDuplicate;
   final DateTime createdAt;
 
   TransactionModel({
@@ -26,6 +28,8 @@ class TransactionModel {
     this.receiptPath,
     required this.date,
     this.isRecurring = false,
+    this.linkedTransactionId,
+    this.isDuplicate = false,
     DateTime? createdAt,
   }) : createdAt = createdAt ?? DateTime.now();
 
@@ -41,6 +45,8 @@ class TransactionModel {
       'receiptPath': receiptPath,
       'date': date.toIso8601String(),
       'isRecurring': isRecurring,
+      'linkedTransactionId': linkedTransactionId,
+      'isDuplicate': isDuplicate,
       'createdAt': createdAt.toIso8601String(),
     };
   }
@@ -57,6 +63,8 @@ class TransactionModel {
       receiptPath: map['receiptPath'],
       date: DateTime.parse(map['date']),
       isRecurring: map['isRecurring'] ?? false,
+      linkedTransactionId: map['linkedTransactionId'],
+      isDuplicate: map['isDuplicate'] ?? false,
       createdAt: map['createdAt'] != null ? DateTime.parse(map['createdAt']) : DateTime.now(),
     );
   }
@@ -72,6 +80,8 @@ class TransactionModel {
     String? receiptPath,
     DateTime? date,
     bool? isRecurring,
+    String? linkedTransactionId,
+    bool? isDuplicate,
     DateTime? createdAt,
   }) {
     return TransactionModel(
@@ -85,6 +95,8 @@ class TransactionModel {
       receiptPath: receiptPath ?? this.receiptPath,
       date: date ?? this.date,
       isRecurring: isRecurring ?? this.isRecurring,
+      linkedTransactionId: linkedTransactionId ?? this.linkedTransactionId,
+      isDuplicate: isDuplicate ?? this.isDuplicate,
       createdAt: createdAt ?? this.createdAt,
     );
   }

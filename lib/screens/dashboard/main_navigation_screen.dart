@@ -30,22 +30,16 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       await _checkAndShowNewMonthBudgetDialog();
       await _checkAndAutoShowMonthlyReport();
 
-      // ── SMS auto-capture: two-stage safety net ─────────────────────────────
-      // Stage 1: Drain the SharedPreferences pending queue that was written by
-      //   SmsReceiver.kt when the app was closed. This reliably recovers SMS
-      //   that arrived while the app was not running.
-      final pendingCount = await SmsAutoCaptureService.drainPendingQueue();
+      // ── SMS auto-capture: Recover missed SMS ────────────────────────────────
+      // Drain the SharedPreferences pending queue that was written by
+      // SmsReceiver.kt when the app was closed. This reliably recovers SMS
+      // that arrived while the app was not running without duplicating inbox scans.
+      final capturedCount = await SmsAutoCaptureService.drainPendingQueue();
 
-      // Stage 2: Scan the SMS inbox for the last 4 hours as an additional
-      //   safety net for SMS missed due to DND / battery optimisation / OEM
-      //   broadcast restrictions (e.g., MIUI background limits).
-      final inboxCount = await SmsAutoCaptureService.scanRecentSms(minutes: 240);
-
-      final totalCaptured = pendingCount + inboxCount;
-      if (totalCaptured > 0 && mounted) {
+      if (capturedCount > 0 && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('📱 Captured $totalCaptured missed transaction(s) from SMS!'),
+            content: Text('📱 Captured $capturedCount missed transaction(s) from SMS!'),
             backgroundColor: const Color(0xFF00B894),
             behavior: SnackBarBehavior.floating,
             duration: const Duration(seconds: 4),

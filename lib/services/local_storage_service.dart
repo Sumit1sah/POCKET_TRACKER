@@ -261,4 +261,71 @@ class LocalStorageService {
     final box = Hive.box(settingsBoxName);
     await box.put('biometric_enabled', enabled);
   }
+
+  // --- SMS Auto Capture Preference ---
+
+  /// Returns true if user enabled SMS auto-capture.
+  static bool getSmsAutoCaptureEnabled() {
+    final box = Hive.box(settingsBoxName);
+    return box.get('sms_auto_capture_enabled', defaultValue: true) as bool;
+  }
+
+  /// Persists SMS auto-capture preference.
+  static Future<void> setSmsAutoCaptureEnabled(bool enabled) async {
+    final box = Hive.box(settingsBoxName);
+    await box.put('sms_auto_capture_enabled', enabled);
+  }
+
+  // --- Duplicate Protection Mode & Time Window Preferences ---
+  // Modes: 'smart' (Default), 'allow_all', 'flag_review'
+
+  static String getDuplicateMode() {
+    final box = Hive.box(settingsBoxName);
+    return box.get('duplicate_mode', defaultValue: 'smart') as String;
+  }
+
+  static Future<void> setDuplicateMode(String mode) async {
+    final box = Hive.box(settingsBoxName);
+    await box.put('duplicate_mode', mode);
+  }
+
+  /// Returns the time window in minutes for duplicate SMS detection (default: 1 minute).
+  static int getDeduplicationWindowMinutes() {
+    final box = Hive.box(settingsBoxName);
+    return box.get('deduplication_window_minutes', defaultValue: 1) as int;
+  }
+
+  /// Persists the custom deduplication time window in minutes.
+  static Future<void> setDeduplicationWindowMinutes(int minutes) async {
+    final box = Hive.box(settingsBoxName);
+    await box.put('deduplication_window_minutes', minutes);
+  }
+
+  // --- SMS Interception & Processing Logs ---
+
+  static List<Map<String, dynamic>> getSmsCaptureLogs() {
+    final box = Hive.box(settingsBoxName);
+    final raw = box.get('sms_capture_logs');
+    if (raw == null) return [];
+    return List<Map<String, dynamic>>.from(
+      (raw as List).map((e) => Map<String, dynamic>.from(e)),
+    );
+  }
+
+  static Future<void> addSmsCaptureLog(Map<String, dynamic> entry) async {
+    final box = Hive.box(settingsBoxName);
+    final logs = getSmsCaptureLogs();
+    // Prepend new entry
+    logs.insert(0, entry);
+    // Keep max 80 recent logs to keep storage lightweight
+    if (logs.length > 80) {
+      logs.removeRange(80, logs.length);
+    }
+    await box.put('sms_capture_logs', logs);
+  }
+
+  static Future<void> clearSmsCaptureLogs() async {
+    final box = Hive.box(settingsBoxName);
+    await box.delete('sms_capture_logs');
+  }
 }

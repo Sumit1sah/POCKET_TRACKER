@@ -45,8 +45,8 @@ class SMSParserService {
     'limited time', 'use code', 'promo code', 'coupon code',
     'click here', 'tap here', 'visit our', 'download the app',
     'avail offer', 'exclusive offer', 'special offer', 'today only',
-    'offer valid', 'valid till', 'expires on', 'hurry',
-    'win up to', 'earn up to', 'upto rs', 'upto inr',
+    'hurry',
+    'win up to', 'earn up to', 'upto rs', 'upto inr', 'up to rs', 'up to inr',
 
     // Loan / Credit card offers (not actual disbursals)
     'pre-approved', 'pre approved', 'you are eligible',
@@ -58,7 +58,7 @@ class SMSParserService {
     // NOTE: keep these specific — some CC cashback SMS mention "reward points" as
     // bonus info alongside a real credited amount (e.g. "Rs 200 cashback credited.
     // 50 reward points also added."). Only block if the SMS is ONLY about points.
-    'cashback will be', 'cashback credited within',
+    'cashback will be',
     'points earned', 'bonus points',
 
     // Marketing footers
@@ -76,10 +76,14 @@ class SMSParserService {
   //   debit: / credit: prefix (HDFC, Axis variants)
   // ─────────────────────────────────────────────────────────────────────────
   static const _requiredActionKeywords = [
-    // Full-word debit verbs
+    // Full-word debit verbs & ATM / Auto-debit / Transfer keywords
     'debited', 'deducted', 'spent', 'paid', 'payment done',
     'payment of', 'purchase of', 'withdrawn', 'transferred to',
-    'sent to', 'sent', 'charged', 'auto debited', 'debit',
+    'sent to', 'sent', 'charged', 'auto debited', 'auto-debited', 'debit',
+    'atm wdl', 'atm withdrawal', 'cash withdrawn', 'withdrawn at atm', 'atm cash',
+    'ecs debit', 'nach debit', 'mandate debited', 'standing instruction',
+    'neft dr', 'imps dr', 'rtgs dr', 'neft debit', 'imps debit', 'rtgs debit',
+    'added to wallet', 'wallet debited', 'wallet loaded',
     // Passive-voice debit (BOB / SBI / PNB format: "A/c XX1234 is Debited by Rs.500")
     'is debited', 'has been debited', 'a/c debited', 'ac debited',
     // ── Credit Card purchase verbs (most commonly missed) ─────────────────
@@ -92,17 +96,16 @@ class SMSParserService {
     // Generic CC purchase phrases
     'purchase made', 'purchase at', 'purchase for',
     'transaction made', 'tran of', 'txn of', 'txn at', 'txn for',
-    // Some banks prefix with "Alert!" — the alert itself is the action indicator
-    // Handled via presence of card pattern + amount, not via this list alone.
-    // Full-word credit verbs
+    // Full-word credit verbs & reversals
     'credited', 'received', 'deposited', 'salary credited',
-    'refund of', 'refunded', 'amount added', 'money added',
+    'refund of', 'refunded', 'reversal of', 'reversed', 'txn reversed',
+    'amount added', 'money added', 'wallet credit',
     'transfer received', 'has sent you', 'has transferred',
     'credit of', 'credit with', 'credited with', 'credited by',
     'credited to', 'credited for', 'credited in', 'cashback credited',
     'cashback of', 'cashback received', 'credit:', 'credit',
     'money received', 'fund received', 'amount received',
-    'inward transfer', 'neft credit', 'imps credit', 'upi credit',
+    'inward transfer', 'neft credit', 'imps credit', 'rtgs credit', 'upi credit',
     // Passive-voice credit (formal bank style)
     'is credited', 'has been credited', 'a/c credited', 'ac credited',
     // Bank-standard shorthand abbreviations (BOB, SBI, Kotak, PNB, Canara, etc.)
@@ -122,9 +125,15 @@ class SMSParserService {
   // LAYER 4 — Contextual false-positive guards.
   // Even if a required action keyword exists, these phrases indicate the
   // transaction has NOT completed yet (future/scheduled/marketing context).
+  //
+  // IMPORTANT: 'due on', 'due date', 'minimum due' are only blocked when the
+  // SMS is NOT a CC bill payment confirmation.  Many banks append "Next due
+  // date: Sep 15" or "Min due: ₹0" to a payment-received confirmation — those
+  // must NOT be rejected.
   // ─────────────────────────────────────────────────────────────────────────
+
+  // Keywords that indicate a future/unprocessed event — always block these.
   static const _contextBlockKeywords = [
-    'due on', 'due date', 'minimum due',
     // "statement" alone is too broad — Axis/ICICI CC purchase SMS sometimes append
     // "Avl Stmt Bal" or "Outstanding Stmt Bal" as secondary info.
     // Block only the actual billing statement notification phrases:
@@ -136,6 +145,36 @@ class SMSParserService {
     'get rs', 'earn rs', 'save rs', 'win rs',
   ];
 
+  // 'due'-related keywords that are ONLY blocked when the SMS is not a
+  // CC bill payment confirmation (e.g. pure billing reminders).
+  static const _dueContextBlockKeywords = [
+    'due on', 'due date', 'minimum due',
+  ];
+
+  // A CC bill payment confirmation phrase — if this matches we know the
+  // payment was already processed and 'due date' appears only as trailing info.
+  static final _ccPaymentConfirmedPattern = RegExp(
+    r'(?:'
+    r'payment\s+(?:of\s+)?(?:rs\.?|inr|₹|\$)?\s*[\d,]+(?:\.\d{1,2})?\s*'
+      r'(?:received|processed|credited|confirmed|successful|accepted)'
+    r'|'
+    r'(?:rs\.?|inr|₹|\$)?\s*[\d,]+(?:\.\d{1,2})?\s*'
+      r'(?:credited|received|processed)\s+'
+      r'(?:towards?|for|against|to)?\s*'
+      r'(?:your\s+)?(?:credit card|cc|supercard|card)'
+    r'|'
+    r'thank(?:s|\s+you)?\s+for\s+(?:the\s+)?payment'
+    r'|'
+    r'(?:credit card|supercard|card)\s+(?:bill\s+)?payment\s+'
+      r'(?:of\s+)?(?:rs\.?|inr|₹)?\s*[\d,]+'
+      r'\s*(?:has\s+been\s+)?(?:processed|received|successful|credited|accepted)'
+    r'|'   // Utkarsh/SFBL: "received payment of INR X for your SuperCard"
+    r'(?:have\s+)?received\s+payment\s+(?:of\s+)?(?:rs\.?|inr|₹|\$)?\s*[\d,]+'
+      r'[^.]{0,60}(?:credit card|cc|supercard|card|creditcard)'
+    r')',
+    caseSensitive: false,
+  );
+
   /// Strict SMS parser — only accepts genuine debit/credit transaction SMS.
   ///
   /// [senderAddress] is the optional sender ID (e.g. "AD-HDFCBK", "BN-SBIIN").
@@ -145,15 +184,16 @@ class SMSParserService {
 
     final lowerMsg = message.toLowerCase();
 
-    // Strip the "AvlBal:", "Avl Bal:", "Bal:", "Balance:" suffix before amount
-    // extraction so the account balance never gets picked up as the transaction
-    // amount. Bank SMS format:  Rs.100.00 Dr. … AvlBal:Rs21048.53
+    // Strip the "AvlBal:", "Avl Bal:", "Bal:", "Balance:", "available limit" suffix before
+    // amount extraction so the account balance/limit never gets picked up as the
+    // transaction amount. Bank SMS format:  Rs.100.00 Dr. … AvlBal:Rs21048.53
+    // Utkarsh/SuperCard format: "Your available limit is now INR 13,530.92"
     final balanceStripRegex = RegExp(
-      r'(?:avlbal|avl\s*bal|available\s*bal(?:ance)?|total\s*bal(?:ance)?|bal(?:ance)?)[:\s]*(?:rs\.?|inr|₹|\$)?\s*[\d,]+(?:\.\d{1,2})?',
+      r'(?:avlbal|avl\s*bal|available\s*bal(?:ance)?|available\s*(?:credit\s*)?limit|total\s*bal(?:ance)?|bal(?:ance)?)[:\s]*(?:rs\.?|inr|₹|\$)?\s*[\d,]+(?:\.\d{1,2})?',
       caseSensitive: false,
     );
     final msgForAmount = message.replaceAll(balanceStripRegex, '');
-    final cleanMsg = msgForAmount.replaceAll(',', '');
+    final cleanMsg = msgForAmount.replaceAll(',', '').replaceAll('/-', '');
 
     // ── LAYER 1: Sender-ID promotion filter ──────────────────────────────────
     if (senderAddress != null) {
@@ -176,6 +216,16 @@ class SMSParserService {
     // ── LAYER 4: Contextual false-positive guard ───────────────────────────
     for (final kw in _contextBlockKeywords) {
       if (lowerMsg.contains(kw)) return null;
+    }
+
+    // Apply 'due'-related blocks ONLY when the SMS is not a CC payment
+    // confirmation.  Payment confirmation SMS often appends "Next due date:"
+    // or "Min due: ₹0" as trailing info and must NOT be rejected.
+    final isCcPaymentConfirmed = _ccPaymentConfirmedPattern.hasMatch(lowerMsg);
+    if (!isCcPaymentConfirmed) {
+      for (final kw in _dueContextBlockKeywords) {
+        if (lowerMsg.contains(kw)) return null;
+      }
     }
 
     // ── LAYER 5: Robust Amount Extraction ────────────────────────────────────
@@ -233,6 +283,18 @@ class SMSParserService {
       }
     }
 
+    // Pattern 4: Amount keyword prefix -> e.g. "Amt: 500", "Amount: Rs 1,200", "Sum: 350"
+    if (amount <= 0) {
+      final regexAmtKeyword = RegExp(
+        r'(?:amt|amount|sum|value|val|price)[:\s]*(?:rs\.?|inr|₹|\$)?\s*([\d]+(?:\.[\d]{1,2})?)',
+        caseSensitive: false,
+      );
+      final matchAmt = regexAmtKeyword.firstMatch(cleanMsg);
+      if (matchAmt != null && matchAmt.group(1) != null) {
+        amount = double.tryParse(matchAmt.group(1)!) ?? 0.0;
+      }
+    }
+
     // Minimum floor — ignore amounts < ₹1
     if (amount < 1.0) return null;
 
@@ -248,6 +310,18 @@ class SMSParserService {
       detectedApp = 'CRED';
     } else if (lowerMsg.contains('bhim')) {
       detectedApp = 'BHIM UPI';
+    } else if (lowerMsg.contains('amazonpay') || lowerMsg.contains('amazon pay')) {
+      detectedApp = 'Amazon Pay';
+    } else if (lowerMsg.contains('mobikwik')) {
+      detectedApp = 'MobiKwik';
+    } else if (lowerMsg.contains('freecharge')) {
+      detectedApp = 'Freecharge';
+    } else if (lowerMsg.contains('airtel')) {
+      detectedApp = 'Airtel Payments Bank';
+    } else if (lowerMsg.contains('slice')) {
+      detectedApp = 'Slice Card';
+    } else if (lowerMsg.contains('onecard')) {
+      detectedApp = 'OneCard';
     } else if (lowerMsg.contains('hdfc')) {
       detectedApp = 'HDFC Bank';
     } else if (lowerMsg.contains('sbi') || lowerMsg.contains('state bank')) {
@@ -374,8 +448,42 @@ class SMSParserService {
     ).hasMatch(message);
 
     // UPI VPA pattern: word@bankshortcode (e.g. anamikasingh@oksbi, raj@ybl)
+    // Comprehensive list of Indian bank UPI handles (NPCI-registered PSP handles).
     final hasUpiVpa = RegExp(
-      r'\w+@(?:oksbi|okaxis|okhdfcbank|ybl|upi|paytm|apl|waicici|ibl|sbi|hdfc|icici|federal|rbl|indus|bandhan)',
+      r'\w[\w.]*@(?:'
+      // Google Pay / SBI
+      r'oksbi|okaxis|okhdfcbank|okicici|okbizaxis'
+      // Yes Bank
+      r'|ybl|nyes|yesbankltd|yesbank|yesb'
+      // PhonePe / Paytm / BHIM
+      r'|ybl|upi|paytm|waicici|bhim'
+      // HDFC / ICICI / Axis / Kotak
+      r'|hdfc|hdfcbank|icici|axisbank|axl|kotak|kmbl'
+      // SBI / PNB / BOB / BOI / Canara / Union / UCO / Central / Indian / Allahabad
+      r'|sbi|pnb|barodampay|boi|cnrb|unionbank|ubi|cbin|uco|centralbank|indianbk|allbank'
+      // IDFC / IndusInd / Federal / RBL / DCB / Karur
+      r'|idfcbank|idfc|ibl|indus|indusind|federal|fedbank|rbl|dcb|kvb'
+      // Small Finance Banks / Payments Banks
+      r'|utkarsh|sfbl|nsdl|apl|timecosmos|rajgovt'
+      r'|aubank|au|equitas|ujjivan|jana|suryoday|esaf|bandhan'
+      // Airtel / Jio / Other wallets
+      r'|airtel|jio|freecharge|mobikwik|amazonpay|phonepe'
+      // Andhra / Syndicate / Vijaya (now BOB/Canara)
+      r'|andb|syndicatebank|vijb'
+      // HSBC / Standard Chartered / Citibank / DBS
+      r'|sc|hsbc|citibank|dbs'
+      r')',
+      caseSensitive: false,
+    ).hasMatch(message);
+
+    // Broad UPI fallback: any VPA-like pattern (word@word, no dots in handle)
+    // combined with a UPI 12-digit reference number reliably identifies UPI.
+    // E.g. BOB debit: "8340178859@nyes. Ref:622309396978"
+    final hasBroadVpaWithRef = RegExp(
+      r'\w+@[a-z]{2,}\b',                        // any word@bankhandle
+      caseSensitive: false,
+    ).hasMatch(message) && RegExp(
+      r'(?:ref(?:erence)?(?:\s+no\.?)?|refno)[:\s]*\d{6,}',
       caseSensitive: false,
     ).hasMatch(message);
 
@@ -385,41 +493,40 @@ class SMSParserService {
     // as paymentMethod = 'Credit Card' so the CC widget can subtract it from
     // the card's spent total.  Without this, it defaults to 'Bank Transfer'
     // and the CC balance never decreases.
-    final isCcRefundToCard = RegExp(
-      r'(?:credited|refund)[^.]{0,60}(?:supercard|credit card|creditcard|card ending|card no)',
-      caseSensitive: false,
-    ).hasMatch(message);
+    // ── CC Refund / Credit Limit Restoration detection ───────────────────
+    // Matches CC provider SMS confirming that money was credited BACK to the credit card
+    // (e.g. merchant refunds, cashback, or CC bill payment received on the card).
+    // Tagged as income + paymentMethod = 'Credit Card' so the CC widget reduces
+    // the card's spent total & restores the available credit limit.
+    final isCcPaymentReceivedConfirmation = !lowerMsg.contains('dr. from') &&
+        !lowerMsg.contains('debited from') &&
+        RegExp(
+          r'(?:have\s+)?received\s+payment\s+(?:of\s+)?(?:rs\.?|inr|₹|\$)?\s*[\d,]+(?:\.\d{1,2})?[^.]{0,60}(?:credit card|cc|supercard|card|creditcard)'
+          r'|'
+          r'(?:available|credit)\s+limit\s+is\s+now'
+          r'|'
+          r'thank(?:s|\s+you)?\s+for\s+(?:the\s+)?payment[^.]{0,80}(?:credit card|supercard|cc\s+card|creditcard|card ending)'
+          r'|'
+          r'(?:credit card|supercard)\s+(?:bill\s+)?payment\s+(?:of\s+)?(?:rs\.?|inr|₹)?\s*[\d,]+\s*(?:has\s+been\s+)?(?:processed|received|successful|credited|accepted)',
+          caseSensitive: false,
+        ).hasMatch(message);
 
-    // ── CC Bill Payment detection ─────────────────────────────────────────
-    // Matches bank/CC-company SMS confirming that a bill payment was received
-    // TOWARDS the credit card — e.g.:
-    //   "Payment of Rs 5000 received for your HDFC SuperCard 2235"
-    //   "Rs 10000 credited to your SBI Credit Card account"
-    //   "Thank you for payment of INR 8000 towards ICICI Bank Card"
-    //   "CRED: Rs 3000 paid towards your Axis Credit Card"
-    //   "Your credit card payment of Rs 5000 has been processed"
-    final isCcBillPayment = RegExp(
+    final isCcRefundToCard = isCcPaymentReceivedConfirmation ||
+        (RegExp(
+          r'(?:refund|reversal|cashback|credited)[^.]{0,60}(?:supercard|credit card|creditcard|card ending|card no)',
+          caseSensitive: false,
+        ).hasMatch(message) && (lowerMsg.contains('refund') || lowerMsg.contains('reversal') || lowerMsg.contains('cashback')));
+
+    // ── Bank Account CC Bill Payment Debit detection ──────────────────────
+    // Matches bank debit SMS where money leaves the savings bank account to pay a CC
+    // e.g. "Rs.4103.00 Dr. from A/C XXXXXX7873 and Cr. to supercard@utkarshbank"
+    final isBankCcBillPayment = !isCcRefundToCard && RegExp(
       r'(?:'                                           // open outer group
-      r'payment\s+(?:of\s+)?(?:rs\.?|inr|₹|\$)?\s*[\d,]+(?:\.\d{1,2})?\s*'
-        r'(?:received|processed|credited|confirmed|successful|accepted)\s*'
-        r'(?:towards?|for|against|to)?\s*'
-        r'(?:your\s+)?(?:credit card|cc|supercard|card|creditcard)'  // card mention
-      r'|'                                             // OR
-      r'(?:rs\.?|inr|₹|\$)?\s*[\d,]+(?:\.\d{1,2})?'
-        r'\s+(?:credited|received|processed)\s+'
-        r'(?:towards?|for|against|to)?\s*'
-        r'(?:your\s+)?(?:credit card|cc|supercard|creditcard)'       // card mention
-      r'|'                                             // OR
-      r'thank(?:s|\s+you)?\s+for\s+(?:the\s+)?payment'
-        r'[^.]{0,80}'
-        r'(?:credit card|supercard|cc\s+card|creditcard|card ending|card no\.?\s*\d{4})'
-      r'|'                                             // OR
-      r'(?:credit card|supercard)\s+(?:bill\s+)?payment\s+'
-        r'(?:of\s+)?(?:rs\.?|inr|₹)?\s*[\d,]+'
-        r'\s*(?:has\s+been\s+)?(?:processed|received|successful|credited|accepted)'
-      r'|'                                             // OR — CRED/app style
-      r'paid\s+(?:rs\.?|inr|₹)?\s*[\d,]+[^.]{0,60}'
-        r'(?:credit card|cc\s+card|supercard|card\s+ending|card\s+no)'
+      r'cr\.?\s+(?:to\s+)?[\w@.-]*?(?:supercard|creditcard|credit\s*card|cc@)'
+      r'|'
+      r'paid\s+(?:rs\.?|inr|₹)?\s*[\d,]+[^.]{0,60}(?:credit card|cc\s+card|supercard|card\s+ending|card\s+no)'
+      r'|'
+      r'payment\s+(?:of\s+)?(?:rs\.?|inr|₹|\$)?\s*[\d,]+(?:\.\d{1,2})?\s*towards?\s*(?:[a-z0-9]+\s+)*(?:credit card|cc|supercard|card|creditcard)'
       r')',
       caseSensitive: false,
     ).hasMatch(message);
@@ -427,17 +534,17 @@ class SMSParserService {
     String paymentMethod;
     if (isDebitCardPattern) {
       paymentMethod = 'Debit Card';
-    } else if (isCcBillPayment || isCcRefundToCard || (cardLast4 != null && !isDebitCardPattern)) {
-      // CC bill payment, refund to CC, or any card-number found → tag as Credit Card
+    } else if (isCcRefundToCard || (cardLast4 != null && !isDebitCardPattern && !isBankCcBillPayment)) {
+      // CC refund / payment received on CC / purchase on CC → tag as Credit Card
       paymentMethod = 'Credit Card';
+    } else if (lowerMsg.contains('upi') || hasUpiVpa || hasBroadVpaWithRef) {
+      paymentMethod = 'UPI';
     } else if (lowerMsg.contains('credit card') || lowerMsg.contains(' cc ')) {
       paymentMethod = 'Credit Card';
     } else if (lowerMsg.contains('debit card') || lowerMsg.contains(' dc ')) {
       paymentMethod = 'Debit Card';
     } else if (lowerMsg.contains('neft') || lowerMsg.contains('imps')) {
       paymentMethod = 'Bank Transfer';
-    } else if (lowerMsg.contains('upi') || hasUpiVpa) {
-      paymentMethod = 'UPI';
     } else if (lowerMsg.contains('cash')) {
       paymentMethod = 'Cash';
     } else {
@@ -445,11 +552,17 @@ class SMSParserService {
     }
 
     // ── Merchant & Category ───────────────────────────────────────────────
-    String category = type == TransactionType.income ? 'Other Income' : 'Others';
+    if (isCcRefundToCard) {
+      type = TransactionType.income;
+    } else if (isBankCcBillPayment) {
+      type = TransactionType.expense;
+    }
 
-    // Override category immediately for CC bill payment SMS before smart categorizer
-    if (isCcBillPayment && type == TransactionType.income) {
-      category = 'Credit Card Payment';
+    String category = type == TransactionType.income ? 'Credit Card Payment' : 'Others';
+
+    // Set category for Bank CC bill payment — expense category.
+    if (isBankCcBillPayment) {
+      category = 'Credit Card Bill';
     }
 
     String merchant = cardLast4 != null
@@ -458,12 +571,13 @@ class SMSParserService {
 
     // Primary merchant regex: captures merchant after "at / to / for / vpa / used at / availed at"
     // Covers:
-    //   "paid to AMAZON"           → AMAZON
-    //   "used at SWIGGY"           → SWIGGY   (CC ICICI/Axis)
-    //   "availed at FLIPKART"      → FLIPKART  (CC SBI Card)
+    //   "paid to AMAZON"                       → AMAZON
+    //   "used at SWIGGY"                       → SWIGGY   (CC ICICI/Axis)
+    //   "availed at FLIPKART"                  → FLIPKART  (CC SBI Card)
+    //   "Cr. to 8340178859@nyes"               → 8340178859@nyes (BOB UPI)
     //   "has been used for Rs 5000 at AMAZON"  → AMAZON (CC HDFC)
     final merchantRegex = RegExp(
-      r'(?:used\s+at|availed\s+at|purchase\s+at|txn\s+at|at|to|for|vpa)\s+([A-Za-z0-9\s&\-\.]+?)(?=\s+(?:via|on|ref|using|from|by|link|bal|a\/c|\.|$))',
+      r'(?:used\s+at|availed\s+at|purchase\s+at|txn\s+at|cr\.?\s+to|at|to|for|vpa)\s+([\w@][A-Za-z0-9@&\-\.]+?)(?=\s+(?:via|on|ref|using|from|by|link|bal|a\/c|\.|$))',
       caseSensitive: false,
     );
     final mMatch = merchantRegex.firstMatch(message);
@@ -481,7 +595,7 @@ class SMSParserService {
     }
 
     // Smart categorizer — skip if category is already pinned (CC bill payment)
-    if (category != 'Credit Card Payment') {
+    if (category != 'Credit Card Bill') {
       final smartCat = SmartCategorizerService.predictCategory(
         message,
         isExpense: type == TransactionType.expense,

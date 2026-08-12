@@ -169,7 +169,7 @@ void main() {
       final result = SMSParserService.parseSMS(sms);
 
       expect(result, isNotNull);
-      expect(result!.category, 'Debt / Repayment');
+      expect(result!.category, 'Money Given / Lent');
     });
 
     test('Credit Card Refund SMS Regex Matching', () {

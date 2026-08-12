@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/theme_currency_provider.dart';
 import '../../providers/transaction_provider.dart';
@@ -34,14 +35,14 @@ class _ProfileScreenState extends State<ProfileScreen>
     with SingleTickerProviderStateMixin {
   bool _biometricEnabled = false;
   bool _notificationsEnabled = true;
-
   late AnimationController _shimmerCtrl;
 
   @override
   void initState() {
     super.initState();
-    // Load persisted biometric preference
+    // Load persisted biometric preferences
     _biometricEnabled = LocalStorageService.getBiometricEnabled();
+
     _shimmerCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 2200),
@@ -383,6 +384,8 @@ class _ProfileScreenState extends State<ProfileScreen>
     }
   }
 
+
+
   // ── Build ────────────────────────────────────────────────────────────────
 
   @override
@@ -516,7 +519,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                         onChanged: (val) => _toggleBiometric(val),
                       ),
                     ]),
-                    const SizedBox(height: 20),
+
 
                     // ── Preferences ─────────────────────────────────────
                     _SectionLabel(label: 'PREFERENCES', isDark: isDark),
