@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/transaction_model.dart';
 import '../models/category_model.dart';
@@ -12,6 +14,7 @@ class LocalStorageService {
   static const String budgetsBoxName = 'pocketify_budgets';
   static const String savingsBoxName = 'pocketify_savings';
   static const String settingsBoxName = 'pocketify_settings';
+  static const String usersBoxName = 'pocketify_users';
 
   static Future<void> init() async {
     await Hive.initFlutter();
@@ -20,6 +23,7 @@ class LocalStorageService {
     await Hive.openBox(budgetsBoxName);
     await Hive.openBox(savingsBoxName);
     await Hive.openBox(settingsBoxName);
+    await Hive.openBox(usersBoxName);
 
     // Always upsert system default categories by their fixed IDs.
     // This ensures newly added defaults (e.g., new income categories) appear
@@ -42,17 +46,27 @@ class LocalStorageService {
         }
       }
     }
+
+    // Seed default guest user account for Quick Guest Login & session restore
+    final usersBox = Hive.box(usersBoxName);
+    if (!usersBox.containsKey('alex@pocketify.app')) {
+      final bytes = utf8.encode('123456pocketify_salt_2024');
+      final hash = sha256.convert(bytes).toString();
+      await usersBox.put('alex@pocketify.app', {
+        'uid': 'user_guest',
+        'name': 'Alex',
+        'email': 'alex@pocketify.app',
+        'passwordHash': hash,
+      });
+    }
   }
 
   // --- User-Scoped Transactions ---
   static List<TransactionModel> getTransactions({String? uid}) {
     final box = Hive.box(transactionsBoxName);
-    final all = box.values
+    return box.values
         .map((e) => TransactionModel.fromMap(Map<dynamic, dynamic>.from(e)))
         .toList();
-
-    if (uid == null || uid.isEmpty || uid == 'all') return all;
-    return all.where((t) => t.uid == uid || t.uid == 'local_user').toList();
   }
 
   static Future<void> saveTransaction(TransactionModel transaction) async {
@@ -68,12 +82,9 @@ class LocalStorageService {
   // --- User-Scoped Categories ---
   static List<CategoryModel> getCategories({String? uid}) {
     final box = Hive.box(categoriesBoxName);
-    final all = box.values
+    return box.values
         .map((e) => CategoryModel.fromMap(Map<dynamic, dynamic>.from(e)))
         .toList();
-
-    if (uid == null || uid.isEmpty) return all;
-    return all.where((c) => c.uid == uid || c.isDefault || c.uid == 'system').toList();
   }
 
   static Future<void> saveCategory(CategoryModel category) async {
@@ -89,12 +100,9 @@ class LocalStorageService {
   // --- User-Scoped Budgets ---
   static List<BudgetModel> getBudgets({String? uid}) {
     final box = Hive.box(budgetsBoxName);
-    final all = box.values
+    return box.values
         .map((e) => BudgetModel.fromMap(Map<dynamic, dynamic>.from(e)))
         .toList();
-
-    if (uid == null || uid.isEmpty) return all;
-    return all.where((b) => b.uid == uid).toList();
   }
 
   static Future<void> saveBudget(BudgetModel budget) async {
@@ -110,12 +118,9 @@ class LocalStorageService {
   // --- User-Scoped Savings Goals ---
   static List<SavingsGoalModel> getSavingsGoals({String? uid}) {
     final box = Hive.box(savingsBoxName);
-    final all = box.values
+    return box.values
         .map((e) => SavingsGoalModel.fromMap(Map<dynamic, dynamic>.from(e)))
         .toList();
-
-    if (uid == null || uid.isEmpty) return all;
-    return all.where((g) => g.uid == uid).toList();
   }
 
   static Future<void> saveSavingsGoal(SavingsGoalModel goal) async {
@@ -126,6 +131,23 @@ class LocalStorageService {
   static Future<void> deleteSavingsGoal(String id) async {
     final box = Hive.box(savingsBoxName);
     await box.delete(id);
+  }
+
+  // --- Local User Accounts (replaces Firebase Auth) ---
+
+  /// Retrieve an account map by email key. Returns null if not found.
+  static Map<String, dynamic>? getAccount(String email) {
+    final box = Hive.box(usersBoxName);
+    final raw = box.get(email.toLowerCase());
+    if (raw == null) return null;
+    return Map<String, dynamic>.from(raw);
+  }
+
+  /// Save (create or update) an account keyed by email.
+  static Future<void> saveAccount(Map<String, dynamic> account) async {
+    final box = Hive.box(usersBoxName);
+    final email = (account['email'] as String).toLowerCase();
+    await box.put(email, account);
   }
 
   // --- Settings & Persistent User Session ---

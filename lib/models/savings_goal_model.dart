@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:expense_tracker/utils/icon_helper.dart';
 
 class SavingsGoalModel {
   final String id;
@@ -21,8 +22,7 @@ class SavingsGoalModel {
     this.colorValue = 0xFF4CAF50, // Colors.green
   });
 
-  // ignore: non_const_argument_for_const_parameter
-  IconData get iconData => IconData(iconCodePoint, fontFamily: 'MaterialIcons');
+  IconData get iconData => IconHelper.fromCodePoint(iconCodePoint, fallback: Icons.savings);
   Color get color => Color(colorValue);
 
   double get progressPercentage {

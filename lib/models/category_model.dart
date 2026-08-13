@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:expense_tracker/utils/icon_helper.dart';
 
 class CategoryModel {
   final String id;
@@ -21,8 +22,7 @@ class CategoryModel {
     this.deductFromBudget = true,
   });
 
-  // ignore: non_const_argument_for_const_parameter
-  IconData get iconData => IconData(iconCodePoint, fontFamily: 'MaterialIcons');
+  IconData get iconData => IconHelper.fromCodePoint(iconCodePoint, fallback: Icons.category);
   Color get color => Color(colorValue);
 
   Map<String, dynamic> toMap() {

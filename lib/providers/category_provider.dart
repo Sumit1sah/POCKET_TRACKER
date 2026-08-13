@@ -4,6 +4,7 @@ import '../services/local_storage_service.dart';
 
 class CategoryProvider extends ChangeNotifier {
   List<CategoryModel> _categories = [];
+  String? _activeUid;
 
   List<CategoryModel> get categories => _categories;
   List<CategoryModel> get expenseCategories => _categories.where((c) => !c.isIncome).toList();
@@ -13,8 +14,15 @@ class CategoryProvider extends ChangeNotifier {
     loadCategories();
   }
 
+  void loadForUser(String? uid) {
+    if (_activeUid != uid) {
+      _activeUid = uid;
+      loadCategories();
+    }
+  }
+
   void loadCategories() {
-    _categories = LocalStorageService.getCategories();
+    _categories = LocalStorageService.getCategories(uid: _activeUid);
     notifyListeners();
   }
 

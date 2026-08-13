@@ -1,7 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:permission_handler/permission_handler.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/theme_currency_provider.dart';
 import '../../providers/transaction_provider.dart';
@@ -22,7 +21,6 @@ const _kTeal     = Color(0xFF00CEC9);
 const _kPink     = Color(0xFFFD79A8);
 const _kIncome   = Color(0xFF00B894);
 const _kExpense  = Color(0xFFFF7675);
-const _kWarning  = Color(0xFFFDCB6E);
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -567,6 +565,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                         isDark: isDark,
                         onChanged: (val) async {
                           await LocalStorageService.setCCPreference(val);
+                          if (!context.mounted) return;
                           setState(() {});
                           _toast(context,
                               val ? '💳 CC tracking enabled' : '💳 CC tracking disabled');
@@ -993,7 +992,7 @@ class _SwitchTile extends StatelessWidget {
           child: Switch.adaptive(
             value: value,
             onChanged: onChanged,
-            activeColor: _kPrimary,
+            activeTrackColor: _kPrimary,
           ),
         ),
       ]),

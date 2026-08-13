@@ -176,17 +176,18 @@ class BudgetProvider extends ChangeNotifier {
   // Save or update a budget limit
   Future<void> setBudget(BudgetModel budget) async {
     final existingIndex = _budgets.indexWhere((b) => b.category.toLowerCase() == budget.category.toLowerCase());
+    BudgetModel toSave;
     if (existingIndex != -1) {
       final oldId = _budgets[existingIndex].id;
-      await LocalStorageService.saveBudget(
-        BudgetModel(
-          id: oldId,
-          uid: budget.uid,
-          category: budget.category,
-          monthlyLimit: budget.monthlyLimit,
-        ),
+      toSave = BudgetModel(
+        id: oldId,
+        uid: budget.uid,
+        category: budget.category,
+        monthlyLimit: budget.monthlyLimit,
       );
+      await LocalStorageService.saveBudget(toSave);
     } else {
+      toSave = budget;
       await LocalStorageService.saveBudget(budget);
     }
     loadBudgets();

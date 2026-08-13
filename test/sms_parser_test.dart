@@ -6,11 +6,6 @@ void main() {
   group('SMSParserService Comprehensive Edge Case & Bank SMS Tests', () {
     test('1. HDFC Bank Credit Card purchase with card validity suffix', () {
       const sms = 'Your HDFC Bank Credit Card XX 2235 has been used for Rs 5000.00 at AMAZON on 12-08-2026. Card valid till 12/28.';
-      final result = SMSParserService.parseSMS(sms, senderAddress: 'AD-HDFCBK');
-      
-      // Note: AD- sender prefix is promo filter, but if sender is VM-HDFCBK or null:
-      final resultNoSender = SMSParserService.parseSMS(sms, senderAddress: 'VM-HDFCBK');
-      // VM- is promo prefix in Layer 1. Let's test with real bank sender like 'AX-HDFCBK' or null.
       final resultBankSender = SMSParserService.parseSMS(sms, senderAddress: 'AX-HDFCBK');
 
       expect(resultBankSender, isNotNull);

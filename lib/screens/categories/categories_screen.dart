@@ -504,7 +504,7 @@ class CategoriesScreen extends StatelessWidget {
                           itemCount: _availableColors.length,
                           itemBuilder: (ctx, i) {
                             final c = _availableColors[i];
-                            final isSelected = c.value == selectedColor.value;
+                            final isSelected = c.toARGB32() == selectedColor.toARGB32();
 
                             return GestureDetector(
                               onTap: () => setModalState(() => selectedColor = c),
@@ -804,7 +804,7 @@ class CategoriesScreen extends StatelessWidget {
                           itemCount: _availableColors.length,
                           itemBuilder: (ctx, i) {
                             final c = _availableColors[i];
-                            final isSelected = c.value == selectedColor.value;
+                            final isSelected = c.toARGB32() == selectedColor.toARGB32();
 
                             return GestureDetector(
                               onTap: () => setModalState(() => selectedColor = c),

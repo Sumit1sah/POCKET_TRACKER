@@ -12,6 +12,7 @@ void main() {
     await Hive.openBox(LocalStorageService.budgetsBoxName);
     await Hive.openBox(LocalStorageService.savingsBoxName);
     await Hive.openBox(LocalStorageService.settingsBoxName);
+    await Hive.openBox(LocalStorageService.usersBoxName);
   });
 
   tearDownAll(() async {

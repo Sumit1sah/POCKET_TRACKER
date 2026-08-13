@@ -7,7 +7,6 @@ import '../../services/sms_auto_capture_service.dart';
 import '../../utils/formatters.dart';
 
 const _kPrimary = Color(0xFF6C5CE7);
-const _kTeal    = Color(0xFF00CEC9);
 const _kIncome  = Color(0xFF00B894);
 const _kExpense = Color(0xFFFF7675);
 const _kWarning = Color(0xFFFDCB6E);
@@ -368,7 +367,7 @@ class _SmsLogScreenState extends State<SmsLogScreen> {
                 style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
               ),
               Text(
-                '${_windowMinutes} min window',
+                '$_windowMinutes min window',
                 style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: _kPrimary),
               ),
             ],
@@ -435,9 +434,12 @@ class _SmsLogScreenState extends State<SmsLogScreen> {
         ),
         child: Row(
           children: [
+            // ignore: deprecated_member_use
             Radio<String>(
               value: value,
+              // ignore: deprecated_member_use
               groupValue: groupValue,
+              // ignore: deprecated_member_use
               onChanged: onChanged,
               activeColor: _kPrimary,
               materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,

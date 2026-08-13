@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 
 /// Type of transaction event for visual styling.
@@ -450,7 +449,7 @@ class _TimerBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: animation,
-      builder: (_, __) => SizedBox(
+      builder: (_, child) => SizedBox(
         height: 3,
         child: Stack(
           children: [

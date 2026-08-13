@@ -10,7 +10,6 @@ import '../../widgets/balance_summary_card.dart';
 import '../../widgets/ai_insight_card.dart';
 import '../../widgets/transaction_tile.dart';
 import '../../widgets/transaction_notification.dart';
-import '../../utils/formatters.dart';
 import '../authentication/login_screen.dart';
 import '../profile/profile_screen.dart';
 
@@ -20,7 +19,6 @@ import '../profile/profile_screen.dart';
 const _kPrimary   = Color(0xFF6C5CE7);
 const _kPrimaryLt = Color(0xFF8E7CFE);
 const _kIncome    = Color(0xFF00B894);
-const _kExpense   = Color(0xFFFF7675);
 const _kTeal      = Color(0xFF00CEC9);
 
 class HomeDashboardScreen extends StatefulWidget {
@@ -55,27 +53,27 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
       if (mounted) setState(() => _now = DateTime.now());
     });
 
-    AnimationController _makeCtrl(int ms) => AnimationController(
+    AnimationController makeCtrl(int ms) => AnimationController(
           vsync: this,
           duration: Duration(milliseconds: ms),
         );
 
-    _headerCtrl = _makeCtrl(500);
-    _cardsCtrl  = _makeCtrl(480);
-    _txCtrl     = _makeCtrl(480);
+    _headerCtrl = makeCtrl(500);
+    _cardsCtrl  = makeCtrl(480);
+    _txCtrl     = makeCtrl(480);
 
-    Animation<double> _fade(AnimationController c) =>
+    Animation<double> fade(AnimationController c) =>
         CurvedAnimation(parent: c, curve: Curves.easeOut);
-    Animation<Offset> _slide(AnimationController c, Offset from) =>
+    Animation<Offset> slide(AnimationController c, Offset from) =>
         Tween<Offset>(begin: from, end: Offset.zero)
             .animate(CurvedAnimation(parent: c, curve: Curves.easeOutCubic));
 
-    _headerFade  = _fade(_headerCtrl);
-    _cardsFade   = _fade(_cardsCtrl);
-    _txFade      = _fade(_txCtrl);
-    _headerSlide = _slide(_headerCtrl, const Offset(0, -0.2));
-    _cardsSlide  = _slide(_cardsCtrl,  const Offset(0,  0.15));
-    _txSlide     = _slide(_txCtrl,     const Offset(0,  0.15));
+    _headerFade  = fade(_headerCtrl);
+    _cardsFade   = fade(_cardsCtrl);
+    _txFade      = fade(_txCtrl);
+    _headerSlide = slide(_headerCtrl, const Offset(0, -0.2));
+    _cardsSlide  = slide(_cardsCtrl,  const Offset(0,  0.15));
+    _txSlide     = slide(_txCtrl,     const Offset(0,  0.15));
 
     _shimmerCtrl = AnimationController(
       vsync: this,
@@ -143,17 +141,15 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
                   borderRadius: BorderRadius.circular(12)),
             ),
             onPressed: () async {
+              final nav = Navigator.of(context);
               Navigator.pop(dialogContext);
               final auth =
                   Provider.of<AuthProvider>(context, listen: false);
               await auth.logout();
-              if (context.mounted) {
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (_) => const LoginScreen()),
-                  (route) => false,
-                );
-              }
+              nav.pushAndRemoveUntil(
+                MaterialPageRoute(builder: (_) => const LoginScreen()),
+                (route) => false,
+              );
             },
             child: const Text('Logout',
                 style: TextStyle(color: Colors.white)),
@@ -440,9 +436,6 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
     required int count,
   }) {
     final boldColor   = isDark ? Colors.white : const Color(0xFF1A1A2E);
-    final subtleColor = isDark
-        ? Colors.white.withValues(alpha: 0.40)
-        : Colors.black.withValues(alpha: 0.35);
 
     return Row(
       children: [

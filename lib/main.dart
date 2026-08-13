@@ -68,7 +68,7 @@ class PocketifyApp extends StatelessWidget {
         // Auth is always first — all user-scoped providers depend on it
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => ThemeCurrencyProvider()),
-        ChangeNotifierProvider(create: (_) => CategoryProvider()),
+
 
         // TransactionProvider reacts to AuthProvider changes automatically
         ChangeNotifierProxyProvider<AuthProvider, TransactionProvider>(
@@ -90,7 +90,25 @@ class PocketifyApp extends StatelessWidget {
           },
         ),
 
-        ChangeNotifierProvider(create: (_) => SavingsProvider()),
+        // CategoryProvider reacts to AuthProvider changes automatically
+        ChangeNotifierProxyProvider<AuthProvider, CategoryProvider>(
+          create: (_) => CategoryProvider(),
+          update: (_, auth, previous) {
+            final provider = previous ?? CategoryProvider();
+            provider.loadForUser(auth.currentUser?.uid);
+            return provider;
+          },
+        ),
+
+        // SavingsProvider reacts to AuthProvider changes automatically
+        ChangeNotifierProxyProvider<AuthProvider, SavingsProvider>(
+          create: (_) => SavingsProvider(),
+          update: (_, auth, previous) {
+            final provider = previous ?? SavingsProvider();
+            provider.loadForUser(auth.currentUser?.uid);
+            return provider;
+          },
+        ),
       ],
       child: Consumer2<ThemeCurrencyProvider, AuthProvider>(
         builder: (context, themeProvider, authProvider, child) {

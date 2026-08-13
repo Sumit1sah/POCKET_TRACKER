@@ -4,6 +4,7 @@ import '../services/local_storage_service.dart';
 
 class SavingsProvider extends ChangeNotifier {
   List<SavingsGoalModel> _goals = [];
+  String? _activeUid;
 
   List<SavingsGoalModel> get goals => _goals;
 
@@ -11,8 +12,15 @@ class SavingsProvider extends ChangeNotifier {
     loadGoals();
   }
 
+  void loadForUser(String? uid) {
+    if (_activeUid != uid) {
+      _activeUid = uid;
+      loadGoals();
+    }
+  }
+
   void loadGoals() {
-    _goals = LocalStorageService.getSavingsGoals();
+    _goals = LocalStorageService.getSavingsGoals(uid: _activeUid);
     notifyListeners();
   }
 
