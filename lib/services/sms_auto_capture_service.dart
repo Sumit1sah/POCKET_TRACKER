@@ -11,10 +11,10 @@ const _smsChannel = MethodChannel('com.pocketify.expensetracker/sms');
 /// Called from both foreground (live MethodChannel) and on app-open
 /// (draining the SharedPreferences pending queue via fetchPendingSms).
 class SmsAutoCaptureService {
-  /// Parse incoming SMS text and save transaction to Hive if valid.
+/// Parse incoming SMS text and save transaction to Hive if valid.
   /// Returns the saved [TransactionModel], or null if:
   ///   • SMS is not a payment alert (parser returns null)
-  ///   • Transaction is a duplicate of one already saved
+  ///   • The EXACT same SMS body was already captured (true duplicate re-delivery)
   static Future<TransactionModel?> captureFromSms(
     String smsBody, {
     DateTime? smsDate,
@@ -55,57 +55,27 @@ class SmsAutoCaptureService {
     final uid = savedUser?.uid ?? 'local_user';
     final txDate = smsDate ?? DateTime.now();
 
+    // ── SMS Body Fingerprint ─────────────────────────────────────────────────
+    // Normalize: lowercase + collapse all whitespace → single space + trim.
+    // This makes the fingerprint resilient to minor encoding differences
+    // (e.g. extra spaces, CRLF vs LF) while still being exact.
+    final normalizedBody = smsBody.toLowerCase().replaceAll(RegExp(r'\s+'), ' ').trim();
+    final smsFp = '${(senderAddress ?? '').toLowerCase().trim()}|$normalizedBody';
+
     // ── Duplicate Mode Check ──────────────────────────────────────────────────
     final dupMode = LocalStorageService.getDuplicateMode(); // 'smart', 'allow_all', 'flag_review'
-    final windowMinutes = LocalStorageService.getDeduplicationWindowMinutes();
-    final windowSeconds = windowMinutes * 60;
     final existingTxs = LocalStorageService.getTransactions(uid: uid);
 
     bool isDuplicate = false;
     if (!forceCapture && dupMode != 'allow_all') {
-      isDuplicate = existingTxs.any((t) {
-        final sameAmount = t.amount == result.amount;
-        final sameType = t.type == result.type;
-        final isWithinWindow = t.date.difference(txDate).inSeconds.abs() < windowSeconds;
-
-        if (!sameAmount || !sameType || !isWithinWindow) return false;
-
-        // Clean merchant names for comparison
-        final existingMerchant = t.description.replaceAll(RegExp(r'^[^:]+:\s*'), '').trim().toLowerCase();
-        final newMerchant = result.merchant.trim().toLowerCase();
-
-        // 1. If merchants are distinctly DIFFERENT (e.g. Starbucks at 10:12 vs Uber at 10:14):
-        //    They are two separate real transactions! NOT a duplicate!
-        if (existingMerchant.isNotEmpty &&
-            newMerchant.isNotEmpty &&
-            existingMerchant != newMerchant &&
-            !existingMerchant.contains('others') &&
-            !newMerchant.contains('others')) {
-          return false;
-        }
-
-        // 2. Cross-SMS CC Bill Payment match (Bank debit + CC provider confirmation)
-        final isExistingCcRelated = t.category == 'Credit Card Bill' ||
-            t.paymentMethod == 'Credit Card' ||
-            t.description.toLowerCase().contains('supercard') ||
-            t.description.toLowerCase().contains('credit card');
-        final isNewCcRelated = result.category == 'Credit Card Bill' ||
-            result.paymentMethod == 'Credit Card' ||
-            smsBody.toLowerCase().contains('supercard') ||
-            smsBody.toLowerCase().contains('credit card');
-
-        if (isExistingCcRelated && isNewCcRelated) return true;
-
-        // 3. Same payment method & same merchant within 3 minutes → Duplicate SMS
-        if (t.paymentMethod == result.paymentMethod) return true;
-
-        return false;
-      });
+      // A transaction is ONLY a duplicate when the SMS body itself is identical.
+      // Same amount / merchant but different SMS text = a real separate transaction.
+      isDuplicate = existingTxs.any((t) => t.smsHash != null && t.smsHash == smsFp);
     }
 
     // Handle duplicate suppression in 'smart' mode
     if (isDuplicate && dupMode == 'smart' && !forceCapture) {
-      debugPrint('[SmsCapture] Duplicate suppressed: ₹${result.amount} via ${result.paymentMethod}');
+      debugPrint('[SmsCapture] Duplicate suppressed: identical SMS body already captured');
       await LocalStorageService.addSmsCaptureLog({
         'id': 'log_${DateTime.now().millisecondsSinceEpoch}',
         'body': smsBody,
@@ -113,7 +83,7 @@ class SmsAutoCaptureService {
         'date': txDate.toIso8601String(),
         'status': 'duplicate_suppressed',
         'amount': result.amount,
-        'reason': 'Duplicate detected (₹${result.amount} within 3 mins)',
+        'reason': 'Identical SMS body already captured',
       });
       return null;
     }
@@ -143,6 +113,7 @@ class SmsAutoCaptureService {
       date: txDate,
       linkedTransactionId: matchingTx?.id,
       isDuplicate: isDuplicate,
+      smsHash: smsFp,
     );
 
     await LocalStorageService.saveTransaction(transaction);

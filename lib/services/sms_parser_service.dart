@@ -26,10 +26,10 @@ class SMSParseResult {
 class SMSParserService {
   // ─────────────────────────────────────────────────────────────────────────
   // LAYER 1 — Sender-ID prefixes used ONLY by promotional/DND SMS senders.
-  // Sender IDs starting with AD- / VM- / VK- are promo-category senders and
-  // will NEVER carry real bank transaction alerts.
+  // Note: Standard TRAI 2-letter operator circle codes (AD-, VM-, VK-, BP-, JD-)
+  // are attached to all bank transaction headers in India (e.g. AD-BOBTXN, VM-SBIIN).
   // ─────────────────────────────────────────────────────────────────────────
-  static const _promoSenderPrefixes = ['ad-', 'vm-', 'vk-', 'bp-', 'jd-'];
+  static const _promoSenderPrefixes = ['promo-', 'dnd-'];
 
   // ─────────────────────────────────────────────────────────────────────────
   // LAYER 2 — Hard-block keywords.
@@ -80,12 +80,13 @@ class SMSParserService {
     'debited', 'deducted', 'spent', 'paid', 'payment done',
     'payment of', 'purchase of', 'withdrawn', 'transferred to',
     'sent to', 'sent', 'charged', 'auto debited', 'auto-debited', 'debit',
-    'atm wdl', 'atm withdrawal', 'cash withdrawn', 'withdrawn at atm', 'atm cash',
+    'atm wdl', 'atm withdrawal', 'cash withdrawn', 'withdrawn at atm', 'atm cash', 'cash wdl',
+    'pos transaction', 'pos txn', 'pos purchase', 'ecom transaction', 'ecom txn', 'swiped at', 'swiped for', 'spent on card',
     'ecs debit', 'nach debit', 'mandate debited', 'standing instruction',
     'neft dr', 'imps dr', 'rtgs dr', 'neft debit', 'imps debit', 'rtgs debit',
     'added to wallet', 'wallet debited', 'wallet loaded',
     // Passive-voice debit (BOB / SBI / PNB format: "A/c XX1234 is Debited by Rs.500")
-    'is debited', 'has been debited', 'a/c debited', 'ac debited',
+    'is debited', 'has been debited', 'a/c debited', 'ac debited', 'account debited',
     // ── Credit Card purchase verbs (most commonly missed) ─────────────────
     // HDFC CC: "Your HDFC Bank Credit Card XX 1234 has been used for Rs 5000 at AMAZON"
     'has been used', 'been used',
@@ -107,7 +108,7 @@ class SMSParserService {
     'money received', 'fund received', 'amount received',
     'inward transfer', 'neft credit', 'imps credit', 'rtgs credit', 'upi credit',
     // Passive-voice credit (formal bank style)
-    'is credited', 'has been credited', 'a/c credited', 'ac credited',
+    'is credited', 'has been credited', 'a/c credited', 'ac credited', 'account credited',
     // Bank-standard shorthand abbreviations (BOB, SBI, Kotak, PNB, Canara, etc.)
     ' dr.', ' cr.',        // " Dr. from A/C", " Cr. to VPA"
     'dr. from', 'cr. to',  // more specific BOB/SBI patterns
@@ -118,7 +119,7 @@ class SMSParserService {
     'amount debited', 'amount credited',
     // Transaction-style phrases used by some private banks
     'transaction of', 'transaction for', 'transfer of',
-    'upi debit', 'upi txn',
+    'upi debit', 'upi txn', 'paid via upi', 'received via upi',
   ];
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -298,17 +299,116 @@ class SMSParserService {
     // Minimum floor — ignore amounts < ₹1
     if (amount < 1.0) return null;
 
+    final lowerSender = senderAddress?.toLowerCase() ?? '';
+    // Strip VPA handles (e.g. user@oksbi, merchant@okhdfcbank) from message body copy
+    // so receiver VPA domains don't confuse bank detection.
+    final msgWithoutVpa = lowerMsg.replaceAll(RegExp(r'\b[\w.]+@\w+\b'), '');
+
     // ── Detect Payment App / Bank ─────────────────────────────────────────
     String detectedApp = 'Bank Alert';
-    if (lowerMsg.contains('gpay') || lowerMsg.contains('google pay') || lowerMsg.contains('googlepay')) {
+
+    // Step 1: Check Sender ID FIRST (authoritative for origin bank)
+    if (lowerSender.contains('bob') || lowerSender.contains('baroda')) {
+      detectedApp = 'Bank of Baroda';
+    } else if (lowerSender.contains('sbi') || lowerSender.contains('sbiin') || lowerSender.contains('sbicrd')) {
+      detectedApp = 'SBI Bank';
+    } else if (lowerSender.contains('hdfc')) {
+      detectedApp = 'HDFC Bank';
+    } else if (lowerSender.contains('icici')) {
+      detectedApp = 'ICICI Bank';
+    } else if (lowerSender.contains('axis')) {
+      detectedApp = 'Axis Bank';
+    } else if (lowerSender.contains('kotak') || lowerSender.contains('kmbl')) {
+      detectedApp = 'Kotak Bank';
+    } else if (lowerSender.contains('pnb') || lowerSender.contains('punjab')) {
+      detectedApp = 'PNB Bank';
+    } else if (lowerSender.contains('indus')) {
+      detectedApp = 'IndusInd Bank';
+    } else if (lowerSender.contains('yesb') || lowerSender.contains('yesbank')) {
+      detectedApp = 'Yes Bank';
+    } else if (lowerSender.contains('fed')) {
+      detectedApp = 'Federal Bank';
+    } else if (lowerSender.contains('rbl')) {
+      detectedApp = 'RBL Bank';
+    } else if (lowerSender.contains('idfc')) {
+      detectedApp = 'IDFC First Bank';
+    } else if (lowerSender.contains('utkrs') || lowerSender.contains('utkarsh')) {
+      detectedApp = 'Utkarsh Bank';
+    } else if (lowerSender.contains('ausf') || lowerSender.contains('aubank') || lowerSender.contains('aubnk')) {
+      detectedApp = 'AU Small Finance Bank';
+    } else if (lowerSender.contains('cnrb') || lowerSender.contains('canara') || lowerSender.contains('canbnk')) {
+      detectedApp = 'Canara Bank';
+    } else if (lowerSender.contains('union') || lowerSender.contains('unionb') || lowerSender.contains('ubionline')) {
+      detectedApp = 'Union Bank';
+    } else if (lowerSender.contains('boi') || lowerSender.contains('boitxn') || lowerSender.contains('boisms')) {
+      detectedApp = 'Bank of India';
+    } else if (lowerSender.contains('uco') || lowerSender.contains('ucobnk')) {
+      detectedApp = 'UCO Bank';
+    } else if (lowerSender.contains('iob') || lowerSender.contains('iobtxn')) {
+      detectedApp = 'Indian Overseas Bank';
+    } else if (lowerSender.contains('maha') || lowerSender.contains('mahabk')) {
+      detectedApp = 'Bank of Maharashtra';
+    } else if (lowerSender.contains('psb') || lowerSender.contains('psbank')) {
+      detectedApp = 'Punjab & Sind Bank';
+    } else if (lowerSender.contains('indian') || lowerSender.contains('indbnk') || lowerSender.contains('allbnk')) {
+      detectedApp = 'Indian Bank';
+    } else if (lowerSender.contains('cbin') || lowerSender.contains('central')) {
+      detectedApp = 'Central Bank of India';
+    } else if (lowerSender.contains('ippb') || lowerSender.contains('postpay')) {
+      detectedApp = 'India Post Payments Bank';
+    } else if (lowerSender.contains('fino')) {
+      detectedApp = 'Fino Payments Bank';
+    } else if (lowerSender.contains('jiopay') || lowerSender.contains('jiopb')) {
+      detectedApp = 'Jio Payments Bank';
+    } else if (lowerSender.contains('nsdl')) {
+      detectedApp = 'NSDL Payments Bank';
+    } else if (lowerSender.contains('jana')) {
+      detectedApp = 'Jana Small Finance Bank';
+    } else if (lowerSender.contains('suryoday')) {
+      detectedApp = 'Suryoday Small Finance Bank';
+    } else if (lowerSender.contains('esaf')) {
+      detectedApp = 'ESAF Small Finance Bank';
+    } else if (lowerSender.contains('equitas') || lowerSender.contains('eqsfb')) {
+      detectedApp = 'Equitas Bank';
+    } else if (lowerSender.contains('ujjivan') || lowerSender.contains('ujsfb')) {
+      detectedApp = 'Ujjivan Bank';
+    } else if (lowerSender.contains('bandhn') || lowerSender.contains('bandhan')) {
+      detectedApp = 'Bandhan Bank';
+    } else if (lowerSender.contains('sib') || lowerSender.contains('sibtxn')) {
+      detectedApp = 'South Indian Bank';
+    } else if (lowerSender.contains('kvb') || lowerSender.contains('kvbbnk')) {
+      detectedApp = 'Karur Vysya Bank';
+    } else if (lowerSender.contains('cub') || lowerSender.contains('cubbnk')) {
+      detectedApp = 'City Union Bank';
+    } else if (lowerSender.contains('tmb') || lowerSender.contains('tmbl')) {
+      detectedApp = 'Tamilnad Mercantile Bank';
+    } else if (lowerSender.contains('jkbank') || lowerSender.contains('jkbnk') || lowerSender.contains('jkb')) {
+      detectedApp = 'J&K Bank';
+    } else if (lowerSender.contains('ktk') || lowerSender.contains('ktkbnk')) {
+      detectedApp = 'Karnataka Bank';
+    } else if (lowerSender.contains('dhan')) {
+      detectedApp = 'Dhanlaxmi Bank';
+    } else if (lowerSender.contains('dcb') || lowerSender.contains('dcbbnk')) {
+      detectedApp = 'DCB Bank';
+    } else if (lowerSender.contains('csb')) {
+      detectedApp = 'CSB Bank';
+    } else if (lowerSender.contains('epifi') || lowerSender.contains('-fi-') || lowerSender.endsWith('-fi')) {
+      detectedApp = 'Fi Money';
+    } else if (lowerSender.contains('jupiter')) {
+      detectedApp = 'Jupiter Money';
+    } else if (lowerSender.contains('niyo')) {
+      detectedApp = 'Niyo Bank';
+    }
+    // Step 2: Payment Apps in Message Body
+    else if (lowerMsg.contains('gpay') || lowerMsg.contains('google pay') || lowerMsg.contains('googlepay') || lowerSender.contains('gpay')) {
       detectedApp = 'Google Pay';
-    } else if (lowerMsg.contains('phonepe') || lowerMsg.contains('phone pe')) {
+    } else if (lowerMsg.contains('phonepe') || lowerMsg.contains('phone pe') || lowerSender.contains('phonepe')) {
       detectedApp = 'PhonePe';
-    } else if (lowerMsg.contains('paytm')) {
+    } else if (lowerMsg.contains('paytm') || lowerSender.contains('paytm')) {
       detectedApp = 'Paytm';
-    } else if (lowerMsg.contains('cred')) {
+    } else if (lowerMsg.contains('cred') || lowerSender.contains('cred')) {
       detectedApp = 'CRED';
-    } else if (lowerMsg.contains('bhim')) {
+    } else if (lowerMsg.contains('bhim') || lowerSender.contains('bhim')) {
       detectedApp = 'BHIM UPI';
     } else if (lowerMsg.contains('amazonpay') || lowerMsg.contains('amazon pay')) {
       detectedApp = 'Amazon Pay';
@@ -322,53 +422,81 @@ class SMSParserService {
       detectedApp = 'Slice Card';
     } else if (lowerMsg.contains('onecard')) {
       detectedApp = 'OneCard';
-    } else if (lowerMsg.contains('hdfc')) {
-      detectedApp = 'HDFC Bank';
-    } else if (lowerMsg.contains('sbi') || lowerMsg.contains('state bank')) {
-      detectedApp = 'SBI Bank';
-    } else if (lowerMsg.contains('icici')) {
-      detectedApp = 'ICICI Bank';
-    } else if (lowerMsg.contains('axis')) {
-      detectedApp = 'Axis Bank';
-    } else if (lowerMsg.contains('kotak')) {
-      detectedApp = 'Kotak Bank';
-    } else if (lowerMsg.contains('pnb') || lowerMsg.contains('punjab national')) {
-      detectedApp = 'PNB Bank';
-    } else if (lowerMsg.contains('bank of baroda') || lowerMsg.contains(' bob ') || lowerMsg.contains('-bob')) {
+    }
+    // Step 3: Banks in Message Body (using msgWithoutVpa to ignore target VPA handles)
+    else if (msgWithoutVpa.contains('bank of baroda') || msgWithoutVpa.contains(' bob ') || msgWithoutVpa.contains('-bob') || msgWithoutVpa.contains('/bob') || msgWithoutVpa.contains('bob')) {
       detectedApp = 'Bank of Baroda';
-    } else if (lowerMsg.contains('indusind')) {
+    } else if (msgWithoutVpa.contains('hdfc')) {
+      detectedApp = 'HDFC Bank';
+    } else if (msgWithoutVpa.contains('sbi') || msgWithoutVpa.contains('state bank')) {
+      detectedApp = 'SBI Bank';
+    } else if (msgWithoutVpa.contains('icici')) {
+      detectedApp = 'ICICI Bank';
+    } else if (msgWithoutVpa.contains('axis')) {
+      detectedApp = 'Axis Bank';
+    } else if (msgWithoutVpa.contains('kotak')) {
+      detectedApp = 'Kotak Bank';
+    } else if (msgWithoutVpa.contains('pnb') || msgWithoutVpa.contains('punjab national')) {
+      detectedApp = 'PNB Bank';
+    } else if (msgWithoutVpa.contains('indusind')) {
       detectedApp = 'IndusInd Bank';
-    } else if (lowerMsg.contains('yes bank') || lowerMsg.contains('yesbank')) {
+    } else if (msgWithoutVpa.contains('yes bank') || msgWithoutVpa.contains('yesbank')) {
       detectedApp = 'Yes Bank';
-    } else if (lowerMsg.contains('federal bank') || lowerMsg.contains('fedbank')) {
+    } else if (msgWithoutVpa.contains('federal bank') || msgWithoutVpa.contains('fedbank')) {
       detectedApp = 'Federal Bank';
-    } else if (lowerMsg.contains('rbl bank') || lowerMsg.contains('ratnakar')) {
+    } else if (msgWithoutVpa.contains('rbl bank') || msgWithoutVpa.contains('ratnakar')) {
       detectedApp = 'RBL Bank';
-    } else if (lowerMsg.contains('idfc') || lowerMsg.contains('idfcfirst')) {
+    } else if (msgWithoutVpa.contains('idfc') || msgWithoutVpa.contains('idfcfirst')) {
       detectedApp = 'IDFC First Bank';
-    } else if (lowerMsg.contains('bandhan')) {
+    } else if (msgWithoutVpa.contains('bandhan')) {
       detectedApp = 'Bandhan Bank';
-    } else if (lowerMsg.contains('utkarsh') || lowerMsg.contains('sfbl')) {
+    } else if (msgWithoutVpa.contains('utkarsh') || msgWithoutVpa.contains('sfbl')) {
       detectedApp = 'Utkarsh Bank';
-    } else if (lowerMsg.contains('au small') || lowerMsg.contains('au bank') || lowerMsg.contains('ausf')) {
+    } else if (msgWithoutVpa.contains('au small') || msgWithoutVpa.contains('au bank') || msgWithoutVpa.contains('ausf')) {
       detectedApp = 'AU Small Finance Bank';
-    } else if (lowerMsg.contains('equitas')) {
+    } else if (msgWithoutVpa.contains('equitas')) {
       detectedApp = 'Equitas Bank';
-    } else if (lowerMsg.contains('ujjivan')) {
+    } else if (msgWithoutVpa.contains('ujjivan')) {
       detectedApp = 'Ujjivan Bank';
-    } else if (lowerMsg.contains('canara')) {
+    } else if (msgWithoutVpa.contains('canara')) {
       detectedApp = 'Canara Bank';
-    } else if (lowerMsg.contains('union bank') || lowerMsg.contains('unionbank')) {
+    } else if (msgWithoutVpa.contains('union bank') || msgWithoutVpa.contains('unionbank')) {
       detectedApp = 'Union Bank';
-    } else if (lowerMsg.contains('bank of india') || lowerMsg.contains(' boi ')) {
+    } else if (msgWithoutVpa.contains('bank of india') || msgWithoutVpa.contains(' boi ')) {
       detectedApp = 'Bank of India';
-    } else if (lowerMsg.contains('central bank')) {
+    } else if (msgWithoutVpa.contains('central bank')) {
       detectedApp = 'Central Bank of India';
-    } else if (lowerMsg.contains('indian bank')) {
+    } else if (msgWithoutVpa.contains('indian bank') || msgWithoutVpa.contains('allahabad bank')) {
       detectedApp = 'Indian Bank';
-    } else if (lowerMsg.contains('uco bank')) {
+    } else if (msgWithoutVpa.contains('indian overseas bank') || msgWithoutVpa.contains(' iob ')) {
+      detectedApp = 'Indian Overseas Bank';
+    } else if (msgWithoutVpa.contains('bank of maharashtra') || msgWithoutVpa.contains('maharashtra bank')) {
+      detectedApp = 'Bank of Maharashtra';
+    } else if (msgWithoutVpa.contains('punjab & sind') || msgWithoutVpa.contains('punjab and sind')) {
+      detectedApp = 'Punjab & Sind Bank';
+    } else if (msgWithoutVpa.contains('india post') || msgWithoutVpa.contains('ippb')) {
+      detectedApp = 'India Post Payments Bank';
+    } else if (msgWithoutVpa.contains('fino')) {
+      detectedApp = 'Fino Payments Bank';
+    } else if (msgWithoutVpa.contains('fi money') || msgWithoutVpa.contains('epifi')) {
+      detectedApp = 'Fi Money';
+    } else if (msgWithoutVpa.contains('jupiter')) {
+      detectedApp = 'Jupiter Money';
+    } else if (msgWithoutVpa.contains('niyo')) {
+      detectedApp = 'Niyo Bank';
+    } else if (msgWithoutVpa.contains('south indian bank')) {
+      detectedApp = 'South Indian Bank';
+    } else if (msgWithoutVpa.contains('karur vysya')) {
+      detectedApp = 'Karur Vysya Bank';
+    } else if (msgWithoutVpa.contains('city union')) {
+      detectedApp = 'City Union Bank';
+    } else if (msgWithoutVpa.contains('karnataka bank')) {
+      detectedApp = 'Karnataka Bank';
+    } else if (msgWithoutVpa.contains('jk bank') || msgWithoutVpa.contains('jammu & kashmir')) {
+      detectedApp = 'J&K Bank';
+    } else if (msgWithoutVpa.contains('uco bank')) {
       detectedApp = 'UCO Bank';
-    } else if (lowerMsg.contains('dcb bank') || lowerMsg.contains('development credit')) {
+    } else if (msgWithoutVpa.contains('dcb bank') || msgWithoutVpa.contains('development credit')) {
       detectedApp = 'DCB Bank';
     } else if (lowerMsg.contains('upi')) {
       detectedApp = 'UPI Payment';
@@ -428,14 +556,8 @@ class SMSParserService {
     }
 
     // ── Payment Method ────────────────────────────────────────────────────
-    // Credit card detection — check for card-number pattern first:
-    //   "SuperCard 2235 debited"         → supercard + digits
-    //   "Card ending 2235"               → ending + digits  
-    //   "SuperCard ending with 2235"      → ending with + digits  (NEW)
-    //   "card ending in 2235"            → ending in + digits    (NEW)
-    // This runs BEFORE the UPI check because credit cards can be used via UPI.
     final cardNumberPattern = RegExp(
-      r'(?:card|supercard|creditcard|credit card|rupay|visa|mastercard|amex|diners)'
+      r'(?:card|supercard|bobcard|creditcard|credit card|sbicard|hdfccard|icicicard|axiscard|kotakcard|idfccard|onecard|slice card|rupay|visa|mastercard|amex|diners)'
       r'\s*(?:no\.?|number|ending(?:\s+(?:with|in))?|xx+|x+)?\s*(\d{4})',
       caseSensitive: false,
     );
@@ -447,30 +569,38 @@ class SMSParserService {
       caseSensitive: false,
     ).hasMatch(message);
 
+    final isExplicitCcKeyword = RegExp(
+      r'(?:credit\s*card|\bcc\b|bobcard|supercard|onecard|sbicard|hdfc\s*card|icici\s*card|axis\s*card|kotak\s*card|idfc\s*card|rbl\s*card|slice\s*card|rupay\s*credit|spent\s+on\s+card|swiped)',
+      caseSensitive: false,
+    ).hasMatch(message);
+
     // UPI VPA pattern: word@bankshortcode (e.g. anamikasingh@oksbi, raj@ybl)
     // Comprehensive list of Indian bank UPI handles (NPCI-registered PSP handles).
     final hasUpiVpa = RegExp(
       r'\w[\w.]*@(?:'
       // Google Pay / SBI
       r'oksbi|okaxis|okhdfcbank|okicici|okbizaxis'
-      // Yes Bank
-      r'|ybl|nyes|yesbankltd|yesbank|yesb'
-      // PhonePe / Paytm / BHIM
-      r'|ybl|upi|paytm|waicici|bhim'
+      // PhonePe / Yes Bank / Axis / ICICI
+      r'|ybl|ibl|axl|nyes|yesbankltd|yesbank|yesb'
+      // Paytm / BHIM / WhatsApp
+      r'|paytm|upi|waicici|bhim'
       // HDFC / ICICI / Axis / Kotak
-      r'|hdfc|hdfcbank|icici|axisbank|axl|kotak|kmbl'
-      // SBI / PNB / BOB / BOI / Canara / Union / UCO / Central / Indian / Allahabad
-      r'|sbi|pnb|barodampay|boi|cnrb|unionbank|ubi|cbin|uco|centralbank|indianbk|allbank'
-      // IDFC / IndusInd / Federal / RBL / DCB / Karur
-      r'|idfcbank|idfc|ibl|indus|indusind|federal|fedbank|rbl|dcb|kvb'
+      r'|hdfc|hdfcbank|icici|axisbank|kotak|kmbl'
+      // SBI / PNB / BOB / BOI / Canara / Union / UCO / Central / Indian / Allahabad / IOB / Maharashtra / PSB
+      r'|sbi|pnb|barodampay|boi|cnrb|unionbank|ubi|cbin|uco|centralbank|indianbk|allbank|iob|mahb|psb|dlb'
+      // IDFC / IndusInd / Federal / RBL / DCB / Karur / South Indian / CUB / TMB / J&K / Karnataka
+      r'|idfcbank|idfc|indus|indusind|federal|fedbank|rbl|dcb|kvb|sib|cub|tmb|jkbank|ktk'
       // Small Finance Banks / Payments Banks
       r'|utkarsh|sfbl|nsdl|apl|timecosmos|rajgovt'
       r'|aubank|au|equitas|ujjivan|jana|suryoday|esaf|bandhan'
-      // Airtel / Jio / Other wallets
-      r'|airtel|jio|freecharge|mobikwik|amazonpay|phonepe'
-      // Andhra / Syndicate / Vijaya (now BOB/Canara)
+      r'|ippb|postbank|fino|jio'
+      // Neo Banks & Wallets / Cards
+      r'|jupiteraxis|fi|niyo|naviaxis|slice|onecard|postpe|lazypay|simpl|cred'
+      // Airtel / Wallet handles
+      r'|airtel|freecharge|mobikwik|amazonpay|phonepe'
+      // Merged legacy handles
       r'|andb|syndicatebank|vijb'
-      // HSBC / Standard Chartered / Citibank / DBS
+      // International / foreign handles in India
       r'|sc|hsbc|citibank|dbs'
       r')',
       caseSensitive: false,
@@ -488,45 +618,33 @@ class SMSParserService {
     ).hasMatch(message);
 
     // ── CC Refund detection ───────────────────────────────────────────────
-    // "credited to your SuperCard", "refund...credit card" etc.
-    // When money is credited BACK to the CC (not bank), it must be tagged
-    // as paymentMethod = 'Credit Card' so the CC widget can subtract it from
-    // the card's spent total.  Without this, it defaults to 'Bank Transfer'
-    // and the CC balance never decreases.
-    // ── CC Refund / Credit Limit Restoration detection ───────────────────
-    // Matches CC provider SMS confirming that money was credited BACK to the credit card
-    // (e.g. merchant refunds, cashback, or CC bill payment received on the card).
-    // Tagged as income + paymentMethod = 'Credit Card' so the CC widget reduces
-    // the card's spent total & restores the available credit limit.
     final isCcPaymentReceivedConfirmation = !lowerMsg.contains('dr. from') &&
         !lowerMsg.contains('debited from') &&
         RegExp(
-          r'(?:have\s+)?received\s+payment\s+(?:of\s+)?(?:rs\.?|inr|₹|\$)?\s*[\d,]+(?:\.\d{1,2})?[^.]{0,60}(?:credit card|cc|supercard|card|creditcard)'
+          r'(?:have\s+)?received\s+payment\s+(?:of\s+)?(?:rs\.?|inr|₹|\$)?\s*[\d,]+(?:\.\d{1,2})?[^.]{0,60}(?:credit card|cc|supercard|card|creditcard|bobcard)'
           r'|'
           r'(?:available|credit)\s+limit\s+is\s+now'
           r'|'
-          r'thank(?:s|\s+you)?\s+for\s+(?:the\s+)?payment[^.]{0,80}(?:credit card|supercard|cc\s+card|creditcard|card ending)'
+          r'thank(?:s|\s+you)?\s+for\s+(?:the\s+)?payment[^.]{0,80}(?:credit card|supercard|cc\s+card|creditcard|card ending|bobcard)'
           r'|'
-          r'(?:credit card|supercard)\s+(?:bill\s+)?payment\s+(?:of\s+)?(?:rs\.?|inr|₹)?\s*[\d,]+\s*(?:has\s+been\s+)?(?:processed|received|successful|credited|accepted)',
+          r'(?:credit card|supercard|bobcard)\s+(?:bill\s+)?payment\s+(?:of\s+)?(?:rs\.?|inr|₹)?\s*[\d,]+\s*(?:has\s+been\s+)?(?:processed|received|successful|credited|accepted)',
           caseSensitive: false,
         ).hasMatch(message);
 
     final isCcRefundToCard = isCcPaymentReceivedConfirmation ||
         (RegExp(
-          r'(?:refund|reversal|cashback|credited)[^.]{0,60}(?:supercard|credit card|creditcard|card ending|card no)',
+          r'(?:refund|reversal|cashback|credited)[^.]{0,60}(?:supercard|credit card|creditcard|bobcard|card ending|card no)',
           caseSensitive: false,
         ).hasMatch(message) && (lowerMsg.contains('refund') || lowerMsg.contains('reversal') || lowerMsg.contains('cashback')));
 
     // ── Bank Account CC Bill Payment Debit detection ──────────────────────
-    // Matches bank debit SMS where money leaves the savings bank account to pay a CC
-    // e.g. "Rs.4103.00 Dr. from A/C XXXXXX7873 and Cr. to supercard@utkarshbank"
     final isBankCcBillPayment = !isCcRefundToCard && RegExp(
       r'(?:'                                           // open outer group
-      r'cr\.?\s+(?:to\s+)?[\w@.-]*?(?:supercard|creditcard|credit\s*card|cc@)'
+      r'cr\.?\s+(?:to\s+)?[\w@.-]*?(?:supercard|creditcard|credit\s*card|bobcard|cc@)'
       r'|'
-      r'paid\s+(?:rs\.?|inr|₹)?\s*[\d,]+[^.]{0,60}(?:credit card|cc\s+card|supercard|card\s+ending|card\s+no)'
+      r'paid\s+(?:rs\.?|inr|₹)?\s*[\d,]+[^.]{0,60}(?:credit card|cc\s+card|supercard|bobcard|card\s+ending|card\s+no)'
       r'|'
-      r'payment\s+(?:of\s+)?(?:rs\.?|inr|₹|\$)?\s*[\d,]+(?:\.\d{1,2})?\s*towards?\s*(?:[a-z0-9]+\s+)*(?:credit card|cc|supercard|card|creditcard)'
+      r'payment\s+(?:of\s+)?(?:rs\.?|inr|₹|\$)?\s*[\d,]+(?:\.\d{1,2})?\s*towards?\s*(?:[a-z0-9]+\s+)*(?:credit card|cc|supercard|bobcard|card|creditcard)'
       r')',
       caseSensitive: false,
     ).hasMatch(message);
@@ -534,12 +652,12 @@ class SMSParserService {
     String paymentMethod;
     if (isDebitCardPattern) {
       paymentMethod = 'Debit Card';
-    } else if (isCcRefundToCard || (cardLast4 != null && !isDebitCardPattern && !isBankCcBillPayment)) {
+    } else if (isCcRefundToCard || (cardLast4 != null && !isDebitCardPattern && !isBankCcBillPayment) || (isExplicitCcKeyword && !isBankCcBillPayment)) {
       // CC refund / payment received on CC / purchase on CC → tag as Credit Card
       paymentMethod = 'Credit Card';
     } else if (lowerMsg.contains('upi') || hasUpiVpa || hasBroadVpaWithRef) {
       paymentMethod = 'UPI';
-    } else if (lowerMsg.contains('credit card') || lowerMsg.contains(' cc ')) {
+    } else if (isExplicitCcKeyword) {
       paymentMethod = 'Credit Card';
     } else if (lowerMsg.contains('debit card') || lowerMsg.contains(' dc ')) {
       paymentMethod = 'Debit Card';
@@ -582,7 +700,10 @@ class SMSParserService {
     );
     final mMatch = merchantRegex.firstMatch(message);
     if (mMatch?.group(1) != null) {
-      final extracted = mMatch!.group(1)!.trim();
+      var extracted = mMatch!.group(1)!.trim();
+      while (extracted.endsWith('.') || extracted.endsWith(',') || extracted.endsWith(':')) {
+        extracted = extracted.substring(0, extracted.length - 1).trim();
+      }
       if (extracted.isNotEmpty && extracted.length < 35) {
         if (cardLast4 != null) {
           merchant = '$extracted ($detectedApp Card ••$cardLast4)';

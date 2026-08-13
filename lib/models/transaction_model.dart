@@ -16,6 +16,9 @@ class TransactionModel {
   final String? linkedTransactionId;
   final bool isDuplicate;
   final DateTime createdAt;
+  /// Normalized fingerprint of the raw SMS body used for exact-SMS deduplication.
+  /// Null for manually entered transactions.
+  final String? smsHash;
 
   TransactionModel({
     required this.id,
@@ -30,6 +33,7 @@ class TransactionModel {
     this.isRecurring = false,
     this.linkedTransactionId,
     this.isDuplicate = false,
+    this.smsHash,
     DateTime? createdAt,
   }) : createdAt = createdAt ?? DateTime.now();
 
@@ -47,6 +51,7 @@ class TransactionModel {
       'isRecurring': isRecurring,
       'linkedTransactionId': linkedTransactionId,
       'isDuplicate': isDuplicate,
+      'smsHash': smsHash,
       'createdAt': createdAt.toIso8601String(),
     };
   }
@@ -65,6 +70,7 @@ class TransactionModel {
       isRecurring: map['isRecurring'] ?? false,
       linkedTransactionId: map['linkedTransactionId'],
       isDuplicate: map['isDuplicate'] ?? false,
+      smsHash: map['smsHash'] as String?,
       createdAt: map['createdAt'] != null ? DateTime.parse(map['createdAt']) : DateTime.now(),
     );
   }
@@ -82,6 +88,7 @@ class TransactionModel {
     bool? isRecurring,
     String? linkedTransactionId,
     bool? isDuplicate,
+    String? smsHash,
     DateTime? createdAt,
   }) {
     return TransactionModel(
@@ -97,6 +104,7 @@ class TransactionModel {
       isRecurring: isRecurring ?? this.isRecurring,
       linkedTransactionId: linkedTransactionId ?? this.linkedTransactionId,
       isDuplicate: isDuplicate ?? this.isDuplicate,
+      smsHash: smsHash ?? this.smsHash,
       createdAt: createdAt ?? this.createdAt,
     );
   }

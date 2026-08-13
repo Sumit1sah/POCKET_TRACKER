@@ -164,7 +164,9 @@ void main() {
       expect(result.cardLast4, '2235');
     });
 
-    test('16. Merchant-aware deduplication for ₹500 at 10:12 AM vs 10:14 AM', () {
+    test('16. SMS-body deduplication: identical body = duplicate, same amount ≠ duplicate', () {
+      // Two different ₹500 transactions at different merchants → both are REAL, separate transactions.
+      // The parser should return distinct results (different merchants).
       const smsStarbucks = 'Paid Rs.500.00 to STARBUCKS via UPI on 12-Aug-2026 10:12:00';
       const smsUber      = 'Paid Rs.500.00 to UBER via UPI on 12-Aug-2026 10:14:00';
 
@@ -173,9 +175,17 @@ void main() {
 
       expect(res1, isNotNull);
       expect(res1!.merchant, 'STARBUCKS');
-
       expect(res2, isNotNull);
       expect(res2!.merchant, 'UBER');
+
+      // Fingerprints of the two SMS bodies must be DIFFERENT → neither is a duplicate of the other.
+      final fp1 = 'ad-hdfcbk|${smsStarbucks.toLowerCase().replaceAll(RegExp(r'\s+'), ' ').trim()}';
+      final fp2 = 'ad-hdfcbk|${smsUber.toLowerCase().replaceAll(RegExp(r'\s+'), ' ').trim()}';
+      expect(fp1, isNot(equals(fp2)));
+
+      // The EXACT same SMS body arriving twice → fingerprints are identical → duplicate detected.
+      final fp3 = 'ad-hdfcbk|${smsStarbucks.toLowerCase().replaceAll(RegExp(r'\s+'), ' ').trim()}';
+      expect(fp1, equals(fp3)); // ← same SMS = same fingerprint = would be suppressed
     });
 
     test('17. ATM Cash Withdrawal SMS parses correctly', () {
@@ -213,5 +223,124 @@ void main() {
       expect(result, isNotNull);
       expect(result!.amount, 500.0);
     });
+
+    test('21. Bank of Baroda (BOB) UPI Debit SMS with Indian DLT senders (AD-BOBTXN, VM-BOBTXN, BP-BOBTXN)', () {
+      const sms = 'Rs.200.00 Dr. from A/C XXXXXX7873 and Cr. to aishuaishu4831@oksbi. Ref:622545583768. AvlBal:Rs34081.64(2026:08:13 12:55:30). Not you? Call 18005700/5000-BOB';
+
+      for (final sender in ['AD-BOBTXN', 'VM-BOBTXN', 'BP-BOBTXN', 'JD-BOBTXN', 'AX-BOBSMS']) {
+        final result = SMSParserService.parseSMS(sms, senderAddress: sender);
+
+        expect(result, isNotNull, reason: 'Failed for sender: $sender');
+        expect(result!.amount, 200.0);
+        expect(result.type, TransactionType.expense);
+        expect(result.paymentMethod, 'UPI');
+        expect(result.merchant, contains('aishuaishu4831@oksbi'));
+        expect(result.merchant, isNot(endsWith('.')));
+        expect(result.detectedApp, 'Bank of Baroda');
+      }
+    });
+
+    test('22. BOB SMS detected via sender header even if body omits bank name', () {
+      const sms = 'Rs. 500.00 Dr. from A/C XX7873. Ref: 622309396978. AvlBal: Rs 15,400.00';
+      final result = SMSParserService.parseSMS(sms, senderAddress: 'AD-BOBTXN');
+
+      expect(result, isNotNull);
+      expect(result!.amount, 500.0);
+      expect(result.type, TransactionType.expense);
+      expect(result.detectedApp, 'Bank of Baroda');
+    });
+
+    test('23. Comprehensive Public Sector Indian Banks (Canara, PNB, Union, BOI, Indian Bank, IOB, Central Bank)', () {
+      final bankTests = [
+        {'sms': 'Rs.1500.00 debited from A/C XX1234 on 12-Aug. Ref: 981230491. Avl Bal: Rs 12,000.', 'sender': 'VM-CANBNK', 'bank': 'Canara Bank'},
+        {'sms': 'Your A/C XX5678 is debited by Rs. 850.00 towards UPI/merchant@ybl. Avl Bal: Rs 9,400.', 'sender': 'AD-PNBSMS', 'bank': 'PNB Bank'},
+        {'sms': 'INR 3,200.00 Dr. from A/C XX9012 for POS Purchase at Reliance Digital.', 'sender': 'BP-UNIONB', 'bank': 'Union Bank'},
+        {'sms': 'Rs 600.00 Dr from A/c XX3456. Ref 623910293. Avl Bal Rs 5,200.', 'sender': 'VK-BOITXN', 'bank': 'Bank of India'},
+        {'sms': 'A/C XX7890 debited with INR 2,100.00 for payment to Amazon.', 'sender': 'JD-INDIANB', 'bank': 'Indian Bank'},
+        {'sms': 'Rs. 450.00 Dr. from A/C XX2345 on 10-08-2026. Avl Bal Rs 3,100.', 'sender': 'AX-IOBTXN', 'bank': 'Indian Overseas Bank'},
+        {'sms': 'A/C XX6789 is debited by Rs 1,000.00 at SBI ATM.', 'sender': 'BZ-CBIN', 'bank': 'Central Bank of India'},
+      ];
+
+      for (final t in bankTests) {
+        final res = SMSParserService.parseSMS(t['sms']!, senderAddress: t['sender']!);
+        expect(res, isNotNull, reason: 'Failed for ${t['bank']}');
+        expect(res!.detectedApp, t['bank']!);
+        expect(res.amount, greaterThan(0));
+      }
+    });
+
+    test('24. Payments Banks & Neo-Banks (IPPB, Paytm, Airtel, Fi Money, Jupiter)', () {
+      final paymentsTests = [
+        {'sms': 'Rs 300.00 debited from IPPB Account XX4321 for UPI transfer.', 'sender': 'AD-IPPB', 'bank': 'India Post Payments Bank'},
+        {'sms': 'Paid Rs 120.00 via Airtel Payments Bank to Local Shop.', 'sender': 'VM-AIRTEL', 'bank': 'Airtel Payments Bank'},
+        {'sms': 'Rs 499.00 debited from Fi Account XX8765 towards Spotify.', 'sender': 'JD-EPIFI', 'bank': 'Fi Money'},
+        {'sms': 'INR 1,200.00 spent via Jupiter Card ending 9988 at Swiggy.', 'sender': 'BP-JUPITER', 'bank': 'Jupiter Money'},
+      ];
+
+      for (final t in paymentsTests) {
+        final res = SMSParserService.parseSMS(t['sms']!, senderAddress: t['sender']!);
+        expect(res, isNotNull, reason: 'Failed for ${t['bank']}');
+        expect(res!.detectedApp, t['bank']!);
+        expect(res.amount, greaterThan(0));
+      }
+    });
+
+    test('25. Small Finance Banks (AU SFB, Utkarsh, Equitas, Ujjivan)', () {
+      final sfbTests = [
+        {'sms': 'Rs 750.00 Dr. from A/C XX3322 via UPI. Avl Bal Rs 14,200.', 'sender': 'AD-AUBANK', 'bank': 'AU Small Finance Bank'},
+        {'sms': 'INR 1,000.00 debited from Equitas A/C XX4455.', 'sender': 'VM-EQUITAS', 'bank': 'Equitas Bank'},
+        {'sms': 'Rs 500.00 debited from Ujjivan A/C XX6677 for bill payment.', 'sender': 'BP-UJJIVAN', 'bank': 'Ujjivan Bank'},
+      ];
+
+      for (final t in sfbTests) {
+        final res = SMSParserService.parseSMS(t['sms']!, senderAddress: t['sender']!);
+        expect(res, isNotNull, reason: 'Failed for ${t['bank']}');
+        expect(res!.detectedApp, t['bank']!);
+        expect(res.amount, greaterThan(0));
+      }
+    });
+
+    test('26. Card Swiped POS Purchase & ATM Cash Withdrawal across banks', () {
+      const posSms = 'INR 2,499.00 swiped at Croma Electronics on HDFC Bank Card XX4321. Avl Lmt Rs 75,000.';
+      const atmSms = 'Rs 4,000.00 cash wdl at ICICI Bank ATM XX9876 on 12-Aug. Avl Bal Rs 32,000.';
+
+      final resPos = SMSParserService.parseSMS(posSms, senderAddress: 'AD-HDFCBK');
+      final resAtm = SMSParserService.parseSMS(atmSms, senderAddress: 'VM-ICICIB');
+
+      expect(resPos, isNotNull);
+      expect(resPos!.amount, 2499.0);
+      expect(resPos.paymentMethod, 'Credit Card');
+
+      expect(resAtm, isNotNull);
+      expect(resAtm!.amount, 4000.0);
+      expect(resAtm.type, TransactionType.expense);
+    });
+
+    test('27. Comprehensive All Indian Credit Card Issuers & Brands', () {
+      final ccTests = [
+        {'sms': 'Rs 2,100.00 spent on your BOBCARD ending 7873 at BigBasket on 12-Aug. Avl Lmt Rs 85,000.', 'sender': 'AD-BOBCRD', 'last4': '7873', 'bank': 'Bank of Baroda'},
+        {'sms': 'Rs 3,500.00 spent on SBI Card XX9876 at Swiggy.', 'sender': 'VM-SBICRD', 'last4': '9876', 'bank': 'SBI Bank'},
+        {'sms': 'Your HDFC Bank Credit Card XX 2235 has been used for Rs 5000.00 at AMAZON.', 'sender': 'AD-HDFCBK', 'last4': '2235', 'bank': 'HDFC Bank'},
+        {'sms': 'ICICI Bank Credit Card XX9876 used at SWIGGY for Rs.350.00.', 'sender': 'BP-ICICIB', 'last4': '9876', 'bank': 'ICICI Bank'},
+        {'sms': 'Transaction of INR 1,499.00 on Axis Bank Credit Card XX5678 at ZOMATO.', 'sender': 'VK-AXISBK', 'last4': '5678', 'bank': 'Axis Bank'},
+        {'sms': 'INR 800.00 spent on your Kotak Credit Card ending 9988 at Uber.', 'sender': 'JD-KOTAKB', 'last4': '9988', 'bank': 'Kotak Bank'},
+        {'sms': 'Rs 1,200.00 spent on PNB Credit Card XX3456 at D-Mart.', 'sender': 'AX-PNBSMS', 'last4': '3456', 'bank': 'PNB Bank'},
+        {'sms': 'INR 1,500.00 spent on IDFC FIRST Credit Card XX8899 at Nykaa.', 'sender': 'BZ-IDFCFB', 'last4': '8899', 'bank': 'IDFC First Bank'},
+        {'sms': 'Refund Alert! INR 1,793.00 credited to your SuperCard ending with 2235 from Flipkart.', 'sender': 'VM-RBLBNK', 'last4': '2235', 'bank': 'RBL Bank'},
+        {'sms': 'Rs 450.00 spent on your OneCard 1234 at Starbucks.', 'sender': 'AD-ONECRD', 'last4': '1234', 'bank': 'OneCard'},
+        {'sms': 'Rs 600.00 spent on Slice card ending 3344.', 'sender': 'VM-SLICE', 'last4': '3344', 'bank': 'Slice Card'},
+      ];
+
+      for (final t in ccTests) {
+        final res = SMSParserService.parseSMS(t['sms']!, senderAddress: t['sender']!);
+        expect(res, isNotNull, reason: 'Failed for ${t['bank']} Credit Card');
+        expect(res!.amount, greaterThan(0));
+        expect(res.paymentMethod, 'Credit Card', reason: 'Method should be Credit Card for ${t['bank']}');
+        expect(res.cardLast4, t['last4']!);
+      }
+    });
   });
 }
+
+
+
