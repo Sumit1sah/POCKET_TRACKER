@@ -2,39 +2,73 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/category_provider.dart';
 import '../../models/category_model.dart';
+import '../../widgets/category_icon_widget.dart';
 
 class CategoriesScreen extends StatelessWidget {
   const CategoriesScreen({super.key});
 
-  static final List<IconData> _availableIcons = [
-    Icons.shopping_bag_rounded,
+  static final List<IconData> _expenseIcons = [
+    Icons.fastfood_rounded,
     Icons.restaurant_rounded,
     Icons.local_cafe_rounded,
-    Icons.fastfood_rounded,
-    Icons.movie_rounded,
-    Icons.sports_esports_rounded,
-    Icons.fitness_center_rounded,
-    Icons.medical_services_rounded,
+    Icons.local_pizza_rounded,
+    Icons.shopping_bag_rounded,
+    Icons.shopping_cart_rounded,
+    Icons.shopping_basket_rounded,
+    Icons.local_grocery_store_rounded,
     Icons.directions_car_rounded,
     Icons.local_gas_station_rounded,
     Icons.flight_takeoff_rounded,
+    Icons.directions_bus_rounded,
+    Icons.train_rounded,
     Icons.home_rounded,
+    Icons.house_rounded,
     Icons.flash_on_rounded,
+    Icons.water_drop_rounded,
     Icons.school_rounded,
     Icons.laptop_mac_rounded,
-    Icons.pets_rounded,
-    Icons.card_giftcard_rounded,
-    Icons.account_balance_wallet_rounded,
-    Icons.savings_rounded,
-    Icons.trending_up_rounded,
-    Icons.work_rounded,
-    Icons.family_restroom_rounded,
-    Icons.music_note_rounded,
-    Icons.spa_rounded,
-    Icons.build_rounded,
     Icons.phone_android_rounded,
+    Icons.medical_services_rounded,
+    Icons.local_hospital_rounded,
+    Icons.health_and_safety_rounded,
+    Icons.movie_rounded,
+    Icons.sports_esports_rounded,
+    Icons.music_note_rounded,
+    Icons.fitness_center_rounded,
+    Icons.pets_rounded,
     Icons.subscriptions_rounded,
     Icons.receipt_long_rounded,
+    Icons.build_rounded,
+    Icons.credit_card_rounded,
+    Icons.payments_rounded,
+    Icons.spa_rounded,
+    Icons.child_care_rounded,
+    Icons.family_restroom_rounded,
+    Icons.category_rounded,
+  ];
+
+  static final List<IconData> _incomeIcons = [
+    Icons.account_balance_rounded,
+    Icons.account_balance_wallet_rounded,
+    Icons.payments_rounded,
+    Icons.attach_money_rounded,
+    Icons.currency_exchange_rounded,
+    Icons.savings_rounded,
+    Icons.trending_up_rounded,
+    Icons.show_chart_rounded,
+    Icons.insights_rounded,
+    Icons.work_rounded,
+    Icons.card_giftcard_rounded,
+    Icons.redeem_rounded,
+    Icons.price_check_rounded,
+    Icons.price_change_rounded,
+    Icons.replay_rounded,
+    Icons.wallet_rounded,
+    Icons.credit_score_rounded,
+    Icons.credit_card_rounded,
+    Icons.star_rounded,
+    Icons.analytics_rounded,
+    Icons.assessment_rounded,
   ];
 
   static final List<Color> _availableColors = [
@@ -148,13 +182,11 @@ class CategoriesScreen extends StatelessWidget {
           elevation: 1.5,
           child: ListTile(
             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            leading: Container(
-              padding: const EdgeInsets.all(9),
-              decoration: BoxDecoration(
-                color: cat.color.withValues(alpha: 0.18),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(cat.iconData, color: cat.color, size: 22),
+            leading: CategoryIconWidget(
+              category: cat,
+              size: 44,
+              iconSize: 20,
+              showTypeBadge: true,
             ),
             title: Text(
               cat.name,
@@ -296,7 +328,7 @@ class CategoriesScreen extends StatelessWidget {
     final nameController = TextEditingController();
     bool isIncome = false;
     bool deductFromBudget = true;
-    IconData selectedIcon = _availableIcons.first;
+    IconData selectedIcon = _expenseIcons.first;
     Color selectedColor = _availableColors.first;
     String? errorMessage;
 
@@ -367,13 +399,13 @@ class CategoriesScreen extends StatelessWidget {
                         ),
                         child: Row(
                           children: [
-                            Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: selectedColor,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(selectedIcon, color: Colors.white, size: 24),
+                            CategoryIconWidget(
+                              iconData: selectedIcon,
+                              color: selectedColor,
+                              isIncome: isIncome,
+                              size: 48,
+                              iconSize: 24,
+                              showTypeBadge: true,
                             ),
                             const SizedBox(width: 14),
                             Expanded(
@@ -423,6 +455,8 @@ class CategoriesScreen extends StatelessWidget {
                               onTap: () => setModalState(() {
                                 isIncome = false;
                                 deductFromBudget = true;
+                                selectedColor = const Color(0xFF6C5CE7);
+                                selectedIcon = _expenseIcons.first;
                               }),
                               child: Container(
                                 padding: const EdgeInsets.symmetric(vertical: 10),
@@ -449,8 +483,8 @@ class CategoriesScreen extends StatelessWidget {
                               onTap: () => setModalState(() {
                                 isIncome = true;
                                 deductFromBudget = false;
-                                selectedColor = Colors.green;
-                                selectedIcon = Icons.attach_money_rounded;
+                                selectedColor = const Color(0xFF00B894);
+                                selectedIcon = _incomeIcons.first;
                               }),
                               child: Container(
                                 padding: const EdgeInsets.symmetric(vertical: 10),
@@ -533,48 +567,53 @@ class CategoriesScreen extends StatelessWidget {
                       const SizedBox(height: 20),
 
                       // Icon Selector
-                      const Text(
-                        'Select Category Icon',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      Text(
+                        isIncome ? 'Select Income Category Icon' : 'Select Expense Category Icon',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                       ),
                       const SizedBox(height: 8),
-                      GridView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 6,
-                          crossAxisSpacing: 8,
-                          mainAxisSpacing: 8,
-                        ),
-                        itemCount: _availableIcons.length,
-                        itemBuilder: (ctx, i) {
-                          final icon = _availableIcons[i];
-                          final isSelected = icon.codePoint == selectedIcon.codePoint;
-
-                          return GestureDetector(
-                            onTap: () => setModalState(() => selectedIcon = icon),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 150),
-                              decoration: BoxDecoration(
-                                color: isSelected
-                                    ? selectedColor
-                                    : (isDark ? Colors.white.withValues(alpha: 0.06) : Colors.grey.shade100),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: isSelected
-                                      ? selectedColor
-                                      : Colors.transparent,
-                                  width: 2,
-                                ),
-                              ),
-                              child: Icon(
-                                icon,
-                                color: isSelected
-                                    ? Colors.white
-                                    : (isDark ? Colors.white70 : Colors.black54),
-                                size: 22,
-                              ),
+                      Builder(
+                        builder: (context) {
+                          final currentIcons = isIncome ? _incomeIcons : _expenseIcons;
+                          return GridView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 6,
+                              crossAxisSpacing: 8,
+                              mainAxisSpacing: 8,
                             ),
+                            itemCount: currentIcons.length,
+                            itemBuilder: (ctx, i) {
+                              final icon = currentIcons[i];
+                              final isSelected = icon.codePoint == selectedIcon.codePoint;
+
+                              return GestureDetector(
+                                onTap: () => setModalState(() => selectedIcon = icon),
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 150),
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? selectedColor
+                                        : (isDark ? Colors.white.withValues(alpha: 0.06) : Colors.grey.shade100),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: isSelected
+                                          ? selectedColor
+                                          : Colors.transparent,
+                                      width: 2,
+                                    ),
+                                  ),
+                                  child: Icon(
+                                    icon,
+                                    color: isSelected
+                                        ? Colors.white
+                                        : (isDark ? Colors.white70 : Colors.black54),
+                                    size: 22,
+                                  ),
+                                ),
+                              );
+                            },
                           );
                         },
                       ),
@@ -730,13 +769,13 @@ class CategoriesScreen extends StatelessWidget {
                         ),
                         child: Row(
                           children: [
-                            Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: selectedColor,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(selectedIcon, color: Colors.white, size: 24),
+                            CategoryIconWidget(
+                              iconData: selectedIcon,
+                              color: selectedColor,
+                              isIncome: cat.isIncome,
+                              size: 48,
+                              iconSize: 24,
+                              showTypeBadge: true,
                             ),
                             const SizedBox(width: 14),
                             Expanded(
@@ -833,48 +872,57 @@ class CategoriesScreen extends StatelessWidget {
                       const SizedBox(height: 20),
 
                       // Icon Selector
-                      const Text(
-                        'Select Category Icon',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      Text(
+                        cat.isIncome ? 'Select Income Category Icon' : 'Select Expense Category Icon',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                       ),
                       const SizedBox(height: 8),
-                      GridView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 6,
-                          crossAxisSpacing: 8,
-                          mainAxisSpacing: 8,
-                        ),
-                        itemCount: _availableIcons.length,
-                        itemBuilder: (ctx, i) {
-                          final icon = _availableIcons[i];
-                          final isSelected = icon.codePoint == selectedIcon.codePoint;
+                      Builder(
+                        builder: (context) {
+                          final currentIcons = List<IconData>.from(cat.isIncome ? _incomeIcons : _expenseIcons);
+                          if (!currentIcons.any((ic) => ic.codePoint == selectedIcon.codePoint)) {
+                            currentIcons.insert(0, selectedIcon);
+                          }
 
-                          return GestureDetector(
-                            onTap: () => setModalState(() => selectedIcon = icon),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 150),
-                              decoration: BoxDecoration(
-                                color: isSelected
-                                    ? selectedColor
-                                    : (isDark ? Colors.white.withValues(alpha: 0.06) : Colors.grey.shade100),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: isSelected
-                                      ? selectedColor
-                                      : Colors.transparent,
-                                  width: 2,
-                                ),
-                              ),
-                              child: Icon(
-                                icon,
-                                color: isSelected
-                                    ? Colors.white
-                                    : (isDark ? Colors.white70 : Colors.black54),
-                                size: 22,
-                              ),
+                          return GridView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 6,
+                              crossAxisSpacing: 8,
+                              mainAxisSpacing: 8,
                             ),
+                            itemCount: currentIcons.length,
+                            itemBuilder: (ctx, i) {
+                              final icon = currentIcons[i];
+                              final isSelected = icon.codePoint == selectedIcon.codePoint;
+
+                              return GestureDetector(
+                                onTap: () => setModalState(() => selectedIcon = icon),
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 150),
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? selectedColor
+                                        : (isDark ? Colors.white.withValues(alpha: 0.06) : Colors.grey.shade100),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: isSelected
+                                          ? selectedColor
+                                          : Colors.transparent,
+                                      width: 2,
+                                    ),
+                                  ),
+                                  child: Icon(
+                                    icon,
+                                    color: isSelected
+                                        ? Colors.white
+                                        : (isDark ? Colors.white70 : Colors.black54),
+                                    size: 22,
+                                  ),
+                                ),
+                              );
+                            },
                           );
                         },
                       ),

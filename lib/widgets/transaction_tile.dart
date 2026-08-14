@@ -5,17 +5,20 @@ import '../providers/category_provider.dart';
 import '../providers/theme_currency_provider.dart';
 import '../utils/formatters.dart';
 import '../utils/constants.dart';
+import 'category_icon_widget.dart';
 
 class TransactionTile extends StatelessWidget {
   final TransactionModel transaction;
   final VoidCallback? onTap;
   final VoidCallback? onDelete;
+  final bool showDeleteButton;
 
   const TransactionTile({
     super.key,
     required this.transaction,
     this.onTap,
     this.onDelete,
+    this.showDeleteButton = false,
   });
 
   @override
@@ -33,7 +36,7 @@ class TransactionTile extends StatelessWidget {
     final amountColor = isIncome ? const Color(0xFF00B894) : const Color(0xFFFF7675);
     final sign = isIncome ? '+' : '-';
 
-    return Container(
+    final Widget tileWidget = Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
@@ -64,21 +67,13 @@ class TransactionTile extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
               children: [
-                // Category Icon with Gradient Aura Ring
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: catMatch.color.withValues(alpha: 0.14),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: catMatch.color.withValues(alpha: 0.25),
-                      width: 1,
-                    ),
-                  ),
-                  child: Center(
-                    child: Icon(catMatch.iconData, color: catMatch.color, size: 22),
-                  ),
+                // Category Icon with Transaction Type Badge
+                CategoryIconWidget(
+                  category: catMatch,
+                  transactionType: transaction.type,
+                  size: 48,
+                  iconSize: 22,
+                  showTypeBadge: true,
                 ),
                 const SizedBox(width: 14),
 
@@ -220,8 +215,8 @@ class TransactionTile extends StatelessWidget {
                   ),
                 ),
 
-                // Delete Button (if provided)
-                if (onDelete != null) ...[
+                // Delete Button (if explicitly enabled)
+                if (showDeleteButton && onDelete != null) ...[
                   const SizedBox(width: 6),
                   IconButton(
                     icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red),
@@ -234,6 +229,67 @@ class TransactionTile extends StatelessWidget {
           ),
         ),
       ),
+    );
+
+    if (onDelete == null) return tileWidget;
+
+    return Dismissible(
+      key: ValueKey('tx_slide_del_${transaction.id}'),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFF7675),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            Text(
+              'Delete',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+            ),
+            SizedBox(width: 8),
+            Icon(Icons.delete_sweep_rounded, color: Colors.white, size: 24),
+          ],
+        ),
+      ),
+      confirmDismiss: (direction) async {
+        return await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+            title: const Text('Delete Transaction?'),
+            content: Text(
+              'Are you sure you want to delete "${transaction.category}" (${Formatters.formatCurrency(transaction.amount, symbol: currency)})?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.redAccent,
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Delete'),
+              ),
+            ],
+          ),
+        ) ?? false;
+      },
+      onDismissed: (_) {
+        onDelete?.call();
+      },
+      child: tileWidget,
     );
   }
 

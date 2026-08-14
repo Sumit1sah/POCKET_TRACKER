@@ -66,15 +66,33 @@ class SmartCategorizerService {
   };
 
   static const Map<String, List<String>> _incomeKeywordMap = {
-    'Salary': ['salary', 'payroll', 'monthly salary', 'wages', 'company credit'],
-    'Pocket Money': ['pocket money', 'pocketmoney', 'monthly pocket money', 'stipend', 'allowance', 'parents', 'dad', 'mom'],
-    'Money Returned': ['money returned', 'returned', 'sent back', 'paid back', 'returned money', 'borrowed back', 'repaid', 'repayment'],
-    'Investment Returns': ['dividend', 'interest', 'mutual fund', 'stocks', 'returns', 'profit', 'fd interest'],
-    'Gift / Bonus': ['gift', 'birthday', 'festival', 'bonus', 'rewards', 'prize'],
+    'Salary': [
+      'salary', 'payroll', 'monthly salary', 'wages', 'stipend', 'remuneration',
+      'payout', 'company credit', 'sal cr', 'salary credited', 'corp salary',
+      'inc salary', 'emp payout'
+    ],
+    'Investment Returns': [
+      'dividend', 'interest', 'fd interest', 'int.pd', 'mutual fund', 'stocks',
+      'returns', 'profit', 'zerodha', 'groww', 'upstox', 'angel one', 'paytm money',
+      'capital gain', 'matured', 'fd maturity', 'interest credited', 'int pd'
+    ],
+    'Gift / Bonus': [
+      'gift', 'birthday', 'festival', 'bonus', 'rewards', 'prize', 'diwali bonus',
+      'incentive', 'reward credit', 'cash reward'
+    ],
+    'Money Returned': [
+      'money returned', 'returned', 'sent back', 'paid back', 'returned money',
+      'borrowed back', 'repaid', 'repayment', 'upi ref', 'refund', 'reimbursement',
+      'credit reversal'
+    ],
+    'Pocket Money': [
+      'pocket money', 'pocketmoney', 'monthly pocket money', 'allowance',
+      'parents', 'dad', 'mom', 'father', 'mother'
+    ],
     'Credit Card Payment': [
-      'credit card payment', 'cc payment', 'card payment', 'paid cc bill', 'paid card bill',
-      'credit card bill paid', 'card bill paid', 'cc bill paid', 'credit limit restored',
-      'card limit restored', 'cc limit', 'paid outstanding', 'cleared card',
+      'credit card payment received', 'cc bill payment received', 'payment received for credit card',
+      'payment towards card', 'card bill paid', 'credit card payment', 'cc bill paid',
+      'card outstanding cleared', 'credit limit restored'
     ],
     'CC Cashback / Refund': [
       'cashback', 'cash back', 'cc cashback', 'credit card cashback', 'card cashback',
@@ -82,6 +100,10 @@ class SmartCategorizerService {
       'reward credit', 'reward points', 'hdfc cashback', 'sbi cashback', 'icici cashback',
       'axis cashback', 'amex credit', 'card credit', 'refund to card', 'refunded to card',
       'credited to card', 'merchant refund'
+    ],
+    'Other Income': [
+      'credited', 'received', 'cr.', 'deposit', 'upi credit', 'neft cr', 'imps cr',
+      'transfer received', 'inward', 'fund received'
     ],
   };
 
@@ -104,7 +126,7 @@ class SmartCategorizerService {
       }
     }
 
-    return null;
+    return isExpense ? null : 'Other Income';
   }
 
   /// Returns top 3-4 recommended categories matching the input text,

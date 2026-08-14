@@ -22,7 +22,13 @@ class CategoryModel {
     this.deductFromBudget = true,
   });
 
-  IconData get iconData => IconHelper.fromCodePoint(iconCodePoint, fallback: Icons.category);
+  IconData get iconData {
+    if (iconCodePoint != 0 && iconCodePoint != Icons.category.codePoint) {
+      final found = IconHelper.fromCodePoint(iconCodePoint, fallback: Icons.category);
+      if (found != Icons.category) return found;
+    }
+    return IconHelper.getIconForCategoryName(name, isIncome: isIncome);
+  }
   Color get color => Color(colorValue);
 
   Map<String, dynamic> toMap() {

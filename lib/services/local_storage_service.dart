@@ -40,10 +40,13 @@ class LocalStorageService {
         await categoriesBox.put(cat.id, cat.toMap());
       } else {
         final existingMap = Map<dynamic, dynamic>.from(categoriesBox.get(cat.id));
+        existingMap['iconCodePoint'] = cat.iconCodePoint;
+        existingMap['colorValue'] = cat.colorValue;
+        existingMap['isIncome'] = cat.isIncome;
         if (!existingMap.containsKey('deductFromBudget')) {
           existingMap['deductFromBudget'] = cat.deductFromBudget;
-          await categoriesBox.put(cat.id, existingMap);
         }
+        await categoriesBox.put(cat.id, existingMap);
       }
     }
 

@@ -2,11 +2,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
 import 'package:expense_tracker/models/transaction_model.dart';
 import 'package:expense_tracker/providers/transaction_provider.dart';
-import 'package:expense_tracker/providers/budget_provider.dart';
-import 'package:expense_tracker/providers/savings_provider.dart';
 import 'package:expense_tracker/services/local_storage_service.dart';
 import 'package:expense_tracker/services/sms_parser_service.dart';
-import 'package:expense_tracker/services/sms_auto_capture_service.dart';
 import 'package:expense_tracker/utils/formatters.dart';
 
 void main() {

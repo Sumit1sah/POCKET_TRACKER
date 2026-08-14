@@ -8,6 +8,7 @@ import '../../providers/theme_currency_provider.dart';
 import '../../models/budget_model.dart';
 import '../../utils/formatters.dart';
 import '../../utils/constants.dart';
+import '../../widgets/category_icon_widget.dart';
 
 class BudgetScreen extends StatelessWidget {
   const BudgetScreen({super.key});
@@ -294,13 +295,11 @@ class BudgetScreen extends StatelessWidget {
                       children: [
                         Row(
                           children: [
-                            Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: catMatch.color.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                              child: Icon(catMatch.iconData, color: catMatch.color, size: 20),
+                            CategoryIconWidget(
+                              category: catMatch,
+                              size: 42,
+                              iconSize: 20,
+                              showTypeBadge: true,
                             ),
                             const SizedBox(width: 12),
                             Expanded(

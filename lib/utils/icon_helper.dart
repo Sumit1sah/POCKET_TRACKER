@@ -22,6 +22,127 @@ class IconHelper {
     return _iconMap[codePoint] ?? fallback;
   }
 
+  /// Automatically matches category name / transaction description to a 
+  /// contextually accurate Material Icon (Food -> restaurant, Credit Card Bill -> credit_card, etc.)
+  static IconData getIconForCategoryName(String categoryName, {bool isIncome = false}) {
+    final name = categoryName.trim().toLowerCase();
+    if (name.isEmpty) {
+      return isIncome ? Icons.account_balance_wallet_rounded : Icons.category_rounded;
+    }
+
+    // 1. Food, Dining & Cafe
+    if (name.contains('food') || name.contains('restau') || name.contains('dini') ||
+        name.contains('eat') || name.contains('cafe') || name.contains('coffe') ||
+        name.contains('pizza') || name.contains('burger') || name.contains('swiggy') ||
+        name.contains('zomato')) {
+      return Icons.fastfood_rounded;
+    }
+
+    // 2. Credit Card & Card Bills
+    if (name.contains('credit') || name.contains('card') || name.contains('cc bill') ||
+        name.contains('card bill') || name.contains('statement')) {
+      return isIncome ? Icons.credit_score_rounded : Icons.credit_card_rounded;
+    }
+
+    // 3. Shopping & E-Commerce
+    if (name.contains('shop') || name.contains('store') || name.contains('amazon') ||
+        name.contains('flipkart') || name.contains('mall') || name.contains('cloth') ||
+        name.contains('apparel') || name.contains('buy')) {
+      return Icons.shopping_bag_rounded;
+    }
+
+    // 4. Travel & Vehicles
+    if (name.contains('travel') || name.contains('flight') || name.contains('car') ||
+        name.contains('cab') || name.contains('uber') || name.contains('ola') ||
+        name.contains('bus') || name.contains('train') || name.contains('commute') ||
+        name.contains('taxi') || name.contains('trip')) {
+      return name.contains('flight') ? Icons.flight_takeoff_rounded : Icons.directions_car_rounded;
+    }
+
+    // 5. Groceries
+    if (name.contains('grocer') || name.contains('supermarket') || name.contains('veg') ||
+        name.contains('fruit') || name.contains('blinkit') || name.contains('zepto') ||
+        name.contains('instamart') || name.contains('mart')) {
+      return Icons.local_grocery_store_rounded;
+    }
+
+    // 6. Fuel & Energy
+    if (name.contains('fuel') || name.contains('petrol') || name.contains('diesel') ||
+        name.contains('gas') || name.contains('cng') || name.contains('ev') || name.contains('shell')) {
+      return Icons.local_gas_station_rounded;
+    }
+
+    // 7. Bills & Utilities
+    if (name.contains('bill') || name.contains('utility') || name.contains('electric') ||
+        name.contains('water') || name.contains('wifi') || name.contains('broadband') ||
+        name.contains('recharge') || name.contains('power')) {
+      return Icons.receipt_long_rounded;
+    }
+
+    // 8. Medical & Pharmacy
+    if (name.contains('medic') || name.contains('health') || name.contains('doc') ||
+        name.contains('hospit') || name.contains('pharm') || name.contains('clinic') ||
+        name.contains('drug') || name.contains('care')) {
+      return Icons.medical_services_rounded;
+    }
+
+    // 9. Education & Learning
+    if (name.contains('educat') || name.contains('school') || name.contains('colleg') ||
+        name.contains('tuit') || name.contains('course') || name.contains('book') ||
+        name.contains('study') || name.contains('fee')) {
+      return Icons.school_rounded;
+    }
+
+    // 10. Entertainment & Gaming
+    if (name.contains('enter') || name.contains('movi') || name.contains('cinema') ||
+        name.contains('game') || name.contains('gam') || name.contains('netflix') ||
+        name.contains('hotstar') || name.contains('prime') || name.contains('music') ||
+        name.contains('spotif')) {
+      return (name.contains('game') || name.contains('gam'))
+          ? Icons.sports_esports_rounded
+          : Icons.movie_rounded;
+    }
+
+    // 11. Investment & Stock Market
+    if (name.contains('invest') || name.contains('stock') || name.contains('share') ||
+        name.contains('mutual') || name.contains('sip') || name.contains('trade') ||
+        name.contains('crypto') || name.contains('equity') || name.contains('return')) {
+      return isIncome ? Icons.trending_up_rounded : Icons.show_chart_rounded;
+    }
+
+    // 12. Rent & Housing
+    if (name.contains('rent') || name.contains('house') || name.contains('flat') ||
+        name.contains('room') || name.contains('pg') || name.contains('lease')) {
+      return Icons.home_rounded;
+    }
+
+    // 13. Salary & Wages
+    if (name.contains('salar') || name.contains('pay') || name.contains('wage') ||
+        name.contains('stipend') || name.contains('income') || name.contains('earn')) {
+      return Icons.account_balance_wallet_rounded;
+    }
+
+    // 14. Gift, Bonus & Cashback
+    if (name.contains('gift') || name.contains('bonus') || name.contains('reward') ||
+        name.contains('prize') || name.contains('cashback')) {
+      return isIncome ? Icons.card_giftcard_rounded : Icons.redeem_rounded;
+    }
+
+    // 15. Money Returned & Refunds
+    if (name.contains('return') || name.contains('refund') || name.contains('repay') ||
+        name.contains('reimbur')) {
+      return isIncome ? Icons.replay_rounded : Icons.payments_rounded;
+    }
+
+    // 16. Money Given / Lent
+    if (name.contains('lent') || name.contains('borrow') || name.contains('given') ||
+        name.contains('lend')) {
+      return Icons.payments_rounded;
+    }
+
+    return isIncome ? Icons.account_balance_wallet_rounded : Icons.category_rounded;
+  }
+
   // ---------------------------------------------------------------------------
   // Known MaterialIcons mapped by their code point.
   // Add any extra icons used in the app here.
@@ -80,6 +201,7 @@ class IconHelper {
     0xe55a: Icons.local_printshop,
     0xe55f: Icons.local_shipping,
     0xe560: Icons.local_taxi,
+    0xe57a: Icons.fastfood,
     0xe906: Icons.restaurant,
     0xe907: Icons.restaurant_menu,
     0xe8d1: Icons.school,

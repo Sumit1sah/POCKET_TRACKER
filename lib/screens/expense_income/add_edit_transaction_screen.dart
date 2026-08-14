@@ -12,6 +12,7 @@ import '../../services/smart_categorizer_service.dart';
 import '../../utils/constants.dart';
 import '../../utils/formatters.dart';
 import '../../widgets/transaction_notification.dart';
+import '../../widgets/category_icon_widget.dart';
 
 class AddEditTransactionScreen extends StatefulWidget {
   final bool isExpense;
@@ -491,7 +492,24 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
                 items: filteredCategories.map((cat) {
                   return DropdownMenuItem(
                     value: cat.name,
-                    child: Text(cat.name),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CategoryIconWidget(
+                          category: cat,
+                          size: 28,
+                          iconSize: 14,
+                          showTypeBadge: true,
+                        ),
+                        const SizedBox(width: 10),
+                        Flexible(
+                          child: Text(
+                            cat.name,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
                   );
                 }).toList(),
                 onChanged: (val) {

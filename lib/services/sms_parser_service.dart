@@ -676,10 +676,12 @@ class SMSParserService {
       type = TransactionType.expense;
     }
 
-    String category = type == TransactionType.income ? 'Credit Card Payment' : 'Others';
+    String category = type == TransactionType.income ? 'Other Income' : 'Others';
 
-    // Set category for Bank CC bill payment — expense category.
-    if (isBankCcBillPayment) {
+    // Pin specific card categories if explicitly detected
+    if (isCcRefundToCard) {
+      category = 'CC Cashback / Refund';
+    } else if (isBankCcBillPayment) {
       category = 'Credit Card Bill';
     }
 

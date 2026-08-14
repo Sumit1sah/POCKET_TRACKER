@@ -8,6 +8,7 @@ import '../../providers/theme_currency_provider.dart';
 import '../../utils/formatters.dart';
 import '../../utils/constants.dart';
 import '../../widgets/transaction_notification.dart';
+import '../../widgets/category_icon_widget.dart';
 import 'add_edit_transaction_screen.dart';
 
 class TransactionListScreen extends StatefulWidget {
@@ -653,17 +654,11 @@ class _TransactionListScreenState extends State<TransactionListScreen>
                       borderRadius: BorderRadius.circular(3),
                     ),
                   ),
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: catMatch.color.withValues(alpha: 0.13),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: catMatch.color.withValues(alpha: 0.2)),
-                    ),
-                    child: Center(
-                      child: Icon(catMatch.iconData, color: catMatch.color, size: 20),
-                    ),
+                  CategoryIconWidget(
+                    category: catMatch,
+                    size: 44,
+                    iconSize: 20,
+                    showTypeBadge: true,
                   ),
                   const SizedBox(width: 12),
                   Expanded(
