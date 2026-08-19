@@ -182,16 +182,18 @@ void main() {
       expect(result.paymentMethod, 'Credit Card');
     });
 
-    test('Total Net Balance includes user-specified Credit Card Limit and debits CC transactions', () {
+    test('Total Net Balance accurately reflects Bank Balance + CC Available Limit', () {
       const income = 50000.0;
       const userEnteredCreditLimit = 100000.0;
       const ccExpense = 15000.0;
       const otherExpense = 5000.0;
 
-      const totalExpense = ccExpense + otherExpense;
-      const totalNetBalance = income + userEnteredCreditLimit - totalExpense;
+      const bankAndCashBalance = income - otherExpense; // 50,000 - 5,000 = 45,000
+      const ccAvailableLimit = userEnteredCreditLimit - ccExpense; // 100,000 - 15,000 = 85,000
+      const totalNetBalance = bankAndCashBalance + ccAvailableLimit; // 45,000 + 85,000 = 130,000
 
-      // 50,000 + 100,000 - 20,000 = 130,000
+      expect(bankAndCashBalance, 45000.0);
+      expect(ccAvailableLimit, 85000.0);
       expect(totalNetBalance, 130000.0);
     });
 

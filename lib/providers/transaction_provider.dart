@@ -121,10 +121,29 @@ class TransactionProvider extends ChangeNotifier {
     return cards.fold(0.0, (sum, c) => sum + (c['limit'] as num? ?? 0.0).toDouble());
   }
 
-  /// Total Net Balance = Income + Total Credit Limit - Total Expense.
-  /// Adding total credit limit ensures credit card debits transparently deduct
-  /// from the overall net balance while accurately representing total financial capacity.
-  double get netBalance => totalIncome + totalCreditLimit - totalExpense;
+  /// Total Net Balance = Bank & Cash Balance + Credit Card Available Balance.
+  /// Accurately represents total financial spending capacity (Liquid Bank/Cash + Available CC Limit).
+  double get netBalance => bankAndCashBalance + totalCreditCardAvailableLimit;
+
+  // ── Liquid Bank & Cash Balances ──────────────────────────────────────────
+
+  /// Total Income credited into Bank, Cash, UPI, and Digital Wallets (excludes CC credits).
+  double get bankAndCashIncome {
+    return _transactions
+        .where((t) => t.type == TransactionType.income && t.paymentMethod != 'Credit Card')
+        .fold(0.0, (sum, t) => sum + t.amount);
+  }
+
+  /// Total Expenses paid from Bank, Cash, UPI, Debit Cards, and CC Bill Payments from accounts.
+  double get bankAndCashExpense {
+    return _transactions
+        .where((t) => t.type == TransactionType.expense && t.paymentMethod != 'Credit Card')
+        .fold(0.0, (sum, t) => sum + t.amount);
+  }
+
+  /// Liquid Money Balance = Bank & Cash Income − Bank & Cash Expenses.
+  /// Accurately matches the user's real bank accounts, UPI apps, and cash in hand.
+  double get bankAndCashBalance => bankAndCashIncome - bankAndCashExpense;
 
   // ── Credit Card Analytics ────────────────────────────────────────────────
 
@@ -154,6 +173,13 @@ class TransactionProvider extends ChangeNotifier {
     final refunds =
         creditCardRefundTransactions.fold(0.0, (s, t) => s + t.amount);
     return (purchases - refunds).clamp(0.0, double.infinity);
+  }
+
+  /// Available Credit Card Limit = Total Limit - Total CC Spent (≥ 0).
+  double get totalCreditCardAvailableLimit {
+    final limit = totalCreditLimit;
+    if (limit <= 0) return 0.0;
+    return (limit - totalCreditCardSpent).clamp(0.0, limit);
   }
 
   /// Extracts the card identifier (e.g. "••2235") from a transaction's

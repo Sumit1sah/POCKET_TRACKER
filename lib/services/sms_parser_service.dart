@@ -623,6 +623,8 @@ class SMSParserService {
         RegExp(
           r'(?:have\s+)?received\s+payment\s+(?:of\s+)?(?:rs\.?|inr|₹|\$)?\s*[\d,]+(?:\.\d{1,2})?[^.]{0,60}(?:credit card|cc|supercard|card|creditcard|bobcard)'
           r'|'
+          r'payment\s+(?:of\s+)?(?:rs\.?|inr|₹|\$)?\s*[\d,]+(?:\.\d{1,2})?\s*(?:has\s+been\s+)?received[^.]{0,60}(?:towards|for|to)?[^.]{0,60}(?:credit card|cc|supercard|card|creditcard|bobcard)'
+          r'|'
           r'(?:available|credit)\s+limit\s+is\s+now'
           r'|'
           r'thank(?:s|\s+you)?\s+for\s+(?:the\s+)?payment[^.]{0,80}(?:credit card|supercard|cc\s+card|creditcard|card ending|bobcard)'
@@ -679,7 +681,9 @@ class SMSParserService {
     String category = type == TransactionType.income ? 'Other Income' : 'Others';
 
     // Pin specific card categories if explicitly detected
-    if (isCcRefundToCard) {
+    if (isCcPaymentReceivedConfirmation) {
+      category = 'Credit Card Payment';
+    } else if (isCcRefundToCard) {
       category = 'CC Cashback / Refund';
     } else if (isBankCcBillPayment) {
       category = 'Credit Card Bill';
@@ -717,8 +721,10 @@ class SMSParserService {
       }
     }
 
-    // Smart categorizer — skip if category is already pinned (CC bill payment)
-    if (category != 'Credit Card Bill') {
+    // Smart categorizer — skip if category is already pinned (CC bill payment / refund)
+    if (category != 'Credit Card Bill' &&
+        category != 'Credit Card Payment' &&
+        category != 'CC Cashback / Refund') {
       final smartCat = SmartCategorizerService.predictCategory(
         message,
         isExpense: type == TransactionType.expense,

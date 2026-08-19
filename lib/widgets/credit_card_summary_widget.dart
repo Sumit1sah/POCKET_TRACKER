@@ -312,11 +312,10 @@ class _CreditCardSummaryWidgetState extends State<CreditCardSummaryWidget> {
           // ── Individual cards ───────────────────────────────────────
           ...List.generate(_cards.length, (i) {
             final card = _cards[i];
-            // Match spent from transactions — try ••last4 key first
-            final spentKey = '••${card.last4}';
-            final spent = cardSpentMap[spentKey] ??
-                cardSpentMap['Credit Card'] ??
-                0.0;
+            // Match spent from transactions — try ••last4 key + generic CC when 1 card
+            final last4Spent = cardSpentMap['••${card.last4}'] ?? 0.0;
+            final genericSpent = _cards.length == 1 ? (cardSpentMap['Credit Card'] ?? 0.0) : 0.0;
+            final spent = last4Spent + genericSpent;
             final fraction = card.limit > 0
                 ? (spent / card.limit).clamp(0.0, 1.0)
                 : 0.0;

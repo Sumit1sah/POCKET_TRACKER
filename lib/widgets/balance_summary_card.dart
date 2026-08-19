@@ -266,10 +266,20 @@ class _BalanceSummaryCardState extends State<BalanceSummaryCard> {
           if (txProvider.totalCreditLimit > 0) ...[
             const SizedBox(height: 2),
             Text(
-              'Includes ${Formatters.formatCurrency(txProvider.totalCreditLimit, symbol: currency)} total credit limit',
+              'Bank: ${Formatters.formatCurrency(txProvider.bankAndCashBalance, symbol: currency)} + CC Avail: ${Formatters.formatCurrency(txProvider.totalCreditCardAvailableLimit, symbol: currency)}',
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.7),
-                fontSize: 10,
+                color: Colors.white.withValues(alpha: 0.85),
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ] else if (txProvider.totalCreditCardSpent > 0) ...[
+            const SizedBox(height: 2),
+            Text(
+              'Bank: ${Formatters.formatCurrency(txProvider.bankAndCashBalance, symbol: currency)} • CC Due: ${Formatters.formatCurrency(txProvider.totalCreditCardSpent, symbol: currency)}',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.85),
+                fontSize: 11,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -473,9 +483,9 @@ class _BalanceSummaryCardState extends State<BalanceSummaryCard> {
               // Individual card rows
               ..._cards.asMap().entries.map((e) {
                 final card = e.value;
-                final spent = ccSpentMap['••${card.last4}'] ??
-                    ccSpentMap['Credit Card'] ??
-                    0.0;
+                final last4Spent = ccSpentMap['••${card.last4}'] ?? 0.0;
+                final genericSpent = _cards.length == 1 ? (ccSpentMap['Credit Card'] ?? 0.0) : 0.0;
+                final spent = last4Spent + genericSpent;
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 6),
                   child: _ccCardRow(card, spent, currency),
