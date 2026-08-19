@@ -48,7 +48,12 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
     super.initState();
     _isExpense = widget.isExpense;
     final edit = widget.transactionToEdit;
-    _amountController = TextEditingController(text: edit != null ? edit.amount.toStringAsFixed(0) : '');
+    _amountController = TextEditingController(
+        text: edit != null
+            ? (edit.amount % 1 == 0
+                ? edit.amount.toInt().toString()
+                : edit.amount.toString())
+            : '');
     _descriptionController = TextEditingController(text: edit?.description ?? '');
     _descriptionController.addListener(_onDescriptionChanged);
     if (edit != null) {
@@ -82,7 +87,9 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
         final result = SMSParserService.parseSMS(text);
         if (result != null && mounted) {
           setState(() {
-            _amountController.text = result.amount.toStringAsFixed(0);
+            _amountController.text = result.amount % 1 == 0
+                ? result.amount.toInt().toString()
+                : result.amount.toString();
             _isExpense = result.type == TransactionType.expense;
             _selectedCategory = result.category;
             _selectedPaymentMethod = result.paymentMethod;
@@ -90,7 +97,8 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
           });
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Auto-detected ${result.detectedApp} payment: ₹${result.amount.toStringAsFixed(0)}'),
+              content: Text(
+                  'Auto-detected ${result.detectedApp} payment: ₹${result.amount % 1 == 0 ? result.amount.toInt().toString() : result.amount.toString()}'),
               duration: const Duration(seconds: 4),
             ),
           );
@@ -175,7 +183,9 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
                 final result = SMSParserService.parseSMS(smsController.text);
                 if (result != null) {
                   setState(() {
-                    _amountController.text = result.amount.toStringAsFixed(0);
+                    _amountController.text = result.amount % 1 == 0
+                        ? result.amount.toInt().toString()
+                        : result.amount.toString();
                     _isExpense = result.type == TransactionType.expense;
                     _selectedCategory = result.category;
                     _selectedPaymentMethod = result.paymentMethod;
@@ -183,7 +193,9 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
                   });
                   Navigator.pop(dialogContext);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Detected from ${result.detectedApp}: ₹${result.amount.toStringAsFixed(0)} (${result.category})')),
+                    SnackBar(
+                        content: Text(
+                            'Detected from ${result.detectedApp}: ₹${result.amount % 1 == 0 ? result.amount.toInt().toString() : result.amount.toString()} (${result.category})')),
                   );
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -311,7 +323,9 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
           title: isEditing
               ? (_isExpense ? 'Expense Updated' : 'Income Updated')
               : (_isExpense ? 'Expense Added' : 'Income Added'),
-          amount: amount.toStringAsFixed(0),
+          amount: amount % 1 == 0
+              ? amount.toInt().toString()
+              : amount.toString(),
           category: saveCategory,
           currency: currency,
           type: _isExpense

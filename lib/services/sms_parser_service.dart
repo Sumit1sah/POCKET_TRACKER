@@ -406,7 +406,7 @@ class SMSParserService {
       detectedApp = 'PhonePe';
     } else if (lowerMsg.contains('paytm') || lowerSender.contains('paytm')) {
       detectedApp = 'Paytm';
-    } else if (lowerMsg.contains('cred') || lowerSender.contains('cred')) {
+    } else if (RegExp(r'\bcred\b', caseSensitive: false).hasMatch(lowerMsg) || lowerSender.contains('cred')) {
       detectedApp = 'CRED';
     } else if (lowerMsg.contains('bhim') || lowerSender.contains('bhim')) {
       detectedApp = 'BHIM UPI';

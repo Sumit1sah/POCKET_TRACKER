@@ -40,7 +40,7 @@ class Formatters {
       final k = amount / 1000;
       return '$symbol${k % 1 == 0 ? k.toInt() : k.toStringAsFixed(1)}k';
     } else {
-      return '$symbol${amount.toInt()}';
+      return '$symbol${amount % 1 == 0 ? amount.toInt() : (amount.toStringAsFixed(2).replaceAll(RegExp(r'0+$'), '').replaceAll(RegExp(r'\.$'), ''))}';
     }
   }
 

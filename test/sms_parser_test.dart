@@ -334,6 +334,17 @@ void main() {
         expect(res.cardLast4, t['last4']!);
       }
     });
+
+    test('28. Exact float amount captured without rounding for BOB UPI Credit SMS', () {
+      const sms = 'Dear BOB UPI User: Your account is credited with INR 10.26 on 2026-08-19 12:33:04 PM by UPI Ref No 623134846690; AvlBal: Rs37149.32 - BOB';
+      final result = SMSParserService.parseSMS(sms);
+
+      expect(result, isNotNull);
+      expect(result!.amount, 10.26);
+      expect(result.type, TransactionType.income);
+      expect(result.paymentMethod, 'UPI');
+      expect(result.detectedApp, 'Bank of Baroda');
+    });
   });
 }
 

@@ -258,7 +258,9 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen>
                                     TransactionNotification.show(
                                       context,
                                       title: 'Transaction Deleted',
-                                      amount: t.amount.toStringAsFixed(0),
+                                      amount: t.amount % 1 == 0
+                                          ? t.amount.toInt().toString()
+                                          : t.amount.toString(),
                                       category: t.category,
                                       currency: c,
                                       type: TransactionNotificationType.deleted,

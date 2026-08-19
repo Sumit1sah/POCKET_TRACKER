@@ -573,7 +573,7 @@ class _TransactionListScreenState extends State<TransactionListScreen>
       },
       onDismissed: (_) {
         final catName = t.category;
-        final amt = t.amount.toStringAsFixed(0);
+        final amt = t.amount % 1 == 0 ? t.amount.toInt().toString() : t.amount.toString();
         txProvider.deleteTransaction(t.id);
         TransactionNotification.show(
           context,
@@ -938,7 +938,7 @@ class _TransactionListScreenState extends State<TransactionListScreen>
                 TransactionNotification.show(
                   context,
                   title: 'Deleted',
-                  amount: t.amount.toStringAsFixed(0),
+                  amount: t.amount % 1 == 0 ? t.amount.toInt().toString() : t.amount.toString(),
                   category: t.category,
                   currency: currency,
                   type: TransactionNotificationType.deleted,
@@ -1013,7 +1013,7 @@ class _TransactionListScreenState extends State<TransactionListScreen>
     TransactionNotification.show(
       context,
       title: 'Entry Duplicated',
-      amount: t.amount.toStringAsFixed(0),
+      amount: t.amount % 1 == 0 ? t.amount.toInt().toString() : t.amount.toString(),
       category: t.category,
       currency: currency,
       type: t.type == TransactionType.income
@@ -1138,10 +1138,18 @@ class _TransactionListScreenState extends State<TransactionListScreen>
     final currency = Provider.of<ThemeCurrencyProvider>(context, listen: false).currency;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final minCtrl = TextEditingController(
-      text: txProvider.minAmount != null ? txProvider.minAmount!.toStringAsFixed(0) : '',
+      text: txProvider.minAmount != null
+          ? (txProvider.minAmount! % 1 == 0
+              ? txProvider.minAmount!.toInt().toString()
+              : txProvider.minAmount!.toString())
+          : '',
     );
     final maxCtrl = TextEditingController(
-      text: txProvider.maxAmount != null ? txProvider.maxAmount!.toStringAsFixed(0) : '',
+      text: txProvider.maxAmount != null
+          ? (txProvider.maxAmount! % 1 == 0
+              ? txProvider.maxAmount!.toInt().toString()
+              : txProvider.maxAmount!.toString())
+          : '',
     );
 
     showModalBottomSheet(
