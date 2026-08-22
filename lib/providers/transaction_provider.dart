@@ -237,6 +237,8 @@ class TransactionProvider extends ChangeNotifier {
       final matchesQuery = _searchQuery.isEmpty ||
           t.category.toLowerCase().contains(lowerQuery) ||
           t.description.toLowerCase().contains(lowerQuery) ||
+          (t.notes != null && t.notes!.toLowerCase().contains(lowerQuery)) ||
+          t.tags.any((tag) => tag.toLowerCase().contains(lowerQuery)) ||
           t.paymentMethod.toLowerCase().contains(lowerQuery) ||
           t.amount.toString().contains(_searchQuery);
 

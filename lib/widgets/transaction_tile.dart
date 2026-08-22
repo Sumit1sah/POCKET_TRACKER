@@ -110,19 +110,85 @@ class TransactionTile extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
 
-                      // Description / Note (if present)
-                      if (transaction.description.isNotEmpty) ...[
-                        Text(
-                          transaction.description,
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w400,
-                            color: Theme.of(context).textTheme.bodySmall?.color,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                      // Where from? (Merchant / App / Source)
+                      if (transaction.description.isNotEmpty &&
+                          transaction.description.trim().toLowerCase() != transaction.category.trim().toLowerCase()) ...[
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.storefront_rounded,
+                              size: 12,
+                              color: const Color(0xFF6C5CE7).withValues(alpha: 0.85),
+                            ),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                transaction.description,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Theme.of(context).textTheme.bodyMedium?.color,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 3),
+                      ],
+
+                      // Notes / Reason (if present)
+                      if (transaction.notes != null && transaction.notes!.isNotEmpty) ...[
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.notes_rounded,
+                              size: 11,
+                              color: const Color(0xFF6C5CE7).withValues(alpha: 0.8),
+                            ),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                transaction.notes!,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontStyle: FontStyle.italic,
+                                  color: Theme.of(context).textTheme.bodySmall?.color,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                      ],
+
+                      // Tags (if present)
+                      if (transaction.tags.isNotEmpty) ...[
+                        Wrap(
+                          spacing: 4,
+                          runSpacing: 2,
+                          children: transaction.tags.take(3).map((tag) {
+                            return Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF6C5CE7).withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                tag,
+                                style: const TextStyle(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF6C5CE7),
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                        const SizedBox(height: 5),
                       ],
 
                       // Bottom Metadata Pill Bar
@@ -184,6 +250,32 @@ class TransactionTile extends StatelessWidget {
                                 Flexible(
                                   child: _buildBankBadge(transaction),
                                 ),
+
+                                // Recurring Badge (if active)
+                                if (transaction.isRecurring) ...[
+                                  const SizedBox(width: 5),
+                                  Container(
+                                    padding: const EdgeInsets.all(3),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF6C5CE7).withValues(alpha: 0.12),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: const Icon(Icons.repeat_rounded, size: 10, color: Color(0xFF6C5CE7)),
+                                  ),
+                                ],
+
+                                // Receipt Attached Badge (if present)
+                                if (transaction.receiptPath != null) ...[
+                                  const SizedBox(width: 5),
+                                  Container(
+                                    padding: const EdgeInsets.all(3),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF00B894).withValues(alpha: 0.12),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: const Icon(Icons.receipt_long_rounded, size: 10, color: Color(0xFF00B894)),
+                                  ),
+                                ],
                               ],
                             ),
                           ),

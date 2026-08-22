@@ -716,16 +716,70 @@ class _TransactionListScreenState extends State<TransactionListScreen>
                             ),
                           ],
                         ),
-                        if (t.description.isNotEmpty) ...[
+                        if (t.description.isNotEmpty &&
+                            t.description.trim().toLowerCase() != t.category.trim().toLowerCase()) ...[
                           const SizedBox(height: 3),
-                          Text(
-                            t.description,
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                          Row(
+                            children: [
+                              Icon(Icons.storefront_rounded, size: 11, color: const Color(0xFF6C5CE7).withValues(alpha: 0.85)),
+                              const SizedBox(width: 3),
+                              Expanded(
+                                child: Text(
+                                  t.description,
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: isDark ? Colors.white70 : Colors.black87,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                        if (t.notes != null && t.notes!.isNotEmpty) ...[
+                          const SizedBox(height: 2),
+                          Row(
+                            children: [
+                              Icon(Icons.notes_rounded, size: 10, color: const Color(0xFF6C5CE7).withValues(alpha: 0.8)),
+                              const SizedBox(width: 3),
+                              Expanded(
+                                child: Text(
+                                  t.notes!,
+                                  style: TextStyle(
+                                    fontSize: 10.5,
+                                    fontStyle: FontStyle.italic,
+                                    color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                        if (t.tags.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Wrap(
+                            spacing: 4,
+                            children: t.tags.take(3).map((tag) {
+                              return Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF6C5CE7).withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  tag,
+                                  style: const TextStyle(
+                                    fontSize: 8.5,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF6C5CE7),
+                                  ),
+                                ),
+                              );
+                            }).toList(),
                           ),
                         ],
                         const SizedBox(height: 6),
@@ -734,6 +788,17 @@ class _TransactionListScreenState extends State<TransactionListScreen>
                             _pmBadge(t.paymentMethod, isDark),
                             const SizedBox(width: 6),
                             _bankBadge(t),
+                            if (t.receiptPath != null) ...[
+                              const SizedBox(width: 4),
+                              Container(
+                                padding: const EdgeInsets.all(3),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF00B894).withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: const Icon(Icons.receipt_long_rounded, size: 10, color: Color(0xFF00B894)),
+                              ),
+                            ],
                             const Spacer(),
                             Row(
                               mainAxisSize: MainAxisSize.min,

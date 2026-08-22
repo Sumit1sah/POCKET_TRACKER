@@ -10,6 +10,8 @@ class TransactionModel {
   final String category;
   final String paymentMethod;
   final String description;
+  final String? notes;
+  final List<String> tags;
   final String? receiptPath;
   final DateTime date;
   final bool isRecurring;
@@ -28,6 +30,8 @@ class TransactionModel {
     required this.category,
     required this.paymentMethod,
     required this.description,
+    this.notes,
+    this.tags = const [],
     this.receiptPath,
     required this.date,
     this.isRecurring = false,
@@ -46,6 +50,8 @@ class TransactionModel {
       'category': category,
       'paymentMethod': paymentMethod,
       'description': description,
+      'notes': notes,
+      'tags': tags,
       'receiptPath': receiptPath,
       'date': date.toIso8601String(),
       'isRecurring': isRecurring,
@@ -65,6 +71,8 @@ class TransactionModel {
       category: map['category'] ?? 'General',
       paymentMethod: map['paymentMethod'] ?? 'Cash',
       description: map['description'] ?? '',
+      notes: map['notes'] as String?,
+      tags: map['tags'] != null ? List<String>.from(map['tags']) : const [],
       receiptPath: map['receiptPath'],
       date: DateTime.parse(map['date']),
       isRecurring: map['isRecurring'] ?? false,
@@ -83,6 +91,8 @@ class TransactionModel {
     String? category,
     String? paymentMethod,
     String? description,
+    String? notes,
+    List<String>? tags,
     String? receiptPath,
     DateTime? date,
     bool? isRecurring,
@@ -99,6 +109,8 @@ class TransactionModel {
       category: category ?? this.category,
       paymentMethod: paymentMethod ?? this.paymentMethod,
       description: description ?? this.description,
+      notes: notes ?? this.notes,
+      tags: tags ?? this.tags,
       receiptPath: receiptPath ?? this.receiptPath,
       date: date ?? this.date,
       isRecurring: isRecurring ?? this.isRecurring,

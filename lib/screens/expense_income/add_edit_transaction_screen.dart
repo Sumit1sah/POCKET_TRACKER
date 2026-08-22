@@ -33,35 +33,39 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
   late bool _isExpense;
 
   late TextEditingController _amountController;
-  late TextEditingController _descriptionController;
+  late TextEditingController _descriptionController; // Title / Merchant
+  late TextEditingController _notesController; // Notes for what it was for
 
   String _selectedCategory = 'Food';
   String _selectedPaymentMethod = 'UPI';
   String? _selectedCardLast4;
   DateTime _selectedDate = DateTime.now();
-  String? _receiptPath;
   bool _isRecurring = false;
-  String? _autoDetectedCategory;
+  String? _receiptPath;
 
   @override
   void initState() {
     super.initState();
     _isExpense = widget.isExpense;
     final edit = widget.transactionToEdit;
+
     _amountController = TextEditingController(
-        text: edit != null
-            ? (edit.amount % 1 == 0
-                ? edit.amount.toInt().toString()
-                : edit.amount.toString())
-            : '');
+      text: edit != null
+          ? (edit.amount % 1 == 0
+              ? edit.amount.toInt().toString()
+              : edit.amount.toString())
+          : '',
+    );
     _descriptionController = TextEditingController(text: edit?.description ?? '');
+    _notesController = TextEditingController(text: edit?.notes ?? '');
     _descriptionController.addListener(_onDescriptionChanged);
+
     if (edit != null) {
       _selectedCategory = edit.category;
       _selectedPaymentMethod = edit.paymentMethod;
       _selectedDate = edit.date;
-      _receiptPath = edit.receiptPath;
       _isRecurring = edit.isRecurring;
+      _receiptPath = edit.receiptPath;
     } else {
       _selectedCategory = _isExpense ? 'Food' : 'Salary';
       _checkClipboardAutoDetect();
@@ -74,7 +78,6 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
     if (predicted != null && predicted != _selectedCategory) {
       setState(() {
         _selectedCategory = predicted;
-        _autoDetectedCategory = predicted;
       });
     }
   }
@@ -95,13 +98,6 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
             _selectedPaymentMethod = result.paymentMethod;
             _descriptionController.text = result.merchant;
           });
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                  'Auto-detected ${result.detectedApp} payment: ₹${result.amount % 1 == 0 ? result.amount.toInt().toString() : result.amount.toString()}'),
-              duration: const Duration(seconds: 4),
-            ),
-          );
         }
       }
     } catch (_) {
@@ -114,116 +110,8 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
     _descriptionController.removeListener(_onDescriptionChanged);
     _amountController.dispose();
     _descriptionController.dispose();
+    _notesController.dispose();
     super.dispose();
-  }
-
-  void _showSMSAutoFillDialog() {
-    final smsController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: const Row(
-            children: [
-              Icon(Icons.sms_outlined, color: Color(0xFF6C5CE7)),
-              SizedBox(width: 8),
-              Text('Auto-Detect Bank SMS'),
-            ],
-          ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Paste bank SMS or payment alert text below to automatically extract amount, category, & payment method:',
-                  style: TextStyle(fontSize: 12),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: smsController,
-                  maxLines: 3,
-                  decoration: const InputDecoration(
-                    hintText: 'e.g. Rs 450.00 debited for Swiggy Food via UPI...',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                const Text('Quick Test Payment App & Bank Presets:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: [
-                    _buildPresetBadge('GPay (₹350 Food)', () {
-                      smsController.text = 'Paid Rs 350.00 to Starbucks via Google Pay GPay UPI from HDFC Bank.';
-                    }),
-                    _buildPresetBadge('PhonePe (₹1,250 Grocery)', () {
-                      smsController.text = 'Paid Rs 1,250.00 to Blinkit Supermarket via PhonePe UPI.';
-                    }),
-                    _buildPresetBadge('Paytm (₹4,500 Shopping)', () {
-                      smsController.text = 'Rs 4,500.00 debited for Amazon Order via Paytm UPI.';
-                    }),
-                    _buildPresetBadge('CRED (₹2,800 Bill)', () {
-                      smsController.text = 'Paid Rs 2,800.00 for Electricity Bill payment using CRED UPI.';
-                    }),
-                    _buildPresetBadge('Salary (₹50,000)', () {
-                      smsController.text = 'Rs 50,000.00 credited to Bank A/C XX1234 for Salary Deposit via Bank Transfer.';
-                    }),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
-            ElevatedButton(
-              onPressed: () {
-                final result = SMSParserService.parseSMS(smsController.text);
-                if (result != null) {
-                  setState(() {
-                    _amountController.text = result.amount % 1 == 0
-                        ? result.amount.toInt().toString()
-                        : result.amount.toString();
-                    _isExpense = result.type == TransactionType.expense;
-                    _selectedCategory = result.category;
-                    _selectedPaymentMethod = result.paymentMethod;
-                    _descriptionController.text = result.merchant;
-                  });
-                  Navigator.pop(dialogContext);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                        content: Text(
-                            'Detected from ${result.detectedApp}: ₹${result.amount % 1 == 0 ? result.amount.toInt().toString() : result.amount.toString()} (${result.category})')),
-                  );
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Could not parse SMS amount. Check message format.')),
-                  );
-                }
-              },
-              child: const Text('Auto-Fill Entry'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildPresetBadge(String label, VoidCallback onTap) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: Colors.grey.shade200,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Text(label, style: const TextStyle(fontSize: 11, color: Colors.black87)),
-      ),
-    );
   }
 
   Future<void> _pickDateTime() async {
@@ -278,7 +166,7 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
       final rawDesc = _descriptionController.text.trim();
       String finalDesc = rawDesc;
 
-      // If Credit Card was chosen and user picked a card (or cards exist), append card last4 tag
+      // If Credit Card was chosen and user picked a card, append card last4 tag
       if (_selectedPaymentMethod == 'Credit Card') {
         final rawCards = LocalStorageService.getCreditCards();
         final effectiveLast4 = _selectedCardLast4 ?? (rawCards.isNotEmpty ? (rawCards.first['last4'] as String?) : null);
@@ -287,6 +175,8 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
         }
       }
 
+      final notesText = _notesController.text.trim();
+
       final transaction = TransactionModel(
         id: widget.transactionToEdit?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
         uid: widget.transactionToEdit?.uid ?? activeUid,
@@ -294,15 +184,13 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
         amount: amount,
         category: saveCategory,
         paymentMethod: _selectedPaymentMethod,
-        description: finalDesc,
+        description: finalDesc.isNotEmpty ? finalDesc : saveCategory,
+        notes: notesText.isNotEmpty ? notesText : null,
         receiptPath: _receiptPath,
         date: _selectedDate,
         isRecurring: _isRecurring,
       );
 
-      // Save the transaction — the Hive box watcher in TransactionProvider
-      // automatically triggers loadTransactions() + notifyListeners() on every
-      // write, so all screens (Dashboard, Analytics, Budget) refresh in real-time.
       if (widget.transactionToEdit == null) {
         await txProvider.addTransaction(transaction);
       } else {
@@ -311,10 +199,8 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
 
       if (!mounted) return;
 
-      // Pop back first so the notification appears over the home/list screen.
       Navigator.pop(context);
 
-      // Show the premium floating notification on the parent screen.
       if (context.mounted) {
         final currency = Provider.of<ThemeCurrencyProvider>(context, listen: false).currency;
         final isEditing = widget.transactionToEdit != null;
@@ -331,9 +217,9 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
           type: _isExpense
               ? TransactionNotificationType.expense
               : TransactionNotificationType.income,
-          description: _descriptionController.text.trim().isNotEmpty
-              ? _descriptionController.text.trim()
-              : _selectedPaymentMethod,
+          description: finalDesc.isNotEmpty
+              ? finalDesc
+              : (notesText.isNotEmpty ? notesText : _selectedPaymentMethod),
         );
       }
     }
@@ -342,6 +228,7 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
   @override
   Widget build(BuildContext context) {
     final currency = Provider.of<ThemeCurrencyProvider>(context).currency;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final rawCategories = Provider.of<CategoryProvider>(context).categories;
     final categories = rawCategories.isNotEmpty ? rawCategories : AppConstants.defaultCategories;
 
@@ -359,6 +246,8 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
         ? _selectedPaymentMethod
         : AppConstants.paymentMethods.first;
 
+    final cardBg = isDark ? const Color(0xFF1E1E2E) : Colors.white;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -366,22 +255,16 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
               ? 'Edit Transaction'
               : (_isExpense ? 'Add Expense' : 'Add Income'),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.sms_outlined),
-            onPressed: _showSMSAutoFillDialog,
-            tooltip: 'Auto-Detect Bank SMS',
-          ),
-        ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+        physics: const BouncingScrollPhysics(),
         child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Type Selector Toggle Buttons
+              // Type Toggle (Expense / Income)
               Row(
                 children: [
                   Expanded(
@@ -399,14 +282,14 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         decoration: BoxDecoration(
-                          color: _isExpense ? const Color(0xFFFF7675) : Colors.grey.shade200,
+                          color: _isExpense ? const Color(0xFFFF7675) : (isDark ? const Color(0xFF28293D) : Colors.grey.shade200),
                           borderRadius: BorderRadius.circular(14),
                         ),
                         alignment: Alignment.center,
                         child: Text(
                           'Expense',
                           style: TextStyle(
-                            color: _isExpense ? Colors.white : Colors.black87,
+                            color: _isExpense ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
                             fontWeight: FontWeight.bold,
                             fontSize: 15,
                           ),
@@ -430,14 +313,14 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         decoration: BoxDecoration(
-                          color: !_isExpense ? const Color(0xFF00B894) : Colors.grey.shade200,
+                          color: !_isExpense ? const Color(0xFF00B894) : (isDark ? const Color(0xFF28293D) : Colors.grey.shade200),
                           borderRadius: BorderRadius.circular(14),
                         ),
                         alignment: Alignment.center,
                         child: Text(
                           'Income',
                           style: TextStyle(
-                            color: !_isExpense ? Colors.white : Colors.black87,
+                            color: !_isExpense ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
                             fontWeight: FontWeight.bold,
                             fontSize: 15,
                           ),
@@ -447,18 +330,20 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
 
-              // Amount Input Field
+              // Amount Input
               TextFormField(
                 controller: _amountController,
-                keyboardType: TextInputType.number,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                 decoration: InputDecoration(
                   labelText: 'Amount',
                   prefixText: '$currency ',
                   prefixStyle: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                  filled: true,
+                  fillColor: cardBg,
                 ),
                 validator: (val) {
                   if (val == null || val.trim().isEmpty) return 'Please enter amount';
@@ -467,41 +352,17 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
                   return null;
                 },
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 18),
 
-              // Category Selector & Smart Suggestions
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('Category', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
-                  if (_autoDetectedCategory != null)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF6C5CE7).withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.auto_awesome, size: 12, color: Color(0xFF6C5CE7)),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Smart AI: $_autoDetectedCategory',
-                            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF6C5CE7)),
-                          ),
-                        ],
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 6),
+              // Category Selector
               DropdownButtonFormField<String>(
                 key: ValueKey('cat_${_isExpense}_$currentCategory'),
                 initialValue: currentCategory,
                 decoration: InputDecoration(
-                  prefixIcon: const Icon(Icons.auto_awesome_rounded, color: Color(0xFF6C5CE7), size: 20),
-                  labelText: 'Selected Category',
+                  labelText: 'Category',
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                  filled: true,
+                  fillColor: cardBg,
                 ),
                 items: filteredCategories.map((cat) {
                   return DropdownMenuItem(
@@ -511,80 +372,23 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
                       children: [
                         CategoryIconWidget(
                           category: cat,
-                          size: 28,
-                          iconSize: 14,
+                          size: 26,
+                          iconSize: 13,
                           showTypeBadge: true,
                         ),
                         const SizedBox(width: 10),
                         Flexible(
-                          child: Text(
-                            cat.name,
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                          child: Text(cat.name, overflow: TextOverflow.ellipsis),
                         ),
                       ],
                     ),
                   );
                 }).toList(),
                 onChanged: (val) {
-                  if (val != null) {
-                    setState(() {
-                      _selectedCategory = val;
-                      _autoDetectedCategory = null;
-                    });
-                  }
+                  if (val != null) setState(() => _selectedCategory = val);
                 },
               ),
-              const SizedBox(height: 8),
-
-              // Smart Category Chips
-              Builder(
-                builder: (context) {
-                  final suggested = SmartCategorizerService.getSuggestedCategories(
-                    _descriptionController.text,
-                    isExpense: _isExpense,
-                  );
-                  return SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: suggested.map((catName) {
-                        final isSel = currentCategory == catName;
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 6),
-                          child: ActionChip(
-                            avatar: isSel
-                                ? const Icon(Icons.check_rounded, size: 14, color: Colors.white)
-                                : const Icon(Icons.auto_awesome_rounded, size: 12, color: Color(0xFF6C5CE7)),
-                            label: Text(catName),
-                            onPressed: () {
-                              setState(() {
-                                _selectedCategory = catName;
-                                _autoDetectedCategory = null;
-                              });
-                            },
-                            backgroundColor: isSel
-                                ? const Color(0xFF6C5CE7)
-                                : const Color(0xFF6C5CE7).withValues(alpha: 0.08),
-                            labelStyle: TextStyle(
-                              fontSize: 11,
-                              fontWeight: isSel ? FontWeight.bold : FontWeight.w500,
-                              color: isSel ? Colors.white : const Color(0xFF2D3436),
-                            ),
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                              side: BorderSide(
-                                color: isSel ? const Color(0xFF6C5CE7) : const Color(0xFF6C5CE7).withValues(alpha: 0.2),
-                              ),
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 18),
 
               // Payment Method Selector
               DropdownButtonFormField<String>(
@@ -593,6 +397,8 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
                 decoration: InputDecoration(
                   labelText: 'Payment Method',
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                  filled: true,
+                  fillColor: cardBg,
                 ),
                 items: AppConstants.paymentMethods.map((method) {
                   return DropdownMenuItem(value: method, child: Text(method));
@@ -601,12 +407,12 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
                   if (val != null) setState(() => _selectedPaymentMethod = val);
                 },
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 18),
 
-              // Specific Credit Card Picker (if paymentMethod == 'Credit Card')
+              // Specific Credit Card Picker (if Credit Card)
               if (_selectedPaymentMethod == 'Credit Card') ...[
                 _buildCreditCardPicker(),
-                const SizedBox(height: 20),
+                const SizedBox(height: 18),
               ],
 
               // Date & Time Picker Tile
@@ -616,49 +422,130 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey.shade400),
+                    color: cardBg,
+                    border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.grey.shade300),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.calendar_month_outlined, color: Color(0xFF6C5CE7)),
+                      const Icon(Icons.calendar_today_outlined, size: 20, color: Color(0xFF6C5CE7)),
                       const SizedBox(width: 12),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Date & Time', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                          Text('Date & Time', style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
                           const SizedBox(height: 2),
                           Text(
                             Formatters.formatShortDateTime(_selectedDate),
-                            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
                           ),
                         ],
                       ),
                       const Spacer(),
-                      const Icon(Icons.edit_calendar_outlined, size: 20, color: Colors.grey),
+                      const Icon(Icons.edit_outlined, size: 18, color: Colors.grey),
                     ],
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 18),
 
-              // Description / Notes Field
+              // Where from? (Merchant / App / Transit / Store)
               TextFormField(
                 controller: _descriptionController,
                 decoration: InputDecoration(
-                  labelText: 'Notes / Description (Optional)',
+                  labelText: _isExpense ? 'Where from? (Merchant / App / Transit)' : 'Where from? (Source / Payer)',
+                  hintText: _isExpense ? 'e.g. Flipkart, Swiggy, Auto / Bus, Amazon, Uber...' : 'e.g. Employer, Client, Bank, Friend...',
+                  prefixIcon: const Icon(Icons.storefront_rounded, color: Color(0xFF6C5CE7), size: 20),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                  filled: true,
+                  fillColor: cardBg,
                 ),
               ),
-              const SizedBox(height: 28),
+              const SizedBox(height: 8),
 
-              // Save Button
+              // Quick "Where from" Suggestion Chips (Flexible 2-3 Rows)
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: (_isExpense
+                    ? const ['Flipkart', 'Swiggy', 'Auto / Bus', 'Amazon', 'Zomato', 'Blinkit', 'Uber', 'Zepto', 'Metro', 'Netflix', 'Fuel Station']
+                    : const ['Salary / Employer', 'Freelance / Client', 'Bank Interest', 'Friend', 'Cashback']
+                ).map((source) {
+                  final isSel = _descriptionController.text.trim().toLowerCase() == source.toLowerCase();
+                  return ActionChip(
+                    avatar: isSel
+                        ? const Icon(Icons.check_rounded, size: 12, color: Colors.white)
+                        : null,
+                    label: Text(source),
+                    onPressed: () {
+                      HapticFeedback.selectionClick();
+                      setState(() {
+                        _descriptionController.text = source;
+                        if (source == 'Auto / Bus' || source == 'Uber' || source == 'Metro') {
+                          _selectedCategory = 'Travel';
+                        } else if (source == 'Flipkart' || source == 'Amazon') {
+                          _selectedCategory = 'Shopping';
+                        } else if (source == 'Swiggy' || source == 'Zomato') {
+                          _selectedCategory = 'Food';
+                        } else if (source == 'Blinkit' || source == 'Zepto') {
+                          _selectedCategory = 'Grocery';
+                        } else if (source == 'Netflix') {
+                          _selectedCategory = 'Entertainment';
+                        } else if (source == 'Fuel Station') {
+                          _selectedCategory = 'Fuel';
+                        } else {
+                          final predicted = SmartCategorizerService.predictCategory(source, isExpense: _isExpense);
+                          if (predicted != null) {
+                            _selectedCategory = predicted;
+                          }
+                        }
+                      });
+                    },
+                    backgroundColor: isSel
+                        ? const Color(0xFF6C5CE7)
+                        : (isDark ? const Color(0xFF28293D) : Colors.grey.shade100),
+                    labelStyle: TextStyle(
+                      fontSize: 11,
+                      fontWeight: isSel ? FontWeight.bold : FontWeight.w500,
+                      color: isSel ? Colors.white : (isDark ? Colors.white70 : const Color(0xFF2D3436)),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(
+                        color: isSel ? const Color(0xFF6C5CE7) : (isDark ? Colors.white12 : Colors.grey.shade300),
+                        width: 0.8,
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 18),
+
+              // Notes ("What was it for?") Field
+              TextFormField(
+                controller: _notesController,
+                maxLines: 2,
+                decoration: InputDecoration(
+                  labelText: 'Notes / What was it for? (Optional)',
+                  hintText: 'e.g. Shoes order, dinner with team, daily commute, flat rent...',
+                  prefixIcon: const Icon(Icons.edit_note_rounded, color: Color(0xFF6C5CE7), size: 22),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                  filled: true,
+                  fillColor: cardBg,
+                  alignLabelWithHint: true,
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // Save / Update Button
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: _saveForm,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _isExpense ? const Color(0xFFFF7675) : const Color(0xFF00B894),
+                    foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   ),
@@ -666,7 +553,7 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
                     widget.transactionToEdit != null
                         ? 'Update Transaction'
                         : (_isExpense ? 'Save Expense' : 'Save Income'),
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                 ),
               ),
@@ -677,7 +564,6 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
     );
   }
 
-  /// Builds a credit card selector dropdown populated with user's saved cards.
   Widget _buildCreditCardPicker() {
     final rawCards = LocalStorageService.getCreditCards();
     if (rawCards.isEmpty) {
@@ -688,8 +574,8 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: const Color(0xFF6C5CE7).withValues(alpha: 0.3)),
         ),
-        child: Row(
-          children: const [
+        child: const Row(
+          children: [
             Icon(Icons.info_outline_rounded, color: Color(0xFF6C5CE7), size: 18),
             SizedBox(width: 10),
             Expanded(

@@ -14,7 +14,7 @@ class ReportService {
     String? monthTitle,
   }) async {
     final List<List<dynamic>> rows = [
-      ['Transaction ID', 'Type', 'Amount', 'Category', 'Payment Method', 'Date', 'Description'],
+      ['Transaction ID', 'Type', 'Amount', 'Category', 'Payment Method', 'Date', 'Description / Payee', 'Notes', 'Tags'],
     ];
 
     for (final t in transactions) {
@@ -26,6 +26,8 @@ class ReportService {
         t.paymentMethod,
         Formatters.formatDate(t.date),
         t.description,
+        t.notes ?? '',
+        t.tags.join(', '),
       ]);
     }
 

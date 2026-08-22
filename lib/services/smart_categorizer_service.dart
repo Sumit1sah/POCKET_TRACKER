@@ -22,8 +22,13 @@ class SmartCategorizerService {
       'petrol pump', 'gas station', 'indian oil', 'bharat petroleum', 'hindustan petroleum'
     ],
     'Transport': [
-      'uber', 'ola', 'rapido', 'cab', 'auto', 'metro', 'parking', 'toll',
-      'fastag', 'bus', 'namma metro', 'dMRC', 'taxi', 'ride'
+      'uber', 'ola', 'rapido', 'cab', 'auto', 'auto bus', 'auto / bus', 'metro',
+      'parking', 'toll', 'fastag', 'bus', 'namma metro', 'dMRC', 'taxi', 'ride', 'transit'
+    ],
+    'Travel': [
+      'flight', 'train', 'irctc', 'bus', 'redbus', 'makemytrip', 'goibibo',
+      'cleartrip', 'hotel', 'airbnb', 'stay', 'resort', 'yatra', 'indigo',
+      'air india', 'akasa', 'auto', 'auto bus', 'auto / bus'
     ],
     'Bills': [
       'electricity', 'electric', 'bill', 'water bill', 'gas bill', 'recharge',
@@ -43,11 +48,6 @@ class SmartCategorizerService {
       'medical', 'pharmacy', 'hospital', 'doctor', 'apollo', 'practo',
       'medicine', 'chemist', 'lab', 'pharmeasy', '1mg', 'tata 1mg',
       'gym', 'fitness', 'cult.fit', 'cultfit', 'dental', 'clinic'
-    ],
-    'Travel': [
-      'flight', 'train', 'irctc', 'bus', 'redbus', 'makemytrip', 'goibibo',
-      'cleartrip', 'hotel', 'airbnb', 'stay', 'resort', 'yatra', 'indigo',
-      'air india', 'akasa'
     ],
     'Education': [
       'school', 'college', 'university', 'fees', 'tuition', 'udemy',
