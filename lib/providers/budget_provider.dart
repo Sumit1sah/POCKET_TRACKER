@@ -16,6 +16,18 @@ class BudgetStatus {
   bool get isWarning => percentage >= 0.8 && percentage <= 1.0;
 }
 
+class UnbudgetedCategoryStatus {
+  final String category;
+  final double spent;
+  final int transactionCount;
+
+  UnbudgetedCategoryStatus({
+    required this.category,
+    required this.spent,
+    required this.transactionCount,
+  });
+}
+
 class BudgetProvider extends ChangeNotifier {
   List<BudgetModel> _budgets = [];
 
@@ -171,6 +183,116 @@ class BudgetProvider extends ChangeNotifier {
 
       return BudgetStatus(budget: budget, spent: spent);
     }).toList();
+  }
+
+  // Get categories that have expenses in the target month but NO budget limit assigned
+  List<UnbudgetedCategoryStatus> getUnbudgetedCategories(
+    List<TransactionModel> transactions, {
+    DateTime? month,
+    List<CategoryModel>? categories,
+  }) {
+    final targetMonth = month ?? _selectedMonth;
+    final catList = categories ?? LocalStorageService.getCategories();
+
+    final targetExpenses = transactions.where((t) =>
+        t.type == TransactionType.expense &&
+        shouldCategoryDeductFromBudget(t.category, catList) &&
+        t.date.year == targetMonth.year &&
+        t.date.month == targetMonth.month).toList();
+
+    final budgetedCategoryNames = _budgets
+        .map((b) => b.category.trim().toLowerCase())
+        .toSet();
+
+    final Map<String, List<TransactionModel>> unbudgetedGroup = {};
+    for (final tx in targetExpenses) {
+      final catKey = tx.category.trim();
+      if (!budgetedCategoryNames.contains(catKey.toLowerCase()) &&
+          catKey.toLowerCase() != 'overall') {
+        unbudgetedGroup.putIfAbsent(catKey, () => []).add(tx);
+      }
+    }
+
+    return unbudgetedGroup.entries.map((entry) {
+      final total = entry.value.fold(0.0, (sum, t) => sum + t.amount);
+      return UnbudgetedCategoryStatus(
+        category: entry.key,
+        spent: total,
+        transactionCount: entry.value.length,
+      );
+    }).toList()
+      ..sort((a, b) => b.spent.compareTo(a.spent));
+  }
+
+  // Get previous month actual spending per category (for auto-allocator presets)
+  Map<String, double> getPreviousMonthCategorySpending(
+    List<TransactionModel> transactions, {
+    List<CategoryModel>? categories,
+  }) {
+    final prevMonth = DateTime(_selectedMonth.year, _selectedMonth.month - 1, 1);
+    final catList = categories ?? LocalStorageService.getCategories();
+
+    final prevExpenses = transactions.where((t) =>
+        t.type == TransactionType.expense &&
+        shouldCategoryDeductFromBudget(t.category, catList) &&
+        t.date.year == prevMonth.year &&
+        t.date.month == prevMonth.month).toList();
+
+    final Map<String, double> spending = {};
+    for (final tx in prevExpenses) {
+      final key = tx.category.trim();
+      spending[key] = (spending[key] ?? 0.0) + tx.amount;
+    }
+    return spending;
+  }
+
+  // Transfer budget amount from one category to another
+  Future<bool> transferBudget({
+    required String fromCategory,
+    required String toCategory,
+    required double amount,
+  }) async {
+    if (amount <= 0 || fromCategory.toLowerCase() == toCategory.toLowerCase()) {
+      return false;
+    }
+
+    final fromIndex = _budgets.indexWhere((b) => b.category.toLowerCase() == fromCategory.toLowerCase());
+    final toIndex = _budgets.indexWhere((b) => b.category.toLowerCase() == toCategory.toLowerCase());
+
+    if (fromIndex == -1) return false;
+
+    final fromBudget = _budgets[fromIndex];
+    if (fromBudget.monthlyLimit < amount) return false;
+
+    final newFromLimit = fromBudget.monthlyLimit - amount;
+    await setBudget(BudgetModel(
+      id: fromBudget.id,
+      uid: fromBudget.uid,
+      category: fromBudget.category,
+      monthlyLimit: newFromLimit,
+    ));
+
+    if (toIndex != -1) {
+      final toBudget = _budgets[toIndex];
+      final newToLimit = toBudget.monthlyLimit + amount;
+      await setBudget(BudgetModel(
+        id: toBudget.id,
+        uid: toBudget.uid,
+        category: toBudget.category,
+        monthlyLimit: newToLimit,
+      ));
+    } else {
+      final userUid = _activeUid ?? 'local_user';
+      await setBudget(BudgetModel(
+        id: 'b_${toCategory.toLowerCase()}_$userUid',
+        uid: userUid,
+        category: toCategory,
+        monthlyLimit: amount,
+      ));
+    }
+
+    loadBudgets();
+    return true;
   }
 
   // Save or update a budget limit

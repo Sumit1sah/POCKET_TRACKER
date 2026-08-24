@@ -415,7 +415,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
             // ── Hero Stats Card ────────────────────────────────────────────
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
                 child: FadeTransition(
                   opacity: _heroAnim,
                   child: SlideTransition(
@@ -439,20 +439,20 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
             // ── Dynamic Bar / Continuous Line Chart ──────────────────────────
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+                padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Expanded(child: _sectionHeader(context, chartTitle, chartSubtitle)),
                     Container(
-                      padding: const EdgeInsets.all(3),
+                      padding: const EdgeInsets.all(2),
                       decoration: BoxDecoration(
                         color: isDark ? const Color(0xFF1C1C2E) : Colors.white,
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.05),
-                            blurRadius: 6,
+                            color: Colors.black.withValues(alpha: 0.04),
+                            blurRadius: 4,
                           ),
                         ],
                       ),
@@ -462,19 +462,19 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                             onTap: () => setState(() => _chartStyle = 'bar'),
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 200),
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
                                 color: _chartStyle == 'bar' ? const Color(0xFF6C5CE7) : Colors.transparent,
-                                borderRadius: BorderRadius.circular(18),
+                                borderRadius: BorderRadius.circular(14),
                               ),
                               child: Row(
                                 children: [
-                                  Icon(Icons.bar_chart_rounded, size: 13, color: _chartStyle == 'bar' ? Colors.white : Colors.grey),
+                                  Icon(Icons.bar_chart_rounded, size: 12, color: _chartStyle == 'bar' ? Colors.white : Colors.grey),
                                   const SizedBox(width: 3),
                                   Text(
                                     'Bar',
                                     style: TextStyle(
-                                      fontSize: 11,
+                                      fontSize: 10.5,
                                       fontWeight: FontWeight.bold,
                                       color: _chartStyle == 'bar' ? Colors.white : Colors.grey,
                                     ),
@@ -487,19 +487,19 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                             onTap: () => setState(() => _chartStyle = 'continuous'),
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 200),
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
                                 color: _chartStyle == 'continuous' ? const Color(0xFF6C5CE7) : Colors.transparent,
-                                borderRadius: BorderRadius.circular(18),
+                                borderRadius: BorderRadius.circular(14),
                               ),
                               child: Row(
                                 children: [
-                                  Icon(Icons.show_chart_rounded, size: 13, color: _chartStyle == 'continuous' ? Colors.white : Colors.grey),
+                                  Icon(Icons.show_chart_rounded, size: 12, color: _chartStyle == 'continuous' ? Colors.white : Colors.grey),
                                   const SizedBox(width: 3),
                                   Text(
                                     'Flow',
                                     style: TextStyle(
-                                      fontSize: 11,
+                                      fontSize: 10.5,
                                       fontWeight: FontWeight.bold,
                                       color: _chartStyle == 'continuous' ? Colors.white : Colors.grey,
                                     ),
@@ -517,7 +517,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
             ),
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
                 child: AnimatedBuilder(
                   animation: _barAnim,
                   builder: (context, child) => _chartStyle == 'continuous'
@@ -545,14 +545,14 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
             if (sortedCats.isNotEmpty) ...[
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
+                  padding: const EdgeInsets.fromLTRB(12, 14, 12, 0),
                   child: _sectionHeader(
                       context, '🎯 Spending Breakdown', 'By category this period'),
                 ),
               ),
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
                   child: AnimatedBuilder(
                     animation: _pieAnim,
                     builder: (context, child) => _buildBreakdownCard(
@@ -572,14 +572,14 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
             // ── Quick Stats Grid ───────────────────────────────────────────
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
+                padding: const EdgeInsets.fromLTRB(12, 14, 12, 0),
                 child: _sectionHeader(
                     context, '⚡ Quick Stats', 'At a glance'),
               ),
             ),
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+                padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
                 child: _buildQuickStatsGrid(
                   context,
                   expenses: expenses,
@@ -601,7 +601,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
     return SafeArea(
       bottom: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+        padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
         child: Row(
           children: [
             Column(
@@ -610,19 +610,19 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                 Text(
                   'Analytics',
                   style: TextStyle(
-                    fontSize: 28,
+                    fontSize: 22,
                     fontWeight: FontWeight.w800,
-                    letterSpacing: -0.5,
+                    letterSpacing: -0.4,
                     foreground: Paint()
                       ..shader = const LinearGradient(
                         colors: [Color(0xFF6C5CE7), Color(0xFF8E7CFE)],
-                      ).createShader(const Rect.fromLTWH(0, 0, 160, 32)),
+                      ).createShader(const Rect.fromLTWH(0, 0, 140, 26)),
                   ),
                 ),
                 Text(
                   'Your financial overview',
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: 11.5,
                     color: isDark ? Colors.white38 : Colors.black38,
                     fontWeight: FontWeight.w500,
                   ),
@@ -636,19 +636,19 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                 color: Colors.transparent,
                 child: InkWell(
                   onTap: () => MonthlyReportModal.show(context, month: _selectedMonth),
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(10),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
                         colors: [Color(0xFF6C5CE7), Color(0xFF8E7CFE)],
                       ),
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(10),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF6C5CE7).withValues(alpha: 0.35),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
+                          color: const Color(0xFF6C5CE7).withValues(alpha: 0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
                         ),
                       ],
                     ),
@@ -658,16 +658,16 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                         Icon(
                           Icons.assessment_rounded,
                           color: Colors.white,
-                          size: 20,
+                          size: 16,
                         ),
-                        SizedBox(width: 6),
+                        SizedBox(width: 5),
                         Text(
                           'Report',
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 13,
+                            fontSize: 11.5,
                             fontWeight: FontWeight.bold,
-                            letterSpacing: 0.3,
+                            letterSpacing: 0.2,
                           ),
                         ),
                       ],
@@ -698,8 +698,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
     }
 
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+      margin: const EdgeInsets.fromLTRB(12, 0, 12, 6),
+      padding: const EdgeInsets.fromLTRB(4, 2, 4, 4),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E1E2E) : Colors.white,
         borderRadius: BorderRadius.circular(14),
@@ -712,7 +712,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
             color: isDark
                 ? Colors.black.withValues(alpha: 0.2)
                 : cycleBadgeColor.withValues(alpha: 0.05),
-            blurRadius: 8,
+            blurRadius: 6,
             offset: const Offset(0, 2),
           ),
         ],
@@ -721,30 +721,30 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
         mainAxisSize: MainAxisSize.min,
         children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 IconButton(
                   icon: const Icon(Icons.chevron_left_rounded, size: 20),
                   padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                  constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
                   tooltip: 'Previous Month',
                   onPressed: _previousMonth,
                 ),
                 Expanded(
                   child: InkWell(
                     onTap: () => _showProfessionalMonthPicker(context),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(8),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           const Icon(Icons.calendar_month_rounded,
-                              color: Color(0xFF6C5CE7), size: 15),
-                          const SizedBox(width: 6),
+                              color: Color(0xFF6C5CE7), size: 14),
+                          const SizedBox(width: 5),
                           Text(
                             monthText,
                             style: const TextStyle(
@@ -754,25 +754,24 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                             ),
                           ),
                           const SizedBox(width: 4),
-                          Icon(Icons.keyboard_arrow_down_rounded,
-                              color: isDark ? Colors.white54 : Colors.black45, size: 16),
-                          const SizedBox(width: 6),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                             decoration: BoxDecoration(
                               color: cycleBadgeColor.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(5),
+                              borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
                               cycleBadgeText,
                               style: TextStyle(
                                 color: cycleBadgeColor,
                                 fontWeight: FontWeight.bold,
-                                fontSize: 8.5,
-                                letterSpacing: 0.4,
+                                fontSize: 8,
+                                letterSpacing: 0.3,
                               ),
                             ),
                           ),
+                          const Icon(Icons.keyboard_arrow_down_rounded,
+                              color: Colors.grey, size: 15),
                         ],
                       ),
                     ),
@@ -784,31 +783,25 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                     if (!_isCurrentMonth)
                       InkWell(
                         onTap: _resetToCurrentMonth,
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(6),
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                           margin: const EdgeInsets.only(right: 2),
                           decoration: BoxDecoration(
                             color: const Color(0xFF00B894).withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(6),
+                            borderRadius: BorderRadius.circular(5),
                           ),
-                          child: const Row(
-                            children: [
-                              Icon(Icons.today_rounded, size: 11, color: Color(0xFF00B894)),
-                              SizedBox(width: 2),
-                              Text('Today',
-                                  style: TextStyle(
-                                      fontSize: 9.5,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFF00B894))),
-                            ],
-                          ),
+                          child: const Text('Today',
+                              style: TextStyle(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF00B894))),
                         ),
                       ),
                     IconButton(
                       icon: const Icon(Icons.chevron_right_rounded, size: 20),
                       padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                      constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
                       tooltip: 'Next Month',
                       onPressed: _nextMonth,
                     ),
@@ -896,74 +889,77 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
             return Container(
               decoration: BoxDecoration(
                 color: Theme.of(context).scaffoldBackgroundColor,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
               ),
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    width: 40,
+                    width: 36,
                     height: 4,
                     decoration: BoxDecoration(
                       color: Colors.grey.withValues(alpha: 0.3),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Row(
                         children: [
-                          Icon(Icons.calendar_month_rounded, color: Color(0xFF6C5CE7)),
-                          SizedBox(width: 8),
+                          Icon(Icons.calendar_month_rounded, color: Color(0xFF6C5CE7), size: 18),
+                          SizedBox(width: 6),
                           Text(
                             'Select Analytics Month',
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                           ),
                         ],
                       ),
                       IconButton(
-                        icon: const Icon(Icons.close_rounded, size: 20),
+                        visualDensity: VisualDensity.compact,
+                        icon: const Icon(Icons.close_rounded, size: 18),
                         onPressed: () => Navigator.pop(ctx),
                       ),
                     ],
                   ),
-                  const Divider(height: 20),
+                  const Divider(height: 16),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
                     decoration: BoxDecoration(
                       color: isDark ? Colors.grey[900] : Colors.grey[100],
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(12),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         IconButton(
-                          icon: const Icon(Icons.chevron_left_rounded),
+                          visualDensity: VisualDensity.compact,
+                          icon: const Icon(Icons.chevron_left_rounded, size: 20),
                           onPressed: () => setSheetState(() => tempYear--),
                         ),
                         Text(
                           '$tempYear',
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF6C5CE7)),
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF6C5CE7)),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.chevron_right_rounded),
+                          visualDensity: VisualDensity.compact,
+                          icon: const Icon(Icons.chevron_right_rounded, size: 20),
                           onPressed: () => setSheetState(() => tempYear++),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
                   GridView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 3,
-                      childAspectRatio: 2.2,
-                      crossAxisSpacing: 10,
-                      mainAxisSpacing: 10,
+                      childAspectRatio: 2.3,
+                      crossAxisSpacing: 8,
+                      mainAxisSpacing: 8,
                     ),
                     itemCount: 12,
                     itemBuilder: (context, index) {
@@ -977,9 +973,9 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                           _setSelectedMonth(DateTime(tempYear, monthNumber, 1));
                           Navigator.pop(ctx);
                         },
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(10),
                         child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
+                          duration: const Duration(milliseconds: 150),
                           decoration: BoxDecoration(
                             gradient: isSelected
                                 ? const LinearGradient(
@@ -991,14 +987,14 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                                 : (isCurrentMonth
                                     ? const Color(0xFF00B894).withValues(alpha: 0.12)
                                     : (isDark ? Colors.grey[900] : Colors.grey[100])),
-                            borderRadius: BorderRadius.circular(14),
+                            borderRadius: BorderRadius.circular(10),
                             border: Border.all(
                               color: isSelected
                                   ? const Color(0xFF6C5CE7)
                                   : (isCurrentMonth
                                       ? const Color(0xFF00B894)
                                       : Colors.transparent),
-                              width: isCurrentMonth || isSelected ? 1.5 : 1.0,
+                              width: 1.0,
                             ),
                           ),
                           child: Column(
@@ -1008,7 +1004,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                                 monthNames[index].substring(0, 3).toUpperCase(),
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 13,
+                                  fontSize: 12,
                                   color: isSelected
                                       ? Colors.white
                                       : (isCurrentMonth
@@ -1020,7 +1016,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                                 Text(
                                   'ACTIVE',
                                   style: TextStyle(
-                                    fontSize: 8,
+                                    fontSize: 7.5,
                                     fontWeight: FontWeight.bold,
                                     color: isSelected ? Colors.white70 : const Color(0xFF00B894),
                                   ),
@@ -1031,35 +1027,35 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                       );
                     },
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 14),
                   Row(
                     children: [
                       Expanded(
-                        child: OutlinedButton.icon(
+                        child: OutlinedButton(
                           style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            minimumSize: const Size(0, 34),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                           ),
                           onPressed: () {
                             _resetToCurrentMonth();
                             Navigator.pop(ctx);
                           },
-                          icon: const Icon(Icons.today_rounded, size: 16),
-                          label: const Text('Current Month', style: TextStyle(fontSize: 12)),
+                          child: const Text('Current Month', style: TextStyle(fontSize: 11)),
                         ),
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 8),
                       Expanded(
-                        child: ElevatedButton.icon(
+                        child: ElevatedButton(
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF6C5CE7),
                             foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            minimumSize: const Size(0, 34),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                           ),
                           onPressed: () => Navigator.pop(ctx),
-                          icon: const Icon(Icons.check_rounded, size: 16),
-                          label: const Text('Done', style: TextStyle(fontSize: 12)),
+                          child: const Text('Done', style: TextStyle(fontSize: 11)),
                         ),
                       ),
                     ],
@@ -1082,23 +1078,22 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
     }
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.fromLTRB(0, 0, 0, 8),
       child: Row(
         children: [
           Expanded(
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 12),
               child: Row(
                 children: visibleChips.map((p) {
                   final isSelected = p == _selectedPeriod;
                   return GestureDetector(
                     onTap: () => _onPeriodTap(p),
                     child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 250),
-                      margin: const EdgeInsets.only(right: 8),
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      duration: const Duration(milliseconds: 200),
+                      margin: const EdgeInsets.only(right: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                       decoration: BoxDecoration(
                         gradient: isSelected
                             ? const LinearGradient(
@@ -1110,30 +1105,20 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                             : (isDark
                                 ? const Color(0xFF1C1C2E)
                                 : Colors.white),
-                        borderRadius: BorderRadius.circular(30),
-                        boxShadow: isSelected
-                            ? [
-                                BoxShadow(
-                                  color:
-                                      const Color(0xFF6C5CE7).withValues(alpha: 0.4),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 3),
-                                ),
-                              ]
-                            : [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.05),
-                                  blurRadius: 4,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.04),
+                            blurRadius: 4,
+                            offset: const Offset(0, 1),
+                          ),
+                        ],
                       ),
                       child: Text(
                         p,
                         style: TextStyle(
-                          fontSize: 12.5,
-                          fontWeight:
-                              isSelected ? FontWeight.bold : FontWeight.w500,
+                          fontSize: 11,
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                           color: isSelected
                               ? Colors.white
                               : (isDark ? Colors.white60 : Colors.black54),
@@ -1148,19 +1133,19 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
           PopupMenuButton<String>(
             tooltip: 'Filter All Timeframes',
             icon: Container(
-              margin: const EdgeInsets.only(right: 16),
-              padding: const EdgeInsets.all(8),
+              margin: const EdgeInsets.only(right: 12),
+              padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
                 color: isDark ? const Color(0xFF1C1C2E) : Colors.white,
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.06),
-                    blurRadius: 6,
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 4,
                   ),
                 ],
               ),
-              child: const Icon(Icons.tune_rounded, size: 18, color: Color(0xFF6C5CE7)),
+              child: const Icon(Icons.tune_rounded, size: 15, color: Color(0xFF6C5CE7)),
             ),
             onSelected: (val) => _onPeriodTap(val),
             itemBuilder: (ctx) => _periods
@@ -1172,14 +1157,14 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                             p == _selectedPeriod
                                 ? Icons.radio_button_checked_rounded
                                 : Icons.radio_button_unchecked_rounded,
-                            size: 16,
+                            size: 15,
                             color: const Color(0xFF6C5CE7),
                           ),
                           const SizedBox(width: 8),
                           Text(
                             p,
                             style: TextStyle(
-                              fontSize: 13,
+                              fontSize: 12,
                               fontWeight: p == _selectedPeriod
                                   ? FontWeight.bold
                                   : FontWeight.normal,
@@ -1206,58 +1191,58 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
       final dateStr = _selectedSingleDate != null
           ? Formatters.formatDate(_selectedSingleDate!)
           : 'Tap to Select Date';
-      labelText = 'Selected Date: $dateStr';
+      labelText = 'Selected: $dateStr';
     } else if (_selectedPeriod == 'Custom Range') {
       if (_selectedCustomRange != null) {
         final startStr = Formatters.formatShortDate(_selectedCustomRange!.start);
         final endStr = Formatters.formatShortDate(_selectedCustomRange!.end);
-        labelText = 'Selected Range: $startStr - $endStr';
+        labelText = 'Selected: $startStr - $endStr';
       } else {
-        labelText = 'Tap to Select Date Range';
+        labelText = 'Tap to Select Range';
       }
     }
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
       child: InkWell(
         onTap: () => _onPeriodTap(_selectedPeriod),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
-            color: const Color(0xFF6C5CE7).withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFF6C5CE7).withValues(alpha: 0.3)),
+            color: const Color(0xFF6C5CE7).withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFF6C5CE7).withValues(alpha: 0.25)),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Row(
                 children: [
-                  const Icon(Icons.calendar_month_rounded, color: Color(0xFF6C5CE7), size: 20),
-                  const SizedBox(width: 10),
+                  const Icon(Icons.calendar_month_rounded, color: Color(0xFF6C5CE7), size: 16),
+                  const SizedBox(width: 8),
                   Text(
                     labelText,
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
-                      fontSize: 13,
+                      fontSize: 12,
                       color: Color(0xFF6C5CE7),
                     ),
                   ),
                 ],
               ),
-              Row(
+              const Row(
                 children: [
                   Text(
                     'Change',
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 11,
                       fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.primary,
+                      color: Color(0xFF6C5CE7),
                     ),
                   ),
-                  const SizedBox(width: 4),
-                  const Icon(Icons.edit_calendar_rounded, size: 16, color: Color(0xFF6C5CE7)),
+                  SizedBox(width: 3),
+                  Icon(Icons.edit_calendar_rounded, size: 14, color: Color(0xFF6C5CE7)),
                 ],
               ),
             ],
@@ -1267,7 +1252,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
     );
   }
 
-  // ── HERO CARD ──────────────────────────────────────────────────────────────
+  // ── COMPACT HERO CARD (BALANCE SHOWING) ──────────────────────────────────
   Widget _buildHeroCard(
     BuildContext context, {
     required double totalIncome,
@@ -1279,19 +1264,19 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
     final isPositive = netBalance >= 0;
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(22),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [Color(0xFF6C5CE7), Color(0xFF8A4FE8), Color(0xFF5A4FCF)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF6C5CE7).withValues(alpha: 0.45),
-            blurRadius: 24,
-            offset: const Offset(0, 10),
+            color: const Color(0xFF6C5CE7).withValues(alpha: 0.35),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
@@ -1299,41 +1284,39 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Net Balance',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.75),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                      ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Net Balance',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.75),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      Formatters.formatCurrency(netBalance, symbol: currency),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 30,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.5,
-                      ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    Formatters.formatCurrency(netBalance, symbol: currency),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.4,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: isPositive
                       ? const Color(0xFF00B894).withValues(alpha: 0.25)
                       : const Color(0xFFFF6B6B).withValues(alpha: 0.25),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(8),
                   border: Border.all(
                     color: isPositive
                         ? const Color(0xFF00B894).withValues(alpha: 0.5)
@@ -1350,16 +1333,16 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                       color: isPositive
                           ? const Color(0xFF00B894)
                           : const Color(0xFFFF6B6B),
-                      size: 14,
+                      size: 13,
                     ),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: 3),
                     Text(
-                      '${savingsRate.toStringAsFixed(1)}%',
+                      '${savingsRate.toStringAsFixed(1)}% saved',
                       style: TextStyle(
                         color: isPositive
                             ? const Color(0xFF00B894)
                             : const Color(0xFFFF6B6B),
-                        fontSize: 12,
+                        fontSize: 10.5,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -1368,12 +1351,12 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 10),
           Container(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
               children: [
@@ -1388,7 +1371,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                 ),
                 Container(
                   width: 1,
-                  height: 40,
+                  height: 28,
                   color: Colors.white.withValues(alpha: 0.2),
                 ),
                 Expanded(
@@ -1416,18 +1399,18 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
     required Color color,
   }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 8),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(7),
+            padding: const EdgeInsets.all(5),
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.2),
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: color, size: 14),
+            child: Icon(icon, color: color, size: 12),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1435,12 +1418,12 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                 Text(label,
                     style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.65),
-                        fontSize: 11)),
+                        fontSize: 10)),
                 Text(
                   Formatters.formatCurrency(amount, symbol: currency),
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 13,
+                    fontSize: 12,
                     fontWeight: FontWeight.bold,
                   ),
                   overflow: TextOverflow.ellipsis,
@@ -2227,7 +2210,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
     );
   }
 
-  // ── ADVANCED QUICK STATS GRID ─────────────────────────────────────────────
+  // ── COMPACT QUICK STATS GRID ──────────────────────────────────────────────
   Widget _buildQuickStatsGrid(
     BuildContext context, {
     required List<TransactionModel> expenses,
@@ -2308,7 +2291,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
         gradient: const [Color(0xFFFDAA5A), Color(0xFFFF7675)],
         label: 'Peak Spend Day',
         value: peakDayEntry != null ? '$peakDayName (${Formatters.formatCompactCurrency(peakDayAmount, symbol: currency)})' : '-',
-        subtitle: peakDayEntry != null ? 'Highest daily outflow' : null,
+        subtitle: peakDayEntry != null ? 'Highest outflow' : null,
         badge: 'Peak',
       ),
       _QuickStat(
@@ -2316,7 +2299,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
         gradient: const [Color(0xFF00B894), Color(0xFF00CEC9)],
         label: 'Top Category',
         value: mostFrequentEntry?.key ?? '-',
-        subtitle: mostFrequentEntry != null ? '${mostFrequentEntry.value} transactions' : null,
+        subtitle: mostFrequentEntry != null ? '${mostFrequentEntry.value} txns' : null,
         badge: 'Frequent',
       ),
       _QuickStat(
@@ -2342,9 +2325,9 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 1.45,
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
+        childAspectRatio: 1.85,
       ),
       itemCount: stats.length,
       itemBuilder: (_, i) => _buildStatCard(context, stats[i], isDark),
@@ -2353,51 +2336,45 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
 
   Widget _buildStatCard(BuildContext context, _QuickStat s, bool isDark) {
     return Container(
-      padding: const EdgeInsets.all(13),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1C1C2E) : Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.06),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
-                width: 32,
-                height: 32,
+                width: 24,
+                height: 24,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(colors: s.gradient),
-                  borderRadius: BorderRadius.circular(10),
-                  boxShadow: [
-                    BoxShadow(
-                      color: s.gradient.first.withValues(alpha: 0.35),
-                      blurRadius: 8,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
+                  borderRadius: BorderRadius.circular(7),
                 ),
-                child: Icon(s.icon, color: Colors.white, size: 16),
+                child: Icon(s.icon, color: Colors.white, size: 13),
               ),
               if (s.badge != null)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
                   decoration: BoxDecoration(
                     color: s.gradient.first.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
                     s.badge!,
                     style: TextStyle(
-                      fontSize: 9,
+                      fontSize: 8.5,
                       fontWeight: FontWeight.bold,
                       color: s.gradient.first,
                     ),
@@ -2405,38 +2382,39 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                 ),
             ],
           ),
-          const Spacer(),
-          Text(
-            s.label,
-            style: TextStyle(
-              fontSize: 10.5,
-              color: isDark ? Colors.white54 : Colors.black45,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 2),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(
-              s.value,
-              style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold),
-              maxLines: 1,
-            ),
-          ),
-          if (s.subtitle != null) ...[
-            const SizedBox(height: 2),
-            Text(
-              s.subtitle!,
-              style: TextStyle(
-                fontSize: 9.5,
-                color: s.gradient.first,
-                fontWeight: FontWeight.w500,
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                s.label,
+                style: TextStyle(
+                  fontSize: 9.5,
+                  color: isDark ? Colors.white54 : Colors.black45,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
-              overflow: TextOverflow.ellipsis,
-              maxLines: 1,
-            ),
-          ],
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  s.value,
+                  style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold),
+                  maxLines: 1,
+                ),
+              ),
+              if (s.subtitle != null)
+                Text(
+                  s.subtitle!,
+                  style: TextStyle(
+                    fontSize: 8.5,
+                    color: s.gradient.first,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
+            ],
+          ),
         ],
       ),
     );

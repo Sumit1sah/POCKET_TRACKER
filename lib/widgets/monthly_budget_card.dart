@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/budget_provider.dart';
@@ -13,12 +14,20 @@ class MonthlyBudgetCard extends StatelessWidget {
     final budgetProvider = Provider.of<BudgetProvider>(context);
     final txProvider = Provider.of<TransactionProvider>(context);
     final currency = Provider.of<ThemeCurrencyProvider>(context).currency;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final overallStatus = budgetProvider.getOverallBudgetStatus(txProvider.transactions);
     final limit = overallStatus.budget.monthlyLimit;
     final spent = overallStatus.spent;
     final remaining = overallStatus.remaining;
     final percentage = overallStatus.percentage;
+
+    final now = DateTime.now();
+    final daysInMonth = DateTime(budgetProvider.selectedMonth.year, budgetProvider.selectedMonth.month + 1, 0).day;
+    final currentDay = budgetProvider.isCurrentMonth ? now.day : daysInMonth;
+    final remainingDays = (daysInMonth - currentDay) > 0 ? (daysInMonth - currentDay) : 1;
+    final safeRemaining = math.max(0.0, remaining);
+    final dailyPace = remainingDays > 0 ? (safeRemaining / remainingDays) : 0.0;
 
     Color progressColor = const Color(0xFF00B894);
     String badgeText = 'On Track';
@@ -35,18 +44,18 @@ class MonthlyBudgetCard extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(20),
+        color: isDark ? const Color(0xFF161626) : Colors.white,
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
         ],
-        border: Border.all(color: progressColor.withValues(alpha: 0.3)),
+        border: Border.all(color: progressColor.withValues(alpha: isDark ? 0.3 : 0.2), width: 1.0),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -57,34 +66,34 @@ class MonthlyBudgetCard extends StatelessWidget {
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(6),
+                    padding: const EdgeInsets.all(5),
                     decoration: BoxDecoration(
-                      color: progressColor.withValues(alpha: 0.15),
+                      color: const Color(0xFF6C5CE7).withValues(alpha: 0.15),
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(Icons.account_balance_wallet_outlined, color: progressColor, size: 18),
+                    child: const Icon(Icons.account_balance_wallet_rounded, color: Color(0xFF6C5CE7), size: 15),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 6),
                   const Text(
                     'Monthly Budget Allowance',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                   ),
                 ],
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                 decoration: BoxDecoration(
                   color: progressColor.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
                   badgeText,
-                  style: TextStyle(color: progressColor, fontWeight: FontWeight.bold, fontSize: 11),
+                  style: TextStyle(color: progressColor, fontWeight: FontWeight.bold, fontSize: 10),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
 
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -95,16 +104,17 @@ class MonthlyBudgetCard extends StatelessWidget {
                 children: [
                   Text(
                     'Remaining Budget',
-                    style: TextStyle(fontSize: 11, color: Theme.of(context).textTheme.bodySmall?.color),
+                    style: TextStyle(fontSize: 10, color: isDark ? Colors.white54 : Colors.black54),
                   ),
                   Text(
                     limit > 0
                         ? Formatters.formatCurrency(remaining, symbol: currency)
                         : 'No Budget Set',
                     style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
                       color: remaining < 0 ? const Color(0xFFFF7675) : const Color(0xFF00B894),
+                      letterSpacing: -0.4,
                     ),
                   ),
                 ],
@@ -114,27 +124,49 @@ class MonthlyBudgetCard extends StatelessWidget {
                 children: [
                   Text(
                     'Spent: ${Formatters.formatCurrency(spent, symbol: currency)}',
-                    style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodySmall?.color),
+                    style: TextStyle(fontSize: 11, color: isDark ? Colors.white54 : Colors.black54),
                   ),
                   Text(
-                    limit > 0 ? 'Limit: ${Formatters.formatCurrency(limit, symbol: currency)}' : 'Set limit in Budget tab',
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                    limit > 0 ? 'Limit: ${Formatters.formatCurrency(limit, symbol: currency)}' : 'Set in Budget tab',
+                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
                   ),
                 ],
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
 
           ClipRRect(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
               value: limit > 0 ? percentage.clamp(0.0, 1.0) : 0.0,
-              minHeight: 10,
-              backgroundColor: Colors.grey.withValues(alpha: 0.15),
+              minHeight: 5,
+              backgroundColor: progressColor.withValues(alpha: 0.12),
               valueColor: AlwaysStoppedAnimation<Color>(progressColor),
             ),
           ),
+          if (limit > 0) ...[
+            const SizedBox(height: 6),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.speed_rounded, size: 11, color: Color(0xFF6C5CE7)),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Safe pace: ${Formatters.formatCurrency(dailyPace, symbol: currency)}/day',
+                      style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w600, color: isDark ? Colors.white70 : Colors.black87),
+                    ),
+                  ],
+                ),
+                Text(
+                  '$remainingDays days left',
+                  style: TextStyle(fontSize: 9.5, color: isDark ? Colors.white54 : Colors.black54),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
