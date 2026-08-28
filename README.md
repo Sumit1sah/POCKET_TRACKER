@@ -1,384 +1,494 @@
-# 💰 Pocketify - Smart Expense Tracker
+# 💰 Pocketify — Smart AI Expense & Financial Health Tracker
 
-[![Flutter](https://img.shields.io/badge/Flutter->=3.10.0-02569B?logo=flutter)](https://flutter.dev)
-[![Dart](https://img.shields.io/badge/Dart->=3.0.0-0175C2?logo=dart)](https://dart.dev)
-[![Hive](https://img.shields.io/badge/Database-Hive%20NoSQL-FF6F00?logo=hive)](https://docs.hivedb.dev/)
-[![Provider](https://img.shields.io/badge/State-Provider%20v6.1.2-42A5F5)](https://pub.dev/packages/provider)
-[![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20iOS%20%7C%20Web%20%7C%20Desktop-blue)](#)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+<p align="center">
+  <img src="assets/images/app_icon.png" alt="Pocketify Logo" width="120" height="120" style="border-radius: 24px; box-shadow: 0 10px 30px rgba(108, 92, 231, 0.3);" />
+</p>
 
-**Pocketify** is an advanced, privacy-first, offline-ready smart expense tracker built with **Flutter**, **Hive**, and **Provider**. Designed to provide total financial visibility and control, Pocketify automatically captures financial SMS notifications, categorizes transactions using smart heuristics, provides AI-driven financial advisories, tracks budgets and savings goals, and generates formatted PDF/CSV financial statements—all while keeping your data 100% private and on your device.
+<p align="center">
+  <b>An intelligent, privacy-first, offline-ready personal finance tracker built with Flutter, Hive NoSQL, and Provider.</b>
+</p>
+
+<p align="center">
+  <a href="https://flutter.dev"><img src="https://img.shields.io/badge/Flutter-3.10+-02569B?style=for-the-badge&logo=flutter&logoColor=white" alt="Flutter"></a>
+  <a href="https://dart.dev"><img src="https://img.shields.io/badge/Dart-3.0+-0175C2?style=for-the-badge&logo=dart&logoColor=white" alt="Dart"></a>
+  <a href="https://docs.hivedb.dev/"><img src="https://img.shields.io/badge/Database-Hive%20NoSQL-FF6F00?style=for-the-badge&logo=hive&logoColor=white" alt="Hive NoSQL"></a>
+  <a href="https://pub.dev/packages/provider"><img src="https://img.shields.io/badge/State-Provider%206.1.2-42A5F5?style=for-the-badge&logo=flutter" alt="Provider"></a>
+  <a href="#"><img src="https://img.shields.io/badge/Platform-Android%20%7C%20iOS%20%7C%20Web%20%7C%20Desktop-5856D6?style=for-the-badge" alt="Platform"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-00B894?style=for-the-badge" alt="License"></a>
+</p>
 
 ---
 
-## 📋 Table of Contents
+## 📖 Overview
+
+**Pocketify** is a next-generation personal expense tracker and financial wellness companion. Engineered with a **privacy-first, 100% offline architecture**, Pocketify ensures that your sensitive financial data never leaves your device. 
+
+From **zero-touch native SMS transaction auto-capture** and **AI-driven spending health insights** to **category-level budget capping**, **milestone-based savings goals**, **virtual credit card utilization monitoring**, and **formatted PDF/CSV reporting**, Pocketify delivers a complete, bank-grade personal finance dashboard wrapped in a sleek glassmorphic UI.
+
+---
+
+## 📑 Table of Contents
 
 - [✨ Key Features](#-key-features)
-  - [📊 Smart Dashboard & Analytics](#-smart-dashboard--analytics)
-  - [🤖 AI-Powered Financial Insights Engine](#-ai-powered-financial-insights-engine)
-  - [📲 Automatic SMS Transaction Capture (Android Native)](#-automatic-sms-transaction-capture-android-native)
-  - [💡 Smart Categorizer & Machine Heuristics](#-smart-categorizer--machine-heuristics)
-  - [🎙️ Hands-Free Voice Input & OCR Receipt Scanning](#️-hands-free-voice-input--ocr-receipt-scanning)
-  - [💡 Category Budget Capping & Overspend Alerts](#-category-budget-capping--overspend-alerts)
-  - [🎯 Savings Goals & Milestone Tracker](#-savings-goals--milestone-tracker)
-  - [💳 Virtual Credit Cards & Payment Method Manager](#-virtual-credit-cards--payment-method-manager)
-  - [📑 Comprehensive Financial Reports & Multi-Format Exports](#-comprehensive-financial-reports--multi-format-exports)
-  - [🛡️ Biometric Security & Privacy-First Architecture](#-biometric-security--privacy-first-architecture)
-  - [🔔 Animated In-App Notification & Toast System](#-animated-in-app-notification--toast-system)
-  - [🎨 Personalization, Dynamic Themes & Multi-Currency](#-personalization-dynamic-themes--multi-currency)
-- [🛠️ Tech Stack & Architecture](#️-tech-stack--architecture)
-- [📁 Project Folder Structure](#-project-folder-structure)
-- [🗄️ Domain Models & Data Schema](#️-domain-models--data-schema)
-- [🚀 Getting Started & Installation](#-getting-started--installation)
-- [📱 Native Android SMS Integration Setup](#-native-android-sms-integration-setup)
-- [📦 Production Build & Release](#-production-build--release)
-- [🧪 Testing & Code Quality](#-testing--code-quality)
-- [🔧 Troubleshooting & FAQ](#-troubleshooting--faq)
-- [🗺️ Future Roadmap](#-future-roadmap)
-- [📄 License & Contributing](#-license--contributing)
+  - [📊 Smart Dashboard & Net Worth Tracker](#-smart-dashboard--net-worth-tracker)
+  - [🤖 AI-Powered Financial Health & Insights Engine](#-ai-powered-financial-health--insights-engine)
+  - [📲 Zero-Touch SMS Transaction Auto-Capture (Android Native)](#-zero-touch-sms-transaction-auto-capture-android-native)
+  - [💡 Intelligent Auto-Categorization & Smart Heuristics](#-intelligent-auto-categorization--smart-heuristics)
+  - [🎯 Category Budget Capping & Overspend Guard](#-category-budget-capping--overspend-guard)
+  - [🏆 Milestone-Driven Savings Goals Tracker](#-milestone-driven-savings-goals-tracker)
+  - [💳 Virtual Credit Card & Utilization Management](#-virtual-credit-card--utilization-management)
+  - [📈 Deep-Dive Visual Analytics & Interactive Charts](#-deep-dive-visual-analytics--interactive-charts)
+  - [🗓️ Daily Calendar Financial Ledger & Heatmap](#️-daily-calendar-financial-ledger--heatmap)
+  - [📑 Export Engine (Branded PDF Statements & CSV Data)](#-export-engine-branded-pdf-statements--csv-data)
+  - [🛡️ Biometric & PIN Security (100% Local Hive Storage)](#️-biometric--pin-security-100-local-hive-storage)
+  - [🎨 Glassmorphism Design, Dark/Light Mode & Multi-Currency](#-glassmorphism-design-darklight-mode--multi-currency)
+  - [🎙️ Hands-Free Voice Logger & OCR Receipt Scanner](#️-hands-free-voice-logger--ocr-receipt-scanner)
+- [🏗️ System Architecture](#️-system-architecture)
+- [📁 Project Directory Structure](#-project-directory-structure)
+- [🗄️ Hive Data Models & Storage Schema](#️-hive-data-models--storage-schema)
+- [🚀 Getting Started & Setup](#-getting-started--setup)
+- [📱 Native Android SMS Setup Guide](#-native-android-sms-setup-guide)
+- [📦 Build & Release Commands](#-build--release-commands)
+- [🧪 Testing & Linting](#-testing--linting)
+- [❓ Troubleshooting & FAQ](#-troubleshooting--faq)
+- [🗺️ Product Roadmap](#️-product-roadmap)
+- [🤝 Contributing & License](#-contributing--license)
 
 ---
 
 ## ✨ Key Features
 
-### 📊 Smart Dashboard & Analytics
-- **Real-Time Net Worth & Financial Overview**: Live tracking of total net balance, monthly income, monthly expenses, net savings, and credit liabilities.
-- **Interactive Visualizations (`fl_chart`)**: High-performance interactive charts including spending timeline line graphs, income vs. expense bar comparisons, and category distribution pie charts.
-- **Deep-Dive Analytics View**: Filter transaction data by period (This Month, Last Month, Last 30 Days, Custom Range), track spending trends, top expense channels, and average transaction values.
-- **Calendar Spending View**: Interactive daily calendar grid displaying income/expense markers and day-by-day financial log breakdown.
-- **Advanced Ledger & Multi-Criteria Filtering**: Search transactions by title/notes, filter by type (Income vs. Expense), category, date ranges, and payment methods with multi-option sorting.
+### 📊 Smart Dashboard & Net Worth Tracker
+- **Real-Time Financial Overview**: Instant summary of total net balance, monthly income, monthly expenses, net savings, and credit liabilities.
+- **Dynamic Cashflow Indicator**: Live computation of cashflow health with visual income-to-expense ratio bars.
+- **Recent Transactions Feed**: Quick-access transaction feed with smart swipe actions for deletion and inline category tagging.
+- **Top Expense Categories Breakdown**: High-level visual preview of top spending channels directly on the home screen.
 
-### 🤖 AI-Powered Financial Insights Engine
-- **Automated Financial Health Score**: Algorithmic scoring (0–100) evaluating savings rate, budget compliance, debt ratio, emergency reserve buffer, and spending consistency.
-- **Subscription & Recurring Payment Detector**: Scans transactions for recurring monthly subscriptions (Netflix, Spotify, Cloud Storage, Gym, software) to forecast upcoming recurring overheads.
-- **Anomaly & Spending Spike Alerts**: Detects unusual transactions and unexpected spending spikes compared to historical category averages.
-- **Predictive End-of-Month Forecast**: Predicts end-of-month spending based on current daily burn rate to prevent cash crunches before month-end.
-- **Personalized Actionable Recommendations**: Context-aware advisory cards providing actionable financial advice (budget adjustments, savings contributions) with direct action routes.
+### 🤖 AI-Powered Financial Health & Insights Engine
+- **Financial Health Score (0–100)**: Evaluates savings rate, budget adherence, debt-to-income ratio, emergency buffer, and spending consistency.
+- **Automated Subscription & Recurring Expense Detection**: Identifies recurring monthly bills (Netflix, Spotify, AWS, Gym, broadband) and forecasts recurring cash outflows.
+- **Spending Spike & Anomaly Alerts**: Flags anomalous spending spikes that exceed historical standard deviations for any category.
+- **Predictive Month-End Burn Rate**: Projects expected end-of-month expenditure based on current daily spending velocity.
+- **Actionable Financial Recommendations**: Contextual advisory cards with one-tap deep links to adjust budgets or contribute to savings.
 
-### 📲 Automatic SMS Transaction Capture (Android Native)
-- **Zero-Touch Expense Logging**: Native Kotlin `MethodChannel` (`com.pocketify.expensetracker/sms`) and `SmsReceiver` for real-time background SMS interception.
-- **Comprehensive Bank & UPI Support**: Built-in regex parsers for major financial institutions and UPI apps (HDFC, SBI, ICICI, Axis, PNB, Kotak, Paytm, PhonePe, Google Pay, CRED, Amazon Pay, etc.).
-- **Smart Entity Extraction**: Automatically extracts transaction amount, type (Debit vs. Credit), merchant/payee name, timestamp, last 4 digits of card/account, and payment mode.
-- **Spam, OTP & Non-Financial Message Filter**: Multi-tier filter blocks OTPs, promotional alerts, balance inquiries, and marketing spam.
+### 📲 Zero-Touch SMS Transaction Auto-Capture (Android Native)
+- **Real-Time Broadcast Interception**: Custom Kotlin `SmsReceiver` listening on `com.pocketify.expensetracker/sms` platform channel.
+- **Comprehensive Bank & UPI Regex Engine**: Supports major Indian banks and payment gateways (HDFC, SBI, ICICI, Axis, PNB, Kotak, Bank of Baroda, Paytm, PhonePe, Google Pay, CRED, Amazon Pay, etc.).
+- **Smart Entity Parsing**: Automatically extracts transaction amount, type (Debit vs. Credit), merchant/payee name, timestamp, last 4 digits of card/account, and payment mode.
+- **Spam & OTP Guard**: Robust multi-stage regex rules filter out OTPs, promotional alerts, balance inquiries, and marketing messages.
+- **SMS Audit Log**: Dedicated SMS log screen with transaction status and retry capabilities.
 
-### 💡 Smart Categorizer & Machine Heuristics
-- **Automatic Category Assignment**: Intelligent keyword matching assigns transactions to pre-defined categories (Food & Dining, Shopping, Bills & Utilities, Transportation, Entertainment, Health, Groceries, Travel, Investments, Income, etc.).
-- **Self-Learning User Adjustments**: Smart heuristics adapt over time based on user edits and manual category overrides.
+### 💡 Intelligent Auto-Categorization & Smart Heuristics
+- **Keyword & Merchant Mapping**: Assigns transactions into pre-configured categories (Food & Dining, Groceries, Shopping, Utilities, Travel, Healthcare, Entertainment, Subscriptions, Salary, Investment, etc.).
+- **Adaptive Memory**: Learns from manual category changes made by the user to improve future categorizations.
 
-### 🎙️ Hands-Free Voice Input & OCR Receipt Scanning
-- **Voice Transaction Logger**: Dictate expenses on the go with hands-free speech-to-text processing (`voice_service.dart`).
-- **OCR Receipt Scanner**: Extract vendor, total amount, and line items directly from camera snapshots or gallery images (`ocr_service.dart`).
+### 🎯 Category Budget Capping & Overspend Guard
+- **Monthly Category Limits**: Define spending ceilings per category with custom time ranges.
+- **Color-Coded Progress Rings**: Visual indicators transition smoothly from Emerald Green (<70%) to Amber Yellow (70-90%) and Crimson Red (>90%).
+- **Automated Push Warnings**: Local push notifications (`flutter_local_notifications`) trigger at 80%, 90%, and 100% budget thresholds.
+- **Budget Performance Analytics**: View historical budget compliance rates month over month.
 
-### 💡 Category Budget Capping & Overspend Alerts
-- **Monthly Category Spending Caps**: Set strict monthly budget limits per category (e.g., $300/month for Dining).
-- **Visual Progress Indicators**: Color-coded progress indicators (Green, Yellow, Red) reflect real-time budget utilization.
-- **Proactive Over-Budget Warnings**: Local push notifications (`flutter_local_notifications`) notify users when reaching 80%, 90%, or 100% of category caps.
-- **Budget Compliance Analytics**: Review overall monthly budget compliance rates in interactive reports.
+### 🏆 Milestone-Driven Savings Goals Tracker
+- **Custom Goal Creation**: Create dedicated targets for emergency funds, vacations, tech gadgets, vehicles, or debt payoffs.
+- **Contribution History**: Deposit and withdraw funds with timestamps and optional transaction notes.
+- **Visual Progress & Countdown**: Live progress percentages, remaining amount calculations, and target date countdown timers.
+- **Celebration Animations**: Animated milestone badges upon completing savings goals.
 
-### 🎯 Savings Goals & Milestone Tracker
-- **Custom Savings Target Creation**: Define target goals for emergency funds, vacations, new gadgets, vehicles, or home down payments.
-- **Contribution Logging**: Log periodic contributions with custom notes and track progress percentages against target deadlines.
-- **Milestone & Celebration Triggers**: Visual milestone badges and celebratory animations upon completing goals.
+### 💳 Virtual Credit Card & Utilization Management
+- **Credit Card Limit Tracking**: Manage multiple virtual credit cards, track total credit limits, current billing period spend, and available credit.
+- **Utilization Health Meter**: Visual warnings when credit utilization exceeds the recommended 30% financial threshold.
+- **Account Linking via SMS**: Matches incoming SMS debit alerts with registered credit cards using card ending digits.
 
-### 💳 Virtual Credit Cards & Payment Method Manager
-- **Virtual Credit Card & Utilization Tracker**: Manage multiple virtual credit cards, set individual credit limits, track spend vs. available limit, and view utilization progress bars (`credit_card_summary_widget.dart`).
-- **Automated Card Matching**: Matches incoming SMS transactions with registered credit cards via last 4 account digits.
-- **Multi-Payment Method Categorization**: Classify expenses by payment mode (UPI, Credit Card, Debit Card, Net Banking, Cash) to track liquidity across all financial channels.
+### 📈 Deep-Dive Visual Analytics & Interactive Charts
+- **Interactive Charting Engine (`fl_chart`)**:
+  - **Spending Timeline Line Charts**: Smooth Bezier curves depicting daily spending trajectories.
+  - **Income vs. Expense Bar Comparisons**: Side-by-side monthly comparisons.
+  - **Category Donut / Pie Breakdown**: Interactive touch-to-highlight category distribution.
+- **Flexible Time Period Filtering**: Switch between This Month, Last Month, Last 30 Days, Last 90 Days, This Year, or Custom Date Ranges.
+- **Granular Metrics**: Average transaction size, highest spend day, top recipient, and daily burn rate.
 
-### 📑 Comprehensive Financial Reports & Multi-Format Exports
-- **Interactive Monthly Report Modal**: Multi-tab report viewer (`monthly_report_modal.dart`) featuring Overview, Categories, Daily Breakdown, Payment Methods, Budget Compliance, and Financial KPIs.
-- **Branded PDF Export**: Generate polished monthly and annual financial statements with custom date ranges, branded headers, category summaries, and chart snapshots (`pdf`, `printing`).
-- **CSV Data Export**: Export full transaction ledgers in CSV format compatible with Microsoft Excel, Google Sheets, or tax tools (`csv`).
+### 🗓️ Daily Calendar Financial Ledger & Heatmap
+- **Interactive Calendar Grid**: Day-by-day financial log with color-coded income and expense markers.
+- **Daily Drill-Down Modal**: Tap any day to inspect the full list of transactions for that specific date.
 
-### 🛡️ Biometric Security & Privacy-First Architecture
-- **100% Local NoSQL Storage**: All financial records, profiles, and settings are saved locally using **Hive**. Zero data leaves your device.
-- **Biometric Authentication**: Secure app access with Fingerprint scanner, Face ID, or system credentials (`biometric_service.dart`).
-- **Custom 4-Digit Security PIN**: Protect app entry with a customizable 4-digit PIN lock screen (`auth_provider.dart`, `pin_lock_screen.dart`).
-- **Multi-Tenant Local User Profiles**: Support for multiple local user profiles with personalized names, avatars, and settings (`user_profile_model.dart`).
+### 📑 Export Engine (Branded PDF Statements & CSV Data)
+- **Branded PDF Statement Generator**: Generates formatted financial statements with summary metrics, category breakdowns, and transaction tables (`pdf`, `printing`).
+- **CSV Data Exporter**: One-tap CSV export compatible with Microsoft Excel, Google Sheets, QuickBooks, and tax software (`csv`).
+- **Interactive Monthly Report Modal**: In-app digital report viewer featuring monthly KPIs, category breakdowns, and compliance scores.
 
-### 🔔 Animated In-App Notification & Toast System
-- **Custom Push Alerts & Toasts**: Non-intrusive animated in-app notifications (`transaction_notification.dart`) with action chips, timer auto-dismissal, and swipe actions.
+### 🛡️ Biometric & PIN Security (100% Local Hive Storage)
+- **100% Local Storage**: Powered by **Hive NoSQL** key-value storage. Zero external server dependencies; zero cloud telemetry.
+- **Biometric Authentication**: Supports Fingerprint scanner and Face ID (`local_auth`).
+- **Cryptographic PIN Lock**: SHA-256 encrypted 4-digit PIN authentication fallback.
+- **Multi-Profile Support**: Multiple local user accounts with profile pictures, avatars, and isolated financial databases.
 
-### 🎨 Personalization, Dynamic Themes & Multi-Currency
-- **Dark & Light Glassmorphism Themes**: Premium dark mode designed with glassmorphism and modern glow accents, alongside an accessible light mode (`app_theme.dart`).
-- **Multi-Currency Support**: Switch between global currency symbols (`₹`, `$`, `€`, `£`, `¥`, `A$`, `C$`, etc.) with instant formatting updates.
-- **Custom Category Manager**: Create, edit, and personalize transaction categories with custom Flutter icon selectors and color pickers.
+### 🎨 Glassmorphism Design, Dark/Light Mode & Multi-Currency
+- **Modern Aesthetics**: Curated dark glassmorphism theme (`#6C5CE7` primary brand glow) with contrast-tested light mode.
+- **Global Currency Support**: Seamlessly switch between `₹` (INR), `$` (USD), `€` (EUR), `£` (GBP), `¥` (JPY), `A$` (AUD), `C$` (CAD), and custom currencies.
+- **Custom Category Studio**: Create and edit categories with custom names, dynamic Flutter icon pickers, and color swatches.
+
+### 🎙️ Hands-Free Voice Logger & OCR Receipt Scanner
+- **Voice Expense Dictation**: Dictate transactions via speech input (`voice_service.dart`).
+- **Receipt OCR Text Extraction**: Parse vendor, amount, and date directly from camera photos or receipt images (`ocr_service.dart`).
 
 ---
 
-## 🛠️ Tech Stack & Architecture
+## 🏗️ System Architecture
 
 ```mermaid
-graph TD
-    UI[UI Layer - Flutter Screens & Widgets] --> Provider[State Management - Provider]
-    Provider --> Services[Service Layer - AI, SMS, Reports, Voice, OCR]
-    Services --> Hive[Storage Layer - Hive NoSQL Local Storage]
-    Native[Android Native SmsReceiver] -->|MethodChannel| Services
-```
+graph TB
+    subgraph Presentation_Layer [Presentation Layer - UI & Widgets]
+        UI_Screens[Screens: Dashboard, Analytics, Budget, Savings, Reports, Profile]
+        UI_Widgets[Widgets: Charts, Credit Card, Summary Cards, Toast Notifications]
+    end
 
-| Component | Technology | Description |
-| :--- | :--- | :--- |
-| **Framework** | [Flutter 3.10+](https://flutter.dev) | Cross-platform UI toolkit |
-| **Language** | [Dart 3.0+](https://dart.dev) | Strongly typed Dart programming language |
-| **State Management** | [Provider 6.1.2](https://pub.dev/packages/provider) | Dependency injection and reactive state propagation |
-| **Local Persistence** | [Hive 2.2.3](https://pub.dev/packages/hive) & `hive_flutter` | Lightweight, fast key-value NoSQL database engine |
-| **Data Visualization** | [fl_chart 0.69.0](https://pub.dev/packages/fl_chart) | Animated line, bar, and pie charts |
-| **Document Exporting** | [pdf 3.10.8](https://pub.dev/packages/pdf), [printing](https://pub.dev/packages/printing), [csv](https://pub.dev/packages/csv) | Formatted PDF statement rendering and CSV output |
-| **Native Interop** | Kotlin `MethodChannel` | Platform channel for Android SMS broadcast receiver |
-| **Notifications** | [flutter_local_notifications 17.1.2](https://pub.dev/packages/flutter_local_notifications) | Local push notification alerts |
-| **Media & Fonts** | [google_fonts](https://pub.dev/packages/google_fonts), [image_picker](https://pub.dev/packages/image_picker) | Typography and receipt image selection |
+    subgraph State_Management [State Management Layer - Provider]
+        AuthProvider[AuthProvider - Auth & PIN]
+        TxnProvider[TransactionProvider - Ledger & Filter]
+        BudgetProvider[BudgetProvider - Spending Caps]
+        SavingsProvider[SavingsProvider - Goal Targets]
+        CategoryProvider[CategoryProvider - Custom Categories]
+        ThemeCurrencyProvider[ThemeCurrencyProvider - Themes & Currency]
+    end
+
+    subgraph Business_Services [Domain & Service Layer]
+        AiService[AI Insight Engine]
+        SmsParser[Bank SMS Regex Parser]
+        SmsCapture[SMS Auto-Capture Service]
+        ReportService[PDF & CSV Export Service]
+        SmartCategorizer[Smart Categorizer Engine]
+        BiometricService[Biometric & PIN Service]
+    end
+
+    subgraph Native_Platform [Native Platform Interop]
+        KotlinReceiver[Android Native SmsReceiver]
+        MethodChannel[MethodChannel: com.pocketify.expensetracker/sms]
+    end
+
+    subgraph Persistence_Layer [Local Storage - Hive NoSQL]
+        HiveDB[(Hive Local Boxes: Transactions, Budgets, Goals, Categories, UserProfile)]
+    end
+
+    UI_Screens --> State_Management
+    UI_Widgets --> State_Management
+    State_Management --> Business_Services
+    KotlinReceiver -->|Platform Event| MethodChannel
+    MethodChannel --> SmsCapture
+    SmsCapture --> SmsParser
+    SmsParser --> TxnProvider
+    Business_Services --> Persistence_Layer
+    State_Management --> Persistence_Layer
+```
 
 ---
 
-## 📁 Project Folder Structure
+## 📁 Project Directory Structure
 
 ```text
 expense_tracker/
-├── android/                        # Native Android project configuration & SmsReceiver implementation
-├── ios/                            # Native iOS project configuration
-├── assets/                         # Static assets (App icons, illustrations, fallback images)
+├── android/                             # Android native configuration & Kotlin SmsReceiver
+│   └── app/src/main/
+│       ├── AndroidManifest.xml          # SMS permissions & notification channels
+│       └── kotlin/com/pocketify/        # Native background SMS listener implementation
+├── assets/
 │   └── images/
+│       ├── app_icon.png                 # Primary application icon
+│       └── .gitkeep
 ├── lib/
-│   ├── main.dart                   # Application entry point, Hive initialization, Provider tree setup
-│   ├── models/                     # Hive TypeAdapter data models
-│   │   ├── transaction_model.dart  # Transaction model (amount, type, category, date, payment method)
-│   │   ├── category_model.dart     # Category model (name, icon, color, income/expense flag)
-│   │   ├── budget_model.dart       # Budget cap model (category ID, spending limit, period)
-│   │   ├── savings_goal_model.dart # Savings target model (title, target, current amount, deadline)
-│   │   └── user_profile_model.dart # Local user profile model (name, email, pin, preferences)
-│   ├── providers/                  # Application state management logic
-│   │   ├── auth_provider.dart      # User authentication and PIN lock state
-│   │   ├── transaction_provider.dart# Transaction CRUD, filtering, search, and calculations
-│   │   ├── category_provider.dart  # Custom category management state
-│   │   ├── budget_provider.dart    # Budget tracking, progress computation, overspend checks
-│   │   ├── savings_provider.dart   # Savings goal progress and contribution logging
-│   │   └── theme_currency_provider.dart # Dynamic theme toggling & currency selection state
-│   ├── services/                   # Business logic services
-│   │   ├── ai_insight_service.dart # Financial health, anomaly detection, AI recommendations
-│   │   ├── sms_parser_service.dart # Regex engine for bank SMS entity extraction
-│   │   ├── sms_auto_capture_service.dart # Service bridging native SMS calls to transaction logs
-│   │   ├── smart_categorizer_service.dart # Keyword/heuristic auto-categorization engine
-│   │   ├── report_service.dart     # PDF statement generation service
-│   │   ├── monthly_report_service.dart # Monthly financial metrics aggregator
-│   │   ├── local_storage_service.dart # Hive database open/close and CRUD helper wrapper
-│   │   ├── voice_service.dart      # Voice input recognition wrapper
-│   │   └── ocr_service.dart        # Image text extraction wrapper for receipts
-│   ├── screens/                    # UI Application Screens
-│   │   ├── analytics/              # Deep-dive analytics, interactive charts (`analytics_screen.dart`)
-│   │   ├── authentication/         # Login & PIN lock screen (`login_screen.dart`, `pin_lock_screen.dart`)
-│   │   ├── budget/                 # Budget management & add budget screen (`budget_screen.dart`)
-│   │   ├── calendar/               # Calendar view screen (`calendar_screen.dart`)
-│   │   ├── categories/             # Category manager screen (`category_screen.dart`)
-│   │   ├── dashboard/              # Main navigation & summary screen (`dashboard_screen.dart`)
-│   │   ├── expense_income/         # Add/Edit transaction form (`add_edit_transaction_screen.dart`)
-│   │   ├── profile/                # Profile management & settings (`profile_screen.dart`)
-│   │   ├── reports/                # Statement preview & exporter (`reports_screen.dart`)
-│   │   ├── savings/                # Savings goals tracker (`savings_screen.dart`)
-│   │   └── splash/                 # Animated startup splash screen (`splash_screen.dart`)
-│   ├── utils/                      # Utilities, theme tokens, constants, date formatters
-│   │   ├── app_theme.dart          # Dark/Light theme data definitions & palette
-│   │   └── formatters.dart         # Currency, date, and percentage formatting helpers
-│   └── widgets/                    # Reusable UI Components
-│       ├── ai_insight_card.dart    # AI insight widget card
-│       ├── balance_summary_card.dart # Header balance overview card
-│       ├── credit_card_summary_widget.dart # Credit card style balance banner
-│       ├── monthly_budget_card.dart# Budget progress bar tile
-│       ├── transaction_notification.dart # Toast/Snackbar notification helper
-│       └── transaction_tile.dart   # Standard transaction list item
-└── pubspec.yaml                    # Dependencies, assets, and launcher icon configuration
+│   ├── main.dart                        # Application root, Hive bootstrap, Provider tree
+│   ├── models/                          # Hive data models & TypeAdapters
+│   │   ├── budget_model.dart            # Category budget limit entity (TypeId: 1)
+│   │   ├── category_model.dart          # Transaction category entity (TypeId: 3)
+│   │   ├── savings_goal_model.dart      # Savings target & contribution entity (TypeId: 2)
+│   │   ├── transaction_model.dart       # Transaction entity & enums (TypeId: 0)
+│   │   └── user_profile_model.dart      # User profile, PIN & preferences (TypeId: 4)
+│   ├── providers/                       # ChangeNotifier business state providers
+│   │   ├── auth_provider.dart           # Authentication & PIN security state
+│   │   ├── budget_provider.dart         # Budget calculation & overspend tracking
+│   │   ├── category_provider.dart       # Dynamic category state management
+│   │   ├── savings_provider.dart        # Savings goals & contribution history
+│   │   ├── theme_currency_provider.dart # Dark/Light theme & currency selection
+│   │   └── transaction_provider.dart    # Transaction CRUD, filtering & aggregation
+│   ├── screens/                         # Application UI screens
+│   │   ├── analytics/
+│   │   │   └── analytics_screen.dart    # Charts, trends, and deep-dive spending analytics
+│   │   ├── authentication/
+│   │   │   ├── login_screen.dart        # PIN / Biometric login screen
+│   │   │   └── register_screen.dart     # New profile registration screen
+│   │   ├── budget/
+│   │   │   └── budget_screen.dart       # Budget limits, progress rings & add budget modal
+│   │   ├── calendar/
+│   │   │   └── calendar_screen.dart     # Monthly calendar spending ledger view
+│   │   ├── categories/
+│   │   │   └── categories_screen.dart   # Custom category manager & icon/color picker
+│   │   ├── dashboard/
+│   │   │   ├── home_dashboard_screen.dart # Main financial summary & quick actions
+│   │   │   └── main_navigation_screen.dart# Scaffold with custom curved bottom nav bar
+│   │   ├── expense_income/
+│   │   │   ├── add_edit_transaction_screen.dart # Transaction form (Expense/Income)
+│   │   │   └── transaction_list_screen.dart     # Search, filter & sorted ledger list
+│   │   ├── profile/
+│   │   │   ├── profile_screen.dart      # User profile, backup, preferences & security
+│   │   │   └── sms_log_screen.dart      # SMS parsing history & debugging log
+│   │   ├── reports/
+│   │   │   ├── monthly_report_modal.dart# Interactive multi-tab financial report modal
+│   │   │   └── reports_screen.dart      # PDF and CSV statement export center
+│   │   ├── savings/
+│   │   │   └── savings_goals_screen.dart# Goals list, progress meters & deposit modal
+│   │   └── splash/
+│   │       └── splash_screen.dart       # Animated brand intro & auto-auth router
+│   ├── services/                        # Core application services
+│   │   ├── ai_insight_service.dart      # AI financial health scorer & anomaly engine
+│   │   ├── biometric_service.dart       # Fingerprint & Face ID authentication service
+│   │   ├── local_storage_service.dart   # Hive NoSQL database manager & box initializers
+│   │   ├── monthly_report_service.dart  # Monthly financial metric aggregation engine
+│   │   ├── ocr_service.dart             # Receipt text & amount extraction service
+│   │   ├── report_service.dart          # Formatted PDF document builder & printing
+│   │   ├── smart_categorizer_service.dart # Heuristic keyword auto-categorizer
+│   │   ├── sms_auto_capture_service.dart# SMS platform bridge & transaction converter
+│   │   ├── sms_parser_service.dart      # Bank & UPI regex entity extraction parser
+│   │   └── voice_service.dart           # Voice-to-text transaction input wrapper
+│   ├── utils/                           # Design tokens, formatters & constants
+│   │   ├── app_theme.dart               # Light/Dark glassmorphic theme styling
+│   │   ├── constants.dart               # Default categories, icons, and static presets
+│   │   ├── formatters.dart              # Currency, date, and percentage formatting helpers
+│   │   └── icon_helper.dart             # Icon data mappings & resolution utilities
+│   └── widgets/                         # Reusable UI component library
+│       ├── ai_insight_card.dart         # AI advisory & health score widget
+│       ├── balance_summary_card.dart    # Glassmorphic balance & cashflow card
+│       ├── category_icon_widget.dart    # Colored circular category icon avatar
+│       ├── credit_card_summary_widget.dart # Virtual credit card & utilization meter
+│       ├── monthly_budget_card.dart     # Category budget progress bar widget
+│       ├── transaction_notification.dart# Animated in-app toast notification helper
+│       └── transaction_tile.dart        # Interactive transaction list item tile
+├── pubspec.yaml                         # Package dependencies, fonts & asset manifests
+└── README.md                            # Comprehensive project documentation
 ```
 
 ---
 
-## 🗄️ Domain Models & Data Schema
+## 🗄️ Hive Data Models & Storage Schema
 
-Hive HiveFields and Adapters manage the local NoSQL schema:
+Pocketify stores all entities locally using Hive TypeAdapters for speed and zero memory overhead:
 
 ### 1. `TransactionModel` (`TypeId: 0`)
 | Field | Type | Description |
 | :--- | :--- | :--- |
-| `id` | `String` | Unique transaction ID (UUID/Timestamp) |
-| `title` | `String` | Transaction summary / Merchant name |
-| `amount` | `double` | Transaction monetary value |
-| `date` | `DateTime` | Date and time of transaction |
+| `id` | `String` | Unique transaction UUID / timestamp identifier |
+| `userId` | `String?` | ID of the profile this transaction belongs to |
+| `title` | `String` | Transaction title or merchant name (e.g. Starbucks) |
+| `amount` | `double` | Monetary amount |
+| `date` | `DateTime` | Transaction timestamp |
 | `type` | `TransactionType` | Enum (`income`, `expense`) |
-| `category` | `String` | Category name or ID |
-| `paymentMethod`| `String` | Payment mode (UPI, Credit Card, Cash, Bank Transfer) |
-| `notes` | `String?` | Optional user description or note |
-| `isAutoCaptured`|`bool` | True if auto-captured from bank SMS |
+| `category` | `String` | Category name or category identifier |
+| `paymentMethod` | `String` | Payment mode (`UPI`, `Credit Card`, `Debit Card`, `Cash`, `Net Banking`) |
+| `notes` | `String?` | Optional user notes or description |
+| `isAutoCaptured` | `bool` | `true` if auto-captured via SMS parser |
+| `smsSender` | `String?` | Bank SMS header (e.g. `HDFCBK`, `SBIINB`) |
+| `cardLast4` | `String?` | Last 4 digits of associated card or account |
 
 ### 2. `BudgetModel` (`TypeId: 1`)
 | Field | Type | Description |
 | :--- | :--- | :--- |
 | `id` | `String` | Unique budget identifier |
-| `categoryId` | `String` | Category identifier budget applies to |
-| `amountLimit` | `double` | Maximum budget threshold per month |
-| `startDate` | `DateTime` | Budget tracking start period |
+| `userId` | `String?` | ID of the associated user profile |
+| `categoryId` | `String` | Target category identifier |
+| `amountLimit` | `double` | Monthly spending cap |
+| `startDate` | `DateTime` | Budget tracking cycle start date |
 
 ### 3. `SavingsGoalModel` (`TypeId: 2`)
 | Field | Type | Description |
 | :--- | :--- | :--- |
-| `id` | `String` | Unique goal identifier |
-| `title` | `String` | Name of goal (e.g., Vacation Fund) |
+| `id` | `String` | Unique savings goal identifier |
+| `userId` | `String?` | ID of the associated user profile |
+| `title` | `String` | Target goal name (e.g. Emergency Fund, Japan Trip) |
 | `targetAmount` | `double` | Total target savings amount |
-| `currentAmount`| `double` | Saved amount accumulated to date |
-| `targetDate` | `DateTime` | Deadline target completion date |
+| `currentAmount` | `double` | Current accumulated savings amount |
+| `targetDate` | `DateTime` | Target completion deadline |
 | `category` | `String` | Associated savings category |
+| `colorHex` | `String?` | Visual badge color in hex format |
 
-### 4. `CategoryModel` (`TypeId: 3`) & `UserProfileModel` (`TypeId: 4`)
-- `CategoryModel`: Maps icon code points, ARGB color codes, category labels, and type flags.
-- `UserProfileModel`: Manages local authentication credentials, security PIN hashes, user name, profile picture path, and preferred currency symbol.
+### 4. `CategoryModel` (`TypeId: 3`)
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `id` | `String` | Unique category identifier |
+| `name` | `String` | Category display title |
+| `iconCode` | `int` | Flutter `IconData` code point |
+| `colorValue` | `int` | ARGB 32-bit integer color code |
+| `isExpense` | `bool` | Flag indicating expense (`true`) vs income (`false`) |
+| `isCustom` | `bool` | Flag indicating whether user created the category |
+
+### 5. `UserProfileModel` (`TypeId: 4`)
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `uid` | `String` | Unique user account identifier |
+| `name` | `String` | Display user name |
+| `email` | `String` | Email address (optional / local) |
+| `pinHash` | `String?` | SHA-256 hashed 4-digit security PIN |
+| `currencySymbol` | `String` | Preferred currency symbol (e.g. `₹`, `$`, `€`) |
+| `avatarPath` | `String?` | Local avatar or image file path |
+| `isBiometricEnabled`| `bool` | Biometric unlock preference |
 
 ---
 
-## 🚀 Getting Started & Installation
+## 🚀 Getting Started & Setup
 
 ### Prerequisites
-Before running the application, ensure your environment meets the following requirements:
-- **Flutter SDK**: `>= 3.10.0` ([Download Flutter](https://docs.flutter.dev/get-started/install))
+Make sure your development machine has the following installed:
+- **Flutter SDK**: `>= 3.10.0 < 4.0.0` ([Flutter Install Guide](https://docs.flutter.dev/get-started/install))
 - **Dart SDK**: `>= 3.0.0`
-- **Android SDK & Build Tools**: JDK 17, Android API level 33+ (for native SMS permission handling)
-- **IDE**: Android Studio / VS Code with Flutter and Dart extensions installed
+- **Java JDK**: Version 17 or higher
+- **Android SDK**: API level 33+ (required for SMS broadcast reception)
+- **Editor**: VS Code or Android Studio with Flutter/Dart plugins
 
 ### Installation Steps
 
-1. **Clone the repository**
+1. **Clone the Repository**
    ```bash
    git clone https://github.com/your-username/expense_tracker.git
    cd expense_tracker
    ```
 
-2. **Install Flutter dependencies**
+2. **Install Flutter Dependencies**
    ```bash
    flutter pub get
    ```
 
-3. **Generate Hive Adapters (If modifying models)**
+3. **Generate Hive Adapters (If modifying entity models)**
    ```bash
    flutter pub run build_runner build --delete-conflicting-outputs
    ```
 
-4. **Run the Application**
-   - Connect a physical Android/iOS device or start an emulator, then execute:
+4. **Launch the App**
    ```bash
+   # Run on connected device or emulator
    flutter run
    ```
 
 ---
 
-## 📱 Native Android SMS Integration Setup
+## 📱 Native Android SMS Setup Guide
 
-To enable real-time SMS transaction auto-capture on Android physical devices:
+To enable real-time SMS expense auto-capture on physical Android devices:
 
-1. **Permissions in `AndroidManifest.xml`**:
-   The app requests `RECEIVE_SMS` and `READ_SMS` permissions. Ensure the following entries are present in `android/app/src/main/AndroidManifest.xml`:
-   ```xml
-   <uses-permission android:name="android.permission.RECEIVE_SMS" />
-   <uses-permission android:name="android.permission.READ_SMS" />
-   <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-   ```
+### 1. Permissions in `AndroidManifest.xml`
+The application includes the following permissions in `android/app/src/main/AndroidManifest.xml`:
+```xml
+<uses-permission android:name="android.permission.RECEIVE_SMS" />
+<uses-permission android:name="android.permission.READ_SMS" />
+<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+<uses-permission android:name="android.permission.USE_BIOMETRIC" />
+<uses-permission android:name="android.permission.USE_FINGERPRINT" />
+```
 
-2. **Runtime Permission Approval**:
-   When prompted on first app execution, tap **Allow** for SMS permission prompts.
+### 2. Runtime Permission Flow
+- When launching Pocketify for the first time, an in-app prompt will request SMS access.
+- Tap **Allow SMS Access** to activate native background listening.
 
-3. **Battery Optimization Exclusion**:
-   On devices running aggressive battery saver profiles (e.g., Xiaomi MIUI, Samsung OneUI, OnePlus OxygenOS), grant Pocketify background autostart permissions so `SmsReceiver` fires reliably when the app is minimized.
+### 3. OEM Background Optimization Exemption
+For devices running aggressive background battery managers (MIUI/HyperOS, OxygenOS, OneUI, ColorOS):
+- Open **Device Settings → Apps → Pocketify**.
+- Enable **Autostart** / **Allow Background Activity**.
+- Set **Battery Saver** to **No Restrictions**.
 
 ---
 
-## 📦 Production Build & Release
+## 📦 Build & Release Commands
 
-### Build Android Release APK
+### Android APK (Direct Install)
 ```bash
 flutter build apk --release
 ```
-The output file will be generated at:
-`build/app/outputs/flutter-apk/app-release.apk`
+*Output location:* `build/app/outputs/flutter-apk/app-release.apk`
 
-### Build Android App Bundle (AAB for Google Play Store)
+### Android App Bundle (Google Play Store)
 ```bash
 flutter build appbundle --release
 ```
-The output file will be generated at:
-`build/app/outputs/bundle/release/app-release.aab`
+*Output location:* `build/app/outputs/bundle/release/app-release.aab`
 
-### Build iOS Release App
+### iOS Release Build
 ```bash
 flutter build ios --release
 ```
 
-### Build Web Version
+### Web Release Build
 ```bash
 flutter build web --release
 ```
 
 ---
 
-## 🧪 Testing & Code Quality
+## 🧪 Testing & Linting
 
-Execute the test suite and static code analyzer to ensure stability:
+Verify code health and test suite execution:
 
 ```bash
-# Run all unit and widget tests
+# Run unit and widget tests
 flutter test
 
-# Run static code analysis and lint checking
+# Run static code analysis and lint rules
 flutter analyze
 ```
 
 ---
 
-## 🔧 Troubleshooting & FAQ
+## ❓ Troubleshooting & FAQ
 
 <details>
-<summary><b>1. Missing Hive Adapters / Build Runner Errors</b></summary>
+<summary><b>1. <code>HiveError: Cannot find adapter for type...</code></b></summary>
 <br>
-If you encounter errors like <code>HiveError: Cannot find adapter for type...</code>, regenerate Hive adapters by running:
+This occurs if Hive model files have been modified without regenerating the TypeAdapter code. Run:
 <pre><code>flutter pub run build_runner build --delete-conflicting-outputs</code></pre>
 </details>
 
 <details>
-<summary><b>2. SMS Auto-Capture is not triggering on Android Emulator</b></summary>
+<summary><b>2. How to test SMS Auto-Capture on an Android Emulator?</b></summary>
 <br>
-SMS auto-capture requires real SMS broadcasts. To test on Android Emulator:
 <ol>
-  <li>Open Emulator extended controls (<code>...</code> button).</li>
-  <li>Navigate to <b>Phone</b> menu -> <b>SMS message</b> tab.</li>
-  <li>Send a sample message such as: <i>"Rs 450.00 debited from a/c XX1234 on 28-JUL-26 at STARBUCKS via UPI."</i></li>
+  <li>Start the Android Emulator and launch Pocketify.</li>
+  <li>Open the Emulator's <b>Extended Controls</b> (the <code>...</code> icon in the emulator toolbar).</li>
+  <li>Navigate to the <b>Phone</b> tab &rarr; <b>SMS message</b> section.</li>
+  <li>Input any bank-like sender address (e.g. <code>HDFCBK</code>) and send a message like:
+    <br><code>"Rs 750.00 debited from HDFC Bank A/c XX4321 on 25-Aug-26 to ZOMATO via UPI Ref 3281920."</code>
+  </li>
+  <li>Pocketify will capture and log the transaction in real time with an in-app notification toast.</li>
 </ol>
 </details>
 
 <details>
-<summary><b>3. PDF Export fails on Web</b></summary>
+<summary><b>3. Is my bank data shared with any third-party server?</b></summary>
 <br>
-File system saving differs on Web browsers. Pocketify automatically uses browser blob downloads when running on web builds.
+<b>No.</b> Pocketify is architected strictly as an offline-first app. All SMS parsing, financial health calculations, and transaction records are processed and stored exclusively in your device's local Hive database.
 </details>
 
 ---
 
-## 🗺️ Future Roadmap
+## 🗺️ Product Roadmap
 
-- [ ] **Cloud Encrypted Backup**: Optional user-controlled Google Drive & iCloud sync for cross-device backup.
-- [ ] **Account Aggregator API**: Direct bank balance sync via open banking protocols.
-- [ ] **Multi-Currency Auto Conversion**: Live exchange rate updates for multi-currency transactions.
-- [ ] **WearOS & WatchOS Companion**: Quick expense logging widget for smartwatches.
+- [ ] 🔄 **Encrypted Cloud Sync**: Optional end-to-end encrypted backup to Google Drive / iCloud.
+- [ ] 🏦 **Account Aggregator Support**: Direct bank sync via RBI-regulated Account Aggregator protocols.
+- [ ] 💱 **Live Exchange Rate Engine**: Real-time multi-currency conversions for travel expenses.
+- [ ] ⌚ **WearOS / watchOS Companion**: Quick voice and tile logging for smartwatches.
+- [ ] 🧾 **Advanced Split-Expense Engine**: Group expense splitting with settled balance tracking.
 
 ---
 
-## 📄 License & Contributing
+## 🤝 Contributing & License
 
-Distributed under the **MIT License**. See `LICENSE` for more information.
+Contributions are always welcome! If you'd like to improve Pocketify:
 
-### Contributing
-Contributions are welcome! Follow these steps to contribute:
-1. Fork the Project.
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`).
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`).
-4. Push to the Branch (`git checkout push origin feature/AmazingFeature`).
-5. Open a Pull Request.
+1. **Fork the Repository**
+2. **Create a Feature Branch** (`git checkout -b feature/NewFeature`)
+3. **Commit your Changes** (`git commit -m 'Add NewFeature'`)
+4. **Push to the Branch** (`git push origin feature/NewFeature`)
+5. **Open a Pull Request**
+
+### License
+This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
 
 ---
 
 <p align="center">
-  Built with ❤️ using <b>Flutter</b> and <b>Dart</b>
+  Crafted with ❤️ using <b>Flutter</b> and <b>Dart</b>
 </p>
