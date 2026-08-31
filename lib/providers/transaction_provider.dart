@@ -13,6 +13,8 @@ class TransactionProvider extends ChangeNotifier {
   List<TransactionModel>? _filteredTransactionsCache;
   double? _totalIncomeCache;
   double? _totalExpenseCache;
+  double? _thisMonthIncomeCache;
+  double? _thisMonthExpenseCache;
   String? _activeUid;
   String _searchQuery = '';
   String _selectedCategoryFilter = 'All';
@@ -85,12 +87,48 @@ class TransactionProvider extends ChangeNotifier {
     _filteredTransactionsCache = null;
     _totalIncomeCache = null;
     _totalExpenseCache = null;
+    _thisMonthIncomeCache = null;
+    _thisMonthExpenseCache = null;
   }
 
   @override
   void dispose() {
     _hiveBoxSubscription?.cancel();
     super.dispose();
+  }
+
+  /// Total income for the current calendar month (resets automatically when month changes).
+  double get thisMonthIncome {
+    if (_thisMonthIncomeCache == null) {
+      final now = DateTime.now();
+      double sum = 0.0;
+      for (final t in _transactions) {
+        if (t.type == TransactionType.income &&
+            t.date.year == now.year &&
+            t.date.month == now.month) {
+          sum += t.amount;
+        }
+      }
+      _thisMonthIncomeCache = sum;
+    }
+    return _thisMonthIncomeCache!;
+  }
+
+  /// Total expense for the current calendar month (resets automatically when month changes).
+  double get thisMonthExpense {
+    if (_thisMonthExpenseCache == null) {
+      final now = DateTime.now();
+      double sum = 0.0;
+      for (final t in _transactions) {
+        if (t.type == TransactionType.expense &&
+            t.date.year == now.year &&
+            t.date.month == now.month) {
+          sum += t.amount;
+        }
+      }
+      _thisMonthExpenseCache = sum;
+    }
+    return _thisMonthExpenseCache!;
   }
 
   double get totalIncome {

@@ -43,6 +43,7 @@ class AIInsightCard extends StatelessWidget {
       budget: budgetData,
       savingsGoals: savingsProvider.goals,
       totalCreditLimit: txProvider.totalCreditLimit,
+      liquidBalance: txProvider.bankAndCashBalance,
     );
 
     if (insights.isEmpty) return const SizedBox.shrink();

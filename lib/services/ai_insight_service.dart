@@ -48,6 +48,7 @@ class AIInsightService {
     BudgetInsightData? budget,
     List<SavingsGoalModel>? savingsGoals,
     double? totalCreditLimit,
+    double? liquidBalance,
   }) {
     final List<AIInsight> insights = [];
 
@@ -581,6 +582,105 @@ class AIInsightService {
             'If paying debt, prioritize the highest interest balance first to save maximum money.',
         type: 'tip',
       ));
+    }
+
+    // ══════════════════════════════════════════════
+    // 9. CONDITIONAL "NEEDED ONLY IF" FINANCIAL HEALTH ENGINES
+    // ══════════════════════════════════════════════
+
+    // 1. Deficit Spending Alert (Triggered ONLY IF Monthly Expense > Monthly Income)
+    if (totalCurrentIncome > 0 && totalCurrentExpense > totalCurrentIncome) {
+      final deficit = totalCurrentExpense - totalCurrentIncome;
+      insights.add(AIInsight(
+        title: '🚨 Health Alert: Monthly Deficit Spending',
+        description:
+            'You are currently spending ${Formatters.formatCurrency(deficit, symbol: currencySymbol)} more than your income this month '
+            '(${((totalCurrentExpense / totalCurrentIncome - 1) * 100).toStringAsFixed(0)}% overrun). '
+            'Deficit spending drains emergency reserves and forces debt. Pause non-essential purchases.',
+        type: 'critical',
+        impactAmount: deficit,
+        actionLabel: 'Rebalance Budget',
+        actionRoute: '/budget',
+      ));
+    }
+
+    // 2. Emergency Safety Runway Alert (Triggered ONLY IF Liquid Reserves < 3 Months of Expenses)
+    if (liquidBalance != null && liquidBalance >= 0 && monthlyExpensePace > 0) {
+      final runwayMonths = liquidBalance / monthlyExpensePace;
+      if (runwayMonths < 3.0) {
+        final target3Mo = monthlyExpensePace * 3;
+        final gap = target3Mo - liquidBalance;
+        insights.add(AIInsight(
+          title: '🛡️ Financial Health: Emergency Runway Alert (${runwayMonths.toStringAsFixed(1)} Mo)',
+          description:
+              'Your current liquid balance (${Formatters.formatCurrency(liquidBalance, symbol: currencySymbol)}) covers ~${runwayMonths.toStringAsFixed(1)} months of expenses. '
+              'A minimum 3-month safety buffer (${Formatters.formatCurrency(target3Mo, symbol: currencySymbol)}) is recommended to protect against unexpected life events. '
+              'Gap to fund: ${Formatters.formatCurrency(gap > 0 ? gap : 0, symbol: currencySymbol)}.',
+          type: runwayMonths < 1.0 ? 'critical' : 'warning',
+          impactAmount: gap > 0 ? gap : 0,
+          actionLabel: 'Build Emergency Goal',
+          actionRoute: '/savings',
+        ));
+      }
+    }
+
+    // 3. Credit Card Liquidity Risk (Triggered ONLY IF CC Dues > Liquid Bank Balance)
+    if (liquidBalance != null && totalCreditLimit != null && totalCreditLimit > 0) {
+      final ccSpent = transactions
+          .where((t) => t.paymentMethod == 'Credit Card')
+          .fold(0.0, (s, t) => s + (t.type == TransactionType.expense ? t.amount : -t.amount))
+          .clamp(0.0, double.infinity);
+      if (ccSpent > 0 && liquidBalance < ccSpent) {
+        final shortfall = ccSpent - liquidBalance;
+        insights.add(AIInsight(
+          title: '⚠️ Credit Health: Outstanding Card Dues Exceed Liquid Funds',
+          description:
+              'Total unpaid credit card dues (${Formatters.formatCurrency(ccSpent, symbol: currencySymbol)}) exceed your available liquid bank & cash balance (${Formatters.formatCurrency(liquidBalance, symbol: currencySymbol)}) '
+              'by ${Formatters.formatCurrency(shortfall, symbol: currencySymbol)}. Ensure card repayment funds are allocated before the due date.',
+          type: 'critical',
+          impactAmount: shortfall,
+          actionLabel: 'Manage Cards',
+          actionRoute: '/home',
+        ));
+      }
+    }
+
+    // 4. Micro-Transaction Silent Leakage (Triggered ONLY IF small expenses < ₹200 make up > 15% of spend)
+    final microTransactions = currentMonthExpenses.where((t) => t.amount <= 200 && t.amount > 0).toList();
+    if (microTransactions.length >= 4 && totalCurrentExpense > 0) {
+      final microTotal = microTransactions.fold(0.0, (s, t) => s + t.amount);
+      final microPct = (microTotal / totalCurrentExpense) * 100;
+      if (microPct >= 15.0) {
+        insights.add(AIInsight(
+          title: '☕ Financial Health: Micro-Spending Leakage (${microPct.toStringAsFixed(0)}% of Outflow)',
+          description:
+              'You made ${microTransactions.length} small transactions (under 200) totaling ${Formatters.formatCurrency(microTotal, symbol: currencySymbol)}. '
+              'Frequent micro-spends silently erode your savings. Setting a daily pocket cash limit can save ~${Formatters.formatCurrency(microTotal * 0.4, symbol: currencySymbol)}/mo.',
+          type: 'warning',
+          impactAmount: microTotal,
+          actionLabel: 'View Transactions',
+          actionRoute: '/transactions',
+        ));
+      }
+    }
+
+    // 5. Discretionary Wants Overload (Triggered ONLY IF Wants spend > 35% of income)
+    if (totalCurrentIncome > 0 && wantsSpend > 0) {
+      final wantsPct = (wantsSpend / totalCurrentIncome) * 100;
+      if (wantsPct > 35.0) {
+        final excessWants = wantsSpend - (totalCurrentIncome * 0.30);
+        insights.add(AIInsight(
+          title: '🛍️ Financial Health: Discretionary Spending Alert (${wantsPct.toStringAsFixed(0)}% of Income)',
+          description:
+              'Spending on Wants (dining, shopping, entertainment) reached ${Formatters.formatCurrency(wantsSpend, symbol: currencySymbol)} '
+              '(${wantsPct.toStringAsFixed(0)}% of income vs 30% safe benchmark). Trimming ${Formatters.formatCurrency(excessWants, symbol: currencySymbol)} '
+              'will restore optimal financial health.',
+          type: 'warning',
+          impactAmount: excessWants,
+          actionLabel: 'Check Spending',
+          actionRoute: '/analytics',
+        ));
+      }
     }
 
     return insights;

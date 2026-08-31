@@ -286,12 +286,12 @@ class _BalanceSummaryCardState extends State<BalanceSummaryCard> {
           ],
           const SizedBox(height: 10),
 
-          // Income & Expense compact tiles
+          // Income & Expense compact tiles (current month - resets every month)
           Row(children: [
             Expanded(
               child: _summaryTile(
                 title: 'Income',
-                amount: txProvider.totalIncome,
+                amount: txProvider.thisMonthIncome,
                 icon: Icons.arrow_downward_rounded,
                 color: const Color(0xFF00B894),
                 currencySymbol: currency,
@@ -301,7 +301,7 @@ class _BalanceSummaryCardState extends State<BalanceSummaryCard> {
             Expanded(
               child: _summaryTile(
                 title: 'Expense',
-                amount: txProvider.totalExpense,
+                amount: txProvider.thisMonthExpense,
                 icon: Icons.arrow_upward_rounded,
                 color: const Color(0xFFFF7675),
                 currencySymbol: currency,

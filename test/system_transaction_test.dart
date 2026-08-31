@@ -78,6 +78,67 @@ void main() {
       await provider.deleteTransaction('sys_tx_1');
     });
 
+    test('1b. Monthly Income and Expense vs Cumulative Net Balance across month change', () async {
+      final provider = TransactionProvider();
+      final lastMonth = DateTime(DateTime.now().year, DateTime.now().month - 1, 15);
+      final currentMonth = DateTime.now();
+
+      // Past month income and expense
+      await provider.addTransaction(TransactionModel(
+        id: 'past_inc_1',
+        uid: 'local_user',
+        type: TransactionType.income,
+        amount: 50000.0,
+        category: 'Salary',
+        paymentMethod: 'Bank Transfer',
+        description: 'Past month salary',
+        date: lastMonth,
+      ));
+
+      await provider.addTransaction(TransactionModel(
+        id: 'past_exp_1',
+        uid: 'local_user',
+        type: TransactionType.expense,
+        amount: 20000.0,
+        category: 'Rent',
+        paymentMethod: 'UPI',
+        description: 'Past month rent',
+        date: lastMonth,
+      ));
+
+      // Before current month transactions:
+      // thisMonthIncome and thisMonthExpense must be 0
+      expect(provider.thisMonthIncome, equals(0.0));
+      expect(provider.thisMonthExpense, equals(0.0));
+      // All-time income & expense reflect past data
+      expect(provider.totalIncome, equals(50000.0));
+      expect(provider.totalExpense, equals(20000.0));
+      // Net balance is cumulative (50,000 - 20,000 = 30,000)
+      expect(provider.netBalance, equals(30000.0));
+
+      // Add current month expense
+      await provider.addTransaction(TransactionModel(
+        id: 'curr_exp_1',
+        uid: 'local_user',
+        type: TransactionType.expense,
+        amount: 5000.0,
+        category: 'Food',
+        paymentMethod: 'UPI',
+        description: 'Current month dining',
+        date: currentMonth,
+      ));
+
+      expect(provider.thisMonthIncome, equals(0.0));
+      expect(provider.thisMonthExpense, equals(5000.0));
+      expect(provider.totalExpense, equals(25000.0));
+      expect(provider.netBalance, equals(25000.0));
+
+      // Clean up
+      await provider.deleteTransaction('past_inc_1');
+      await provider.deleteTransaction('past_exp_1');
+      await provider.deleteTransaction('curr_exp_1');
+    });
+
     test('2. Filter, Search, and Sorting operations', () async {
       final provider = TransactionProvider();
       final date1 = DateTime(2026, 8, 1, 10, 0);

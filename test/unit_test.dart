@@ -283,6 +283,58 @@ void main() {
       final hasPayFirstTip = tips.any((t) => t.title.contains('Pay Yourself First'));
       expect(hasPayFirstTip, isTrue);
     });
+
+    test('Needed-Only-If Financial Health Engines Trigger Conditionally', () {
+      final now = DateTime.now();
+
+      // Test 1: Deficit spending (Expenses > Income)
+      final deficitTxs = [
+        TransactionModel(
+          id: 'inc1',
+          uid: 'u1',
+          type: TransactionType.income,
+          amount: 20000.0,
+          category: 'Salary',
+          paymentMethod: 'Bank Transfer',
+          description: 'Part-time earnings',
+          date: now,
+        ),
+        TransactionModel(
+          id: 'exp1',
+          uid: 'u1',
+          type: TransactionType.expense,
+          amount: 28000.0,
+          category: 'Shopping',
+          paymentMethod: 'UPI',
+          description: 'Heavy shopping spree',
+          date: now,
+        ),
+      ];
+
+      final deficitInsights = AIInsightService.generateInsights(
+        deficitTxs,
+        '₹',
+        liquidBalance: 5000.0,
+      );
+
+      final hasDeficitAlert = deficitInsights.any((i) => i.title.contains('Deficit Spending'));
+      expect(hasDeficitAlert, isTrue);
+
+      final hasRunwayAlert = deficitInsights.any((i) => i.title.contains('Emergency Runway Alert'));
+      expect(hasRunwayAlert, isTrue);
+
+      // Test 2: Micro-transaction leakage (4+ transactions <= 200 forming >15% of spend)
+      final microTxs = [
+        TransactionModel(id: 'm1', uid: 'u1', type: TransactionType.expense, amount: 50.0, category: 'Food', paymentMethod: 'UPI', description: 'Chai', date: now),
+        TransactionModel(id: 'm2', uid: 'u1', type: TransactionType.expense, amount: 80.0, category: 'Food', paymentMethod: 'UPI', description: 'Snacks', date: now),
+        TransactionModel(id: 'm3', uid: 'u1', type: TransactionType.expense, amount: 100.0, category: 'Transport', paymentMethod: 'UPI', description: 'Auto ride', date: now),
+        TransactionModel(id: 'm4', uid: 'u1', type: TransactionType.expense, amount: 120.0, category: 'Food', paymentMethod: 'UPI', description: 'Coffee', date: now),
+        TransactionModel(id: 'm5', uid: 'u1', type: TransactionType.expense, amount: 200.0, category: 'Bills', paymentMethod: 'UPI', description: 'Recharge', date: now),
+      ];
+      final microInsights = AIInsightService.generateInsights(microTxs, '₹');
+      final hasMicroLeakAlert = microInsights.any((i) => i.title.contains('Micro-Spending Leakage'));
+      expect(hasMicroLeakAlert, isTrue);
+    });
   });
 
   group('SmartCategorizerService Tests', () {
