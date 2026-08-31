@@ -254,5 +254,70 @@ void main() {
       await savingsProvider.deleteGoal('g_vacation');
       expect(savingsProvider.goals.isEmpty, isTrue);
     });
+
+    test('5. Credit Card Expense and Refund consistency in total net balance and per-card map', () async {
+      final txProvider = TransactionProvider();
+      await LocalStorageService.saveCreditCard({
+        'id': 'card_test_1',
+        'cardName': 'HDFC Millennia',
+        'last4': '2235',
+        'limit': 50000.0,
+      });
+
+      final now = DateTime.now();
+
+      // 1. Initial Salary into Bank
+      await txProvider.addTransaction(TransactionModel(
+        id: 'cc_test_bank_inc',
+        uid: 'local_user',
+        type: TransactionType.income,
+        amount: 50000.0,
+        category: 'Salary',
+        paymentMethod: 'Bank Transfer',
+        description: 'Monthly Salary',
+        date: now,
+      ));
+
+      // 2. CC Expense of 4500
+      await txProvider.addTransaction(TransactionModel(
+        id: 'cc_test_exp_1',
+        uid: 'local_user',
+        type: TransactionType.expense,
+        amount: 4500.0,
+        category: 'Shopping',
+        paymentMethod: 'Credit Card',
+        description: 'Zara (Card ••2235)',
+        date: now,
+      ));
+
+      expect(txProvider.totalCreditCardSpent, equals(4500.0));
+      expect(txProvider.totalCreditCardAvailableLimit, equals(45500.0));
+      expect(txProvider.creditCardSpendingByCard['••2235'], equals(4500.0));
+      expect(txProvider.netBalance, equals(50000.0 + 45500.0));
+
+      // 3. CC Refund of 1500 (even without explicit •• in description)
+      await txProvider.addTransaction(TransactionModel(
+        id: 'cc_test_ref_1',
+        uid: 'local_user',
+        type: TransactionType.income,
+        amount: 1500.0,
+        category: 'Shopping',
+        paymentMethod: 'Credit Card',
+        description: 'Zara Return Refund',
+        date: now,
+      ));
+
+      // 4. Verify exact equality across Total Net Balance and per-card spending
+      expect(txProvider.totalCreditCardSpent, equals(3000.0)); // 4500 - 1500
+      expect(txProvider.totalCreditCardAvailableLimit, equals(47000.0)); // 50000 - 3000
+      expect(txProvider.creditCardSpendingByCard['••2235'], equals(3000.0));
+      expect(txProvider.netBalance, equals(50000.0 + 47000.0));
+
+      // Cleanup
+      await txProvider.deleteTransaction('cc_test_bank_inc');
+      await txProvider.deleteTransaction('cc_test_exp_1');
+      await txProvider.deleteTransaction('cc_test_ref_1');
+      await LocalStorageService.deleteCreditCard('card_test_1');
+    });
   });
 }

@@ -314,8 +314,8 @@ class _CreditCardSummaryWidgetState extends State<CreditCardSummaryWidget> {
             final card = _cards[i];
             // Match spent from transactions — try ••last4 key + generic CC when 1 card
             final last4Spent = cardSpentMap['••${card.last4}'] ?? 0.0;
-            final genericSpent = _cards.length == 1 ? (cardSpentMap['Credit Card'] ?? 0.0) : 0.0;
-            final spent = last4Spent + genericSpent;
+            final genericSpent = _cards.length == 1 ? 0.0 : (cardSpentMap['Credit Card'] ?? 0.0);
+            final spent = _cards.length == 1 ? totalSpent : (last4Spent + genericSpent);
             final fraction = card.limit > 0
                 ? (spent / card.limit).clamp(0.0, 1.0)
                 : 0.0;
@@ -436,7 +436,7 @@ class _TotalBanner extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Total Spent',
+                    Text('Total Due',
                         style: TextStyle(
                             fontSize: 11,
                             color: Colors.grey.shade500)),
@@ -451,20 +451,17 @@ class _TotalBanner extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text('Remaining',
+                  Text('Total Limit',
                       style: TextStyle(
                           fontSize: 11, color: Colors.grey.shade500)),
                   Text(
                     totalLimit > 0
-                        ? Formatters.formatCurrency(remaining,
+                        ? Formatters.formatCurrency(totalLimit,
                             symbol: currency)
                         : '—',
-                    style: TextStyle(
+                    style: const TextStyle(
                         fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: isOver
-                            ? const Color(0xFFFF7675)
-                            : const Color(0xFF00B894)),
+                        fontWeight: FontWeight.bold),
                   ),
                 ],
               ),
@@ -636,11 +633,12 @@ class _CreditCardTile extends StatelessWidget {
             ),
             const SizedBox(height: 18),
 
-            // Row 3: spent / remaining
+            // Row 3: due / total limit / remaining
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _statCol('Spent', Formatters.formatCurrency(spent, symbol: currency)),
-                const SizedBox(width: 24),
+                _statCol('Due', Formatters.formatCurrency(spent, symbol: currency)),
+                _statCol('Total Limit', Formatters.formatCurrency(card.limit, symbol: currency)),
                 _statCol(
                   isOver ? 'Over Limit!' : 'Available',
                   isOver

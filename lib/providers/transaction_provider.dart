@@ -222,32 +222,66 @@ class TransactionProvider extends ChangeNotifier {
 
   /// Extracts the card identifier (e.g. "••2235") from a transaction's
   /// description. Used by both expense and refund grouping.
-  String _extractCardKey(TransactionModel t) {
+  String _extractCardKey(TransactionModel t, [List<Map<String, dynamic>>? knownCards]) {
     final maskedMatch =
         RegExp(r'[•\*]{1,4}(\d{4})').firstMatch(t.description);
     if (maskedMatch != null) return '••${maskedMatch.group(1)}';
 
-    final plain4Match = RegExp(r'\b(\d{4})\b').firstMatch(t.description);
-    if (plain4Match != null) return '••${plain4Match.group(1)}';
+    final endingMatch = RegExp(r'(?:card|ending|xx|no|a\/c)\s*[:#.]?\s*(\d{4})', caseSensitive: false)
+        .firstMatch(t.description);
+    if (endingMatch != null) return '••${endingMatch.group(1)}';
+
+    final cards = knownCards ?? LocalStorageService.getCreditCards();
+    for (final c in cards) {
+      final last4 = c['last4'] as String?;
+      if (last4 != null && last4.isNotEmpty && t.description.contains(last4)) {
+        return '••$last4';
+      }
+    }
 
     return 'Credit Card';
   }
 
   /// Per-card NET spending map (expenses − refunds) keyed by card identifier.
-  /// A card with more refunds than purchases shows 0 (never negative).
+  /// Accurately applies refunds and payments to reduce credit card balance.
   Map<String, double> get creditCardSpendingByCard {
+    final registeredCards = LocalStorageService.getCreditCards();
     final map = <String, double>{};
 
+    // If only 1 card is registered, all CC expenses and refunds apply directly to it
+    if (registeredCards.length == 1) {
+      final last4 = registeredCards.first['last4'] as String? ?? '';
+      final total = totalCreditCardSpent;
+      map['••$last4'] = total;
+      map['Credit Card'] = total;
+      return map;
+    }
+
+    // When multiple cards exist:
+    final expenseMap = <String, double>{};
+    final refundMap = <String, double>{};
+
     for (final t in creditCardTransactions) {
-      final key = _extractCardKey(t);
-      map[key] = (map[key] ?? 0.0) + t.amount;
+      final key = _extractCardKey(t, registeredCards);
+      expenseMap[key] = (expenseMap[key] ?? 0.0) + t.amount;
     }
 
     for (final t in creditCardRefundTransactions) {
-      final key = _extractCardKey(t);
-      map[key] = (map[key] ?? 0.0) - t.amount;
-      if (map[key]! < 0) map[key] = 0.0;
+      final key = _extractCardKey(t, registeredCards);
+      refundMap[key] = (refundMap[key] ?? 0.0) + t.amount;
     }
+
+    for (final card in registeredCards) {
+      final last4 = card['last4'] as String? ?? '';
+      final key = '••$last4';
+      final exp = expenseMap[key] ?? 0.0;
+      final ref = refundMap[key] ?? 0.0;
+      map[key] = (exp - ref).clamp(0.0, double.infinity);
+    }
+
+    final genExp = expenseMap['Credit Card'] ?? 0.0;
+    final genRef = refundMap['Credit Card'] ?? 0.0;
+    map['Credit Card'] = (genExp - genRef).clamp(0.0, double.infinity);
 
     return map;
   }

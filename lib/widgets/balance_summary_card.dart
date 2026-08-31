@@ -484,8 +484,8 @@ class _BalanceSummaryCardState extends State<BalanceSummaryCard> {
               ..._cards.asMap().entries.map((e) {
                 final card = e.value;
                 final last4Spent = ccSpentMap['••${card.last4}'] ?? 0.0;
-                final genericSpent = _cards.length == 1 ? (ccSpentMap['Credit Card'] ?? 0.0) : 0.0;
-                final spent = last4Spent + genericSpent;
+                final genericSpent = _cards.length == 1 ? 0.0 : (ccSpentMap['Credit Card'] ?? 0.0);
+                final spent = _cards.length == 1 ? totalCCSpent : (last4Spent + genericSpent);
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 6),
                   child: _ccCardRow(card, spent, currency),
@@ -501,6 +501,7 @@ class _BalanceSummaryCardState extends State<BalanceSummaryCard> {
   // ── CC total summary row ─────────────────────────────────────────────────
   Widget _ccTotalRow(double spent, double limit, String currency) {
     final pct = (spent / limit).clamp(0.0, 1.0);
+    final remaining = (limit - spent).clamp(0.0, limit);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
@@ -513,14 +514,17 @@ class _BalanceSummaryCardState extends State<BalanceSummaryCard> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Total CC Spent this month',
-                  style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.7),
-                      fontSize: 10)),
               Text(
-                '${Formatters.formatCurrency(spent, symbol: currency)} / ${Formatters.formatCurrency(limit, symbol: currency)}',
+                'Due: ${Formatters.formatCurrency(spent, symbol: currency)}',
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold),
+              ),
+              Text(
+                'Total Limit: ${Formatters.formatCurrency(limit, symbol: currency)}',
                 style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.9),
+                    color: Colors.white.withValues(alpha: 0.85),
                     fontSize: 10,
                     fontWeight: FontWeight.w600),
               ),
@@ -541,6 +545,25 @@ class _BalanceSummaryCardState extends State<BalanceSummaryCard> {
                         : const Color(0xFF55efc4),
               ),
             ),
+          ),
+          const SizedBox(height: 3),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '${(pct * 100).toStringAsFixed(0)}% used',
+                style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.6),
+                    fontSize: 9),
+              ),
+              Text(
+                'Avail: ${Formatters.formatCurrency(remaining, symbol: currency)}',
+                style: const TextStyle(
+                    color: Color(0xFF55efc4),
+                    fontSize: 9,
+                    fontWeight: FontWeight.w600),
+              ),
+            ],
           ),
         ],
       ),
@@ -618,26 +641,38 @@ class _BalanceSummaryCardState extends State<BalanceSummaryCard> {
                   ],
                 ),
               ),
-              // Spent & remaining
+              // Due & Total Limit
               Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                Text(
-                  Formatters.formatCurrency(spent, symbol: currency),
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Due: ',
+                      style: TextStyle(
+                        color: isOver ? const Color(0xFFFF7675) : Colors.white.withValues(alpha: 0.75),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    Text(
+                      Formatters.formatCurrency(spent, symbol: currency),
+                      style: TextStyle(
+                        color: isOver ? const Color(0xFFFF7675) : Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ),
+                const SizedBox(height: 2),
                 Text(
-                  isOver
-                      ? '⚠️ Over limit'
-                      : card.limit > 0
-                          ? '${Formatters.formatCurrency(remaining, symbol: currency)} left'
-                          : 'No limit set',
+                  card.limit > 0
+                      ? 'Limit: ${Formatters.formatCurrency(card.limit, symbol: currency)}'
+                      : 'No limit set',
                   style: TextStyle(
-                      color: isOver
-                          ? const Color(0xFFFF7675)
-                          : Colors.white.withValues(alpha: 0.55),
-                      fontSize: 9),
+                      color: Colors.white.withValues(alpha: 0.8),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600),
                 ),
               ]),
               const SizedBox(width: 6),
@@ -656,11 +691,25 @@ class _BalanceSummaryCardState extends State<BalanceSummaryCard> {
                 ),
               ),
               const SizedBox(height: 3),
-              Text(
-                '${(pct * 100).toStringAsFixed(0)}% of ${Formatters.formatCurrency(card.limit, symbol: currency)} limit used',
-                style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.45),
-                    fontSize: 9),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '${(pct * 100).toStringAsFixed(0)}% used of ${Formatters.formatCurrency(card.limit, symbol: currency)} limit',
+                    style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.6),
+                        fontSize: 9),
+                  ),
+                  Text(
+                    isOver
+                        ? '⚠️ Over limit'
+                        : 'Avail: ${Formatters.formatCurrency(remaining, symbol: currency)}',
+                    style: TextStyle(
+                        color: isOver ? const Color(0xFFFF7675) : const Color(0xFF55efc4),
+                        fontSize: 9,
+                        fontWeight: FontWeight.w600),
+                  ),
+                ],
               ),
             ],
           ],
